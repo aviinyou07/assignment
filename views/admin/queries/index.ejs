@@ -1,0 +1,223 @@
+<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-black text-slate-800">Query Management</h1>
+        <p class="text-slate-600 mt-1">Manage all incoming queries and quotations</p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-slate-500">Total Queries</p>
+        <p class="text-3xl font-black text-indigo-600"><%= total %></p>
+      </div>
+    </div>
+
+    <!-- FILTERS CARD -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <h3 class="text-lg font-black text-slate-800 mb-4">Filters</h3>
+      
+      <form method="GET" action="/admin/queries" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          
+          <!-- Search -->
+          <div>
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Search</label>
+            <input 
+              type="text" 
+              name="search"
+              value="<%= filters.search %>"
+              placeholder="Code, topic, customer..."
+              class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            >
+          </div>
+
+          <!-- Status Filter -->
+          <div>
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Status</label>
+            <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+              <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All Statuses</option>
+              <option value="new" <%= filters.status === 'new' ? 'selected' : '' %>>New</option>
+              <option value="under-review" <%= filters.status === 'under-review' ? 'selected' : '' %>>Under Review</option>
+              <option value="quotation-sent" <%= filters.status === 'quotation-sent' ? 'selected' : '' %>>Quotation Sent</option>
+              <option value="awaiting-response" <%= filters.status === 'awaiting-response' ? 'selected' : '' %>>Awaiting Response</option>
+              <option value="confirmed" <%= filters.status === 'confirmed' ? 'selected' : '' %>>Confirmed</option>
+              <option value="closed" <%= filters.status === 'closed' ? 'selected' : '' %>>Closed</option>
+            </select>
+          </div>
+
+          <!-- Urgency Filter -->
+          <div>
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Urgency</label>
+            <select name="urgency" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+              <option value="all" <%= filters.urgency === 'all' ? 'selected' : '' %>>All Urgencies</option>
+              <option value="Urgent" <%= filters.urgency === 'Urgent' ? 'selected' : '' %>>Urgent</option>
+              <option value="High" <%= filters.urgency === 'High' ? 'selected' : '' %>>High</option>
+              <option value="Medium" <%= filters.urgency === 'Medium' ? 'selected' : '' %>>Medium</option>
+              <option value="Low" <%= filters.urgency === 'Low' ? 'selected' : '' %>>Low</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all">
+            <i class="fi fi-rr-search mr-2"></i>Apply Filters
+          </button>
+          <a href="/admin/queries" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-300 transition-all inline-block">
+            <i class="fi fi-rr-arrow-rotate-left mr-2"></i>Reset
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- QUERIES TABLE -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Query</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Customer</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Topic</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Urgency</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Deadline</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <% queries.forEach(query => { %>
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-800"><%= query.order_code %></div>
+                  <div class="text-xs text-slate-500"><%= new Date(query.created_at).toLocaleDateString() %></div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-800"><%= query.full_name %></div>
+                  <div class="text-xs text-slate-500"><%= query.email %></div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-600"><%= query.paper_topic.substring(0, 40) %>...</td>
+                <td class="px-6 py-4">
+                  <% 
+                    const statusColors = {
+                      1: 'bg-yellow-100 text-yellow-700',
+                      2: 'bg-blue-100 text-blue-700',
+                      3: 'bg-purple-100 text-purple-700',
+                      4: 'bg-orange-100 text-orange-700',
+                      5: 'bg-green-100 text-green-700',
+                      6: 'bg-slate-100 text-slate-700'
+                    };
+                    const statusNames = {
+                      1: 'New',
+                      2: 'Under Review',
+                      3: 'Quotation Sent',
+                      4: 'Awaiting Response',
+                      5: 'Confirmed',
+                      6: 'Closed'
+                    };
+                  %>
+                  <span class="<%= statusColors[query.status] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
+                    <%= statusNames[query.status] || 'Unknown' %>
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <% 
+                    const urgencyColors = {
+                      'Urgent': 'bg-red-100 text-red-700',
+                      'High': 'bg-orange-100 text-orange-700',
+                      'Medium': 'bg-yellow-100 text-yellow-700',
+                      'Low': 'bg-green-100 text-green-700'
+                    };
+                  %>
+                  <span class="<%= urgencyColors[query.urgency] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
+                    <%= query.urgency %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-600">
+                  <%= new Date(query.deadline_at).toLocaleDateString() %>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex gap-2">
+                    <a href="/admin/queries/<%= query.order_id %>/view" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                      <i class="fi fi-rr-eye mr-1"></i>View
+                    </a>
+                    <button onclick="changeStatus(<%= query.order_id %>)" class="bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                      <i class="fi fi-rr-edit mr-1"></i>Status
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (queries.length === 0) { %>
+        <div class="p-8 text-center text-slate-400">
+          <i class="fi fi-rr-inbox text-4xl block mb-2"></i>
+          <p>No queries found matching your filters</p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- PAGINATION -->
+    <% if (pages > 1) { %>
+      <div class="flex justify-center gap-2">
+        <% for (let i = 1; i <= pages; i++) { %>
+          <% if (i === page) { %>
+            <span class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+              <%= i %>
+            </span>
+          <% } else { %>
+            <a href="/admin/queries?page=<%= i %>&status=<%= filters.status %>&urgency=<%= filters.urgency %>&search=<%= filters.search %>" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm transition-all">
+              <%= i %>
+            </a>
+          <% } %>
+        <% } %>
+      </div>
+    <% } %>
+
+  </div>
+</section>
+
+<script>
+async function changeStatus(orderId) {
+  const statusOptions = [
+    { value: '1', label: 'New' },
+    { value: '2', label: 'Under Review' },
+    { value: '3', label: 'Quotation Sent' },
+    { value: '4', label: 'Awaiting Response' },
+    { value: '5', label: 'Confirmed' },
+    { value: '6', label: 'Closed' }
+  ];
+  
+  const status = await showInputModal(
+    'Change Query Status',
+    'Select the new status for this query:',
+    '',
+    statusOptions
+  );
+  
+  if (!status) return;
+  
+  try {
+    const response = await fetch(`/admin/queries/${orderId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: parseInt(status) })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showToast('Status updated successfully!', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Failed to update status', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+</script>

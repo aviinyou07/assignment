@@ -1,0 +1,217 @@
+<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-3 mb-2">
+          <a href="/admin/queries" class="text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+            <i class="fi fi-rr-arrow-left"></i> Back to Queries
+          </a>
+        </div>
+        <h1 class="text-3xl font-black text-slate-800"><%= query.order_code %></h1>
+        <p class="text-slate-600 mt-1"><%= query.paper_topic %></p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-slate-500">Created</p>
+        <p class="text-lg font-bold text-slate-700"><%= new Date(query.created_at).toLocaleDateString() %></p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- MAIN CONTENT -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- QUERY DETAILS CARD -->
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-black text-slate-800 mb-6 pb-4 border-b border-slate-200">Query Details</h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-0">
+            <div>
+              <label class="text-sm font-bold text-slate-700 block mb-2">Topic</label>
+              <p class="text-slate-800 font-semibold"><%= query.paper_topic %></p>
+            </div>
+
+            <div>
+              <label class="text-sm font-bold text-slate-700 block mb-2">Service</label>
+              <p class="text-slate-800 font-semibold"><%= query.service %></p>
+            </div>
+
+            <div>
+              <label class="text-sm font-bold text-slate-700 block mb-2">Subject</label>
+              <p class="text-slate-800 font-semibold"><%= query.subject %></p>
+            </div>
+
+            <div>
+              <label class="text-sm font-bold text-slate-700 block mb-2">Urgency</label>
+              <% 
+                const urgencyColors = {
+                  'Urgent': 'bg-red-100 text-red-700',
+                  'High': 'bg-orange-100 text-orange-700',
+                  'Medium': 'bg-yellow-100 text-yellow-700',
+                  'Low': 'bg-green-100 text-green-700'
+                };
+              %>
+              <span class="<%= urgencyColors[query.urgency] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold inline-block">
+                <%= query.urgency %>
+              </span>
+            </div>
+
+            <div>
+              <label class="text-sm font-bold text-slate-700 block mb-2">Deadline</label>
+              <p class="text-slate-800 font-semibold"><%= new Date(query.deadline_at).toLocaleString() %></p>
+            </div>
+
+            <div>
+              <label class="text-sm font-bold text-slate-700 block mb-2">Pages/Words</label>
+              <p class="text-slate-800 font-semibold">-</p>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-6 border-t border-slate-200">
+            <label class="text-sm font-bold text-slate-700 block mb-2">Description</label>
+            <p class="text-slate-700 whitespace-pre-wrap"><%= query.description || 'No description provided' %></p>
+          </div>
+        </div>
+
+        <!-- PRICING CARD -->
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-black text-slate-800 mb-6 pb-4 border-b border-slate-200">Pricing</h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-blue-50 p-4 rounded-xl">
+              <p class="text-sm text-slate-600 mb-1">Basic Price</p>
+              <p class="text-2xl font-black text-blue-600">$<%= parseFloat(query.basic_price_usd || 0).toFixed(2) %></p>
+            </div>
+
+            <div class="bg-orange-50 p-4 rounded-xl">
+              <p class="text-sm text-slate-600 mb-1">Discount</p>
+              <p class="text-2xl font-black text-orange-600">-$<%= parseFloat(query.discount_usd || 0).toFixed(2) %></p>
+            </div>
+
+            <div class="bg-green-50 p-4 rounded-xl">
+              <p class="text-sm text-slate-600 mb-1">Total Price</p>
+              <p class="text-2xl font-black text-green-600">$<%= parseFloat(query.total_price_usd || 0).toFixed(2) %></p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SIDEBAR -->
+      <div class="lg:col-span-1 space-y-6">
+
+        <!-- CUSTOMER INFO CARD -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-black text-slate-800 mb-4 pb-3 border-b border-slate-200">Customer</h3>
+
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold">
+              <%= query.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+            </div>
+            <div>
+              <p class="font-bold text-slate-800"><%= query.full_name %></p>
+              <p class="text-xs text-slate-500">User ID: <%= query.user_id %></p>
+            </div>
+          </div>
+
+          <div class="space-y-2 text-sm">
+            <div>
+              <p class="text-slate-600">Email</p>
+              <p class="font-semibold text-slate-800 break-all"><%= query.email %></p>
+            </div>
+            <div>
+              <p class="text-slate-600">Mobile</p>
+              <p class="font-semibold text-slate-800"><%= query.mobile_number %></p>
+            </div>
+            <div>
+              <p class="text-slate-600">University</p>
+              <p class="font-semibold text-slate-800"><%= query.university || '-' %></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATUS CARD -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-black text-slate-800 mb-4 pb-3 border-b border-slate-200">Status</h3>
+
+          <% 
+            const statusColors = {
+              1: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', name: 'New' },
+              2: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', name: 'Under Review' },
+              3: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', name: 'Quotation Sent' },
+              4: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', name: 'Awaiting Response' },
+              5: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', name: 'Confirmed' },
+              6: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', name: 'Closed' }
+            };
+            const current = statusColors[query.status] || statusColors[1];
+          %>
+
+          <div class="<%= current.bg %> <%= current.border %> border-2 rounded-xl p-4 mb-4">
+            <p class="text-xs text-slate-600 mb-1">Current Status</p>
+            <p class="<%= current.text %> text-xl font-black"><%= current.name %></p>
+          </div>
+
+          <button onclick="showStatusModal()" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition">
+            <i class="fi fi-rr-edit mr-2"></i>Change Status
+          </button>
+        </div>
+
+        <!-- ACTIONS CARD -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-black text-slate-800 mb-4 pb-3 border-b border-slate-200">Actions</h3>
+
+          <div class="space-y-2">
+            <button class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
+              <i class="fi fi-rr-document-signed"></i>Generate Quotation
+            </button>
+            <button class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition flex items-center justify-center gap-2">
+              <i class="fi fi-rr-user-add"></i>Assign Writers
+            </button>
+            <button class="w-full bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700 transition flex items-center justify-center gap-2">
+              <i class="fi fi-rr-comment"></i>Send Message
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<script>
+function showStatusModal() {
+  const statuses = [
+    { value: 'new', label: 'New' },
+    { value: 'under-review', label: 'Under Review' },
+    { value: 'quotation-sent', label: 'Quotation Sent' },
+    { value: 'awaiting-response', label: 'Awaiting Response' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'closed', label: 'Closed' }
+  ];
+
+  const statusStr = statuses.map((s, i) => `${i}: ${s.label}`).join('\n');
+  const selected = prompt('Select new status:\n' + statusStr);
+  
+  if (selected === null || isNaN(selected) || selected < 0 || selected > 5) return;
+
+  fetch(`/admin/queries/<%= query.order_id %>/status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: statuses[selected].value })
+  })
+  .then(res => res.json())
+  .then(result => {
+    if (result.success) {
+      showToast('Status updated successfully', 'success');
+      location.reload();
+    } else {
+      showToast('Failed to update status: ' + (result.message || 'Unknown error'), 'error');
+    }
+  })
+  .catch(err => showToast('Error: ' + err.message, 'error'));
+}
+</script>

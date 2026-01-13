@@ -1,0 +1,65 @@
+<section class="space-y-6">
+
+  <!-- WELCOME CARD -->
+  <div class="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-8 text-white shadow-lg">
+    <h1 class="text-4xl font-black mb-2">
+      Welcome, <%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name.split(' ')[0] : 'BDE' %>! 👋
+    </h1>
+    <p class="text-indigo-100 text-lg">Manage your business development activities and track client interactions</p>
+  </div>
+
+  <!-- STATS GRID -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 text-sm font-semibold mb-1">Total Clients</p>
+          <p class="text-3xl font-black text-slate-800">0</p>
+        </div>
+        <i class="fi fi-rr-user-md text-3xl text-blue-400"></i>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 text-sm font-semibold mb-1">Active Projects</p>
+          <p class="text-3xl font-black text-slate-800">0</p>
+        </div>
+        <i class="fi fi-rr-briefcase text-3xl text-green-400"></i>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 text-sm font-semibold mb-1">Pending Tasks</p>
+          <p class="text-3xl font-black text-slate-800">0</p>
+        </div>
+        <i class="fi fi-rr-checkbox text-3xl text-orange-400"></i>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-slate-500 text-sm font-semibold mb-1">Messages</p>
+          <p class="text-3xl font-black text-slate-800">0</p>
+        </div>
+        <i class="fi fi-rr-comment-dots text-3xl text-purple-400"></i>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RECENT ACTIVITY -->
+  <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+    <h3 class="text-lg font-black text-slate-800 mb-6">Recent Activity</h3>
+    <div class="text-center py-12 text-slate-400">
+      <i class="fi fi-rr-calendar text-4xl block mb-2"></i>
+      <p>No recent activity yet</p>
+    </div>
+  </div>
+
+</section>

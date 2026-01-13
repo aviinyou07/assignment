@@ -1,0 +1,160 @@
+<section class="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+
+  <!-- PROFILE HEADER -->
+  <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row gap-8 items-center">
+
+    <!-- Avatar -->
+    <div class="relative">
+      <div class="w-32 h-32 rounded-[2rem] bg-gradient-to-tr from-indigo-600 to-violet-500 
+        flex items-center justify-center text-white text-4xl font-black shadow-xl shadow-indigo-100 border-4 border-white">
+        <%= typeof initials !== 'undefined' ? initials : 'WR' %>
+      </div>
+    </div>
+
+    <!-- Identity -->
+    <div class="flex-1 text-center md:text-left">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
+        <h2 class="text-3xl font-black text-slate-800">
+          <%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Writer Profile' %>
+        </h2>
+
+        <% if (typeof profile !== 'undefined' && profile.is_verified) { %>
+          <span class="bg-green-100 text-green-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-green-200">
+            Verified Writer
+          </span>
+        <% } %>
+      </div>
+
+      <p class="text-slate-500 font-medium mt-1">
+        Academic Writer • <%= typeof profile !== 'undefined' && profile.university ? profile.university : "Independent" %>
+      </p>
+
+      <div class="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
+        <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
+          <i class="fi fi-rr-envelope"></i>
+          <%= typeof profile !== 'undefined' && profile.email ? profile.email : "—" %>
+        </div>
+        <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
+          <i class="fi fi-rr-phone-call"></i>
+          <%= typeof profile !== 'undefined' && profile.mobile_number ? profile.mobile_number : "—" %>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <button onclick="window.location.href='/writer/edit-profile'" class="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 inline-flex items-center gap-2 border-0 cursor-pointer">
+      <i class="fi fi-rr-edit"></i> Edit Profile
+    </button>
+  </div>
+
+  <!-- BODY GRID -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <!-- LEFT -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- Professional -->
+      <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+        <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+          <i class="fi fi-rr-user-gear text-indigo-500"></i>
+          Professional Details
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Country
+            </label>
+            <p class="p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700 border border-slate-100">
+              <%= typeof profile !== 'undefined' && profile.country ? profile.country : "—" %>
+            </p>
+          </div>
+
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Currency
+            </label>
+            <p class="p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700 border border-slate-100">
+              <%= typeof profile !== 'undefined' && profile.currency_code ? profile.currency_code : "—" %>
+            </p>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Contact Numbers
+            </label>
+            <p class="p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-700 border border-slate-100">
+              Mobile: <%= typeof profile !== 'undefined' && profile.mobile_number ? profile.mobile_number : "—" %> <br>
+              WhatsApp: <%= typeof profile !== 'undefined' && profile.whatsapp ? profile.whatsapp : "—" %>
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Notifications (UI only for now) -->
+      <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+        <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+          <i class="fi fi-rr-bell-ring text-indigo-500"></i>
+          Notification Preferences
+        </h3>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl">
+            <div>
+              <p class="text-sm font-bold text-slate-700">Push Notifications</p>
+              <p class="text-xs text-slate-400">New tasks & updates</p>
+            </div>
+            <input type="checkbox" checked class="w-10 h-5 bg-slate-200 rounded-full appearance-none checked:bg-indigo-600">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="lg:col-span-1 space-y-6">
+
+      <!-- Settlement -->
+      <div class="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden">
+        <h3 class="font-bold text-lg mb-6 flex items-center gap-2">
+          <i class="fi fi-rr-wallet text-indigo-400"></i>
+          Account Summary
+        </h3>
+
+        <div class="space-y-4">
+          <div>
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest">Writer ID</p>
+            <p class="font-mono font-bold text-indigo-300">
+              A366-WR-<%= typeof profile !== 'undefined' && profile.user_id ? profile.user_id : "000" %>
+            </p>
+          </div>
+
+          <div>
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest">Joined On</p>
+            <p class="font-bold">
+              <%= typeof profile !== 'undefined' && profile.created_at ? new Date(profile.created_at).toDateString() : "—" %>
+            </p>
+          </div>
+        </div>
+
+        <div class="absolute -right-16 -bottom-16 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl"></div>
+      </div>
+
+      <!-- Security -->
+      <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm text-center">
+        <i class="fi fi-rr-shield-check text-4xl text-indigo-100 mb-4 block"></i>
+        <h4 class="font-black text-slate-800 text-sm">Account Security</h4>
+        <p class="text-xs text-slate-400 mt-2 mb-6">
+          Password is encrypted & secured.
+        </p>
+        <button onclick="window.location.href='/writer/change-password'" class="text-xs font-bold text-indigo-600 hover:underline inline-flex items-center gap-1 bg-none border-0 cursor-pointer">
+          <i class="fi fi-rr-lock"></i> Change Password
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+</section>

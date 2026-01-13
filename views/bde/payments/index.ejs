@@ -1,0 +1,131 @@
+<%- include('../../partials/head.ejs') %>
+
+<section class="space-y-6">
+
+  <!-- PAGE HEADER -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-black text-slate-800">Pending Payments</h1>
+      <p class="text-slate-500 mt-2">Track and send payment reminders to clients</p>
+    </div>
+  </div>
+
+  <!-- PAYMENTS TABLE -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50">
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Query Code</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Topic</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Client</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Amount Due</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Status</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Days Pending</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <% if (payments && payments.length > 0) { %>
+            <% payments.forEach(payment => { %>
+              <tr class="hover:bg-slate-50 transition">
+                <td class="px-6 py-4">
+                  <span class="font-mono font-semibold text-slate-800"><%= payment.query_code %></span>
+                </td>
+                <td class="px-6 py-4 text-slate-600">
+                  <%= payment.paper_topic.substring(0, 40) %>...
+                </td>
+                <td class="px-6 py-4">
+                  <div>
+                    <p class="font-semibold text-slate-800"><%= payment.full_name %></p>
+                    <p class="text-sm text-slate-500"><%= payment.email %></p>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-lg font-black text-red-600">$<%= payment.total_price_usd.toFixed(2) %></p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="px-3 py-1 text-xs font-semibold rounded-full
+                    <% if (payment.payment_status === 'pending') { %>bg-red-100 text-red-700<% } %>
+                    <% if (payment.payment_status === 'partial') { %>bg-yellow-100 text-yellow-700<% } %>
+                  ">
+                    <%= payment.payment_status %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-slate-600 font-semibold">
+                  <% 
+                    const daysPending = Math.floor((new Date() - new Date(payment.created_at)) / (1000 * 60 * 60 * 24));
+                  %>
+                  <%= daysPending %> days
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex gap-2">
+                    <% if (payment.whatsapp) { %>
+                      <a href="https://wa.me/<%= payment.whatsapp.replace(/\D/g, '') %>" target="_blank" class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 font-semibold">
+                        <i class="fi fi-brands-whatsapp"></i>
+                      </a>
+                    <% } %>
+                    <button onclick="sendReminder('<%= payment.query_code %>')" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
+                      Send Reminder
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr>
+              <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                <i class="fi fi-rr-check-circle text-4xl block mb-2"></i>
+                <p>All payments are collected! Great work! 🎉</p>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGINATION -->
+  <% if (pagination && pagination.total > 1) { %>
+    <div class="flex justify-center gap-2">
+      <% for (let i = 1; i <= pagination.total; i++) { %>
+        <% if (i === pagination.current) { %>
+          <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold"><%= i %></span>
+        <% } else { %>
+          <a href="/bde/payments?page=<%= i %>" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 font-semibold">
+            <%= i %>
+          </a>
+        <% } %>
+      <% } %>
+    </div>
+  <% } %>
+
+</section>
+
+<script>
+async function sendReminder(queryCode) {
+  const confirmed = await showConfirmModal(
+    'Send Payment Reminder',
+    'Send payment reminder to client?',
+    'info'
+  );
+  
+  if (confirmed) {
+    try {
+      const response = await fetch(`/bde/queries/${queryCode}/payment-reminder`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast(data.message, 'success');
+      } else {
+        showToast(data.message || 'Failed to send reminder', 'error');
+      }
+    } catch (error) {
+      showToast('Error sending reminder', 'error');
+    }
+  }
+}
+</script>

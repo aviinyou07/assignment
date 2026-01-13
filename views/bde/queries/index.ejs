@@ -1,0 +1,119 @@
+<%- include('../../partials/head.ejs') %>
+
+<section class="space-y-6">
+
+  <!-- PAGE HEADER -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-black text-slate-800">Query Management</h1>
+      <p class="text-slate-500 mt-2">Manage queries and generate quotations</p>
+    </div>
+  </div>
+
+  <!-- STATUS FILTER -->
+  <div class="bg-white p-4 rounded-lg border border-slate-200 flex gap-2 overflow-x-auto">
+    <a href="/bde/queries?status=all" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap
+      <%= currentStatus === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' %>">
+      All Queries
+    </a>
+    <a href="/bde/queries?status=new" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-blue-100 text-blue-700 hover:bg-blue-200">
+      <i class="fi fi-rr-star"></i> New
+    </a>
+    <a href="/bde/queries?status=review" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-yellow-100 text-yellow-700 hover:bg-yellow-200">
+      <i class="fi fi-rr-eye"></i> Review
+    </a>
+    <a href="/bde/queries?status=quotation_sent" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-orange-100 text-orange-700 hover:bg-orange-200">
+      <i class="fi fi-rr-file-invoice"></i> Quotation Sent
+    </a>
+    <a href="/bde/queries?status=awaiting_response" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-purple-100 text-purple-700 hover:bg-purple-200">
+      <i class="fi fi-rr-clock"></i> Awaiting Response
+    </a>
+    <a href="/bde/queries?status=closed" class="px-4 py-2 rounded-lg font-semibold whitespace-nowrap bg-red-100 text-red-700 hover:bg-red-200">
+      <i class="fi fi-rr-x-circle"></i> Closed
+    </a>
+  </div>
+
+  <!-- QUERIES TABLE -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50">
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Query Code</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Topic</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Client</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Deadline</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Status</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <% if (queries && queries.length > 0) { %>
+            <% queries.forEach(query => { %>
+              <tr class="hover:bg-slate-50 transition">
+                <td class="px-6 py-4">
+                  <span class="font-mono font-semibold text-slate-800"><%= query.query_code %></span>
+                </td>
+                <td class="px-6 py-4 text-slate-600">
+                  <%= query.paper_topic.substring(0, 40) %>...
+                </td>
+                <td class="px-6 py-4">
+                  <div>
+                    <p class="font-semibold text-slate-800"><%= query.full_name %></p>
+                    <p class="text-sm text-slate-500"><%= query.country %></p>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-slate-600 text-sm">
+                  <%= new Date(query.deadline_at).toLocaleDateString() %>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="px-3 py-1 text-xs font-semibold rounded-full
+                    <% if (query.status === 1) { %>bg-blue-100 text-blue-700<% } %>
+                    <% if (query.status === 2) { %>bg-yellow-100 text-yellow-700<% } %>
+                    <% if (query.status === 3) { %>bg-orange-100 text-orange-700<% } %>
+                    <% if (query.status === 4) { %>bg-purple-100 text-purple-700<% } %>
+                    <% if (query.status === 5) { %>bg-red-100 text-red-700<% } %>
+                    <% if (query.status === 6) { %>bg-green-100 text-green-700<% } %>
+                  ">
+                    <% 
+                    const statusMap = {1: 'New', 2: 'Under Review', 3: 'Quotation Sent', 4: 'Awaiting Response', 5: 'Closed', 6: 'Confirmed'};
+                    %>
+                    <%= statusMap[query.status] %>
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <a href="/bde/queries/<%= query.query_code %>" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
+                    View Details
+                  </a>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr>
+              <td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                <i class="fi fi-rr-document text-4xl block mb-2"></i>
+                <p>No queries found</p>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGINATION -->
+  <% if (pagination && pagination.total > 1) { %>
+    <div class="flex justify-center gap-2">
+      <% for (let i = 1; i <= pagination.total; i++) { %>
+        <% if (i === pagination.current) { %>
+          <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold"><%= i %></span>
+        <% } else { %>
+          <a href="/bde/queries?page=<%= i %>&status=<%= currentStatus %>" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 font-semibold">
+            <%= i %>
+          </a>
+        <% } %>
+      <% } %>
+    </div>
+  <% } %>
+
+</section>

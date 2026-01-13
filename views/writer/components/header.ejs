@@ -1,0 +1,101 @@
+<header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-4 md:px-8">
+    <div class="flex items-center gap-4">
+        <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600">
+            <i class="fi fi-rr-menu-burger text-xl"></i>
+        </button>
+        <h1 class="text-lg font-bold text-slate-800"><%= typeof title !== 'undefined' ? title : 'Writer Dashboard' %></h1>
+    </div>
+
+    <div class="flex items-center gap-4">
+        <div class="relative">
+            <button onclick="toggleNotifications()" id="notif-btn" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
+                <i class="fi fi-rr-bell text-lg"></i>
+                <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white hidden"></span>
+            </button>
+
+            <div id="notif-modal" class="absolute top-14 right-0 w-80 md:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl py-0 hidden z-50 transform origin-top-right transition-all">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800">Notifications</h3>
+                    <button onclick="markAllAsRead()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 uppercase">Mark all read</button>
+                </div>
+
+                <div id="notif-list" class="max-h-[400px] overflow-y-auto custom-scrollbar">
+                    <div class="p-4 text-center text-slate-400 text-sm">Loading notifications...</div>
+                </div>
+
+                <div class="p-3 text-center border-t border-slate-100">
+                    <a href="/writer/notifications" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">View All Notifications</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="h-8 w-px bg-slate-200 mx-1"></div>
+        
+        <div class="flex items-center gap-3">
+            <div class="text-right hidden sm:block">
+                <p class="text-sm font-bold text-slate-700 leading-none"><%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Writer' %></p>
+                <p class="text-[11px] text-indigo-500 font-semibold mt-1">Writer</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-100 border-2 border-white">
+                <span class="font-bold"><%= typeof initials !== 'undefined' ? initials : 'WR' %></span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script src="/js/realtime-notifications.js"></script>
+<script>
+    // Navigation function for tab switching (using proper routing now)
+    function switchTab(tabName) {
+        // Map tab names to routes
+        const routeMap = {
+            'overview': '/writer',
+            'queries': '/writer/queries',
+            'active_tasks': '/writer/active-tasks',
+            'updates': '/writer/updates',
+            'delivery': '/writer/delivery',
+            'profile': '/writer/profile'
+        };
+        
+        const route = routeMap[tabName] || '/writer';
+        window.location.href = route;
+    }
+
+    function toggleNotifications() {
+        const modal = document.getElementById('notif-modal');
+        modal.classList.toggle('hidden');
+        
+        // Optional: Add a subtle animation
+        if (!modal.classList.contains('hidden')) {
+            modal.classList.add('animate-in', 'fade-in', 'slide-in-from-top-2', 'duration-200');
+            // Reload notifications when opening
+            if (window.realtimeNotifications && window.realtimeNotifications.loadNotifications) {
+                window.realtimeNotifications.loadNotifications();
+            }
+        }
+    }
+
+    // Close notifications when clicking anywhere else on the screen
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('notif-modal');
+        const btn = document.getElementById('notif-btn');
+        
+        if (!btn.contains(e.target) && !modal.contains(e.target)) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    // Add slide-in animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+    `;
+    document.head.appendChild(style);
+</script>

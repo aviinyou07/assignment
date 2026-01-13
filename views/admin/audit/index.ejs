@@ -1,0 +1,391 @@
+<div class="min-h-screen bg-gray-50 py-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">Audit Logs</h1>
+      <p class="mt-2 text-gray-600">Complete system activity and action tracking</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-gray-600 text-sm">Total Actions</p>
+            <p class="text-3xl font-bold"><%= total || 0 %></p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-gray-600 text-sm">Current Page</p>
+            <p class="text-3xl font-bold"><%= page || 1 %></p>
+          </div>
+          <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-gray-600 text-sm">Total Pages</p>
+            <p class="text-3xl font-bold"><%= pages || 1 %></p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="flex-1">
+            <p class="text-gray-600 text-sm">Filter Active</p>
+            <p class="text-3xl font-bold"><%= filters && filters.action !== 'all' ? 'Yes' : 'No' %></p>
+          </div>
+          <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+      <h2 class="text-lg font-bold mb-4">Filters</h2>
+      <form id="filterForm" method="GET" action="/admin/audit/logs">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+            <select name="action" id="actionFilter" class="w-full border rounded px-3 py-2">
+              <option value="all" <%= (filters && filters.action === 'all') ? 'selected' : '' %>>All Actions</option>
+              <option value="assign_writers" <%= (filters && filters.action === 'assign_writers') ? 'selected' : '' %>>Assign Writers</option>
+              <option value="payment_verified" <%= (filters && filters.action === 'payment_verified') ? 'selected' : '' %>>Payment Verified</option>
+              <option value="file_delivered" <%= (filters && filters.action === 'file_delivered') ? 'selected' : '' %>>File Delivered</option>
+              <option value="admin_override" <%= (filters && filters.action === 'admin_override') ? 'selected' : '' %>>Admin Override</option>
+              <option value="status_change" <%= (filters && filters.action === 'status_change') ? 'selected' : '' %>>Status Change</option>
+              <option value="user_login" <%= (filters && filters.action === 'user_login') ? 'selected' : '' %>>User Login</option>
+              <option value="order_created" <%= (filters && filters.action === 'order_created') ? 'selected' : '' %>>Order Created</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+            <input type="text" name="userId" id="userIdFilter" class="w-full border rounded px-3 py-2" placeholder="User ID...">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <input type="date" name="dateFrom" id="dateFromFilter" class="w-full border rounded px-3 py-2">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <input type="date" name="dateTo" id="dateToFilter" class="w-full border rounded px-3 py-2">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+            Search
+          </button>
+          <button type="button" onclick="clearFilters()" class="px-4 py-2 border rounded hover:bg-gray-50">
+            Clear
+          </button>
+          <button type="button" onclick="exportAuditLogs()" class="px-4 py-2 border rounded hover:bg-gray-50 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Export CSV
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Audit Logs Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Timestamp</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Action</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Order ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (logs && logs.length > 0) { %>
+              <% logs.forEach(function(log) { %>
+                <tr class="border-b hover:bg-gray-50">
+                  <td class="px-6 py-4 text-sm">
+                    <%= new Date(log.created_at).toLocaleString('en-US', { 
+                      month: 'short', day: 'numeric', year: 'numeric', 
+                      hour: 'numeric', minute: '2-digit', hour12: true 
+                    }) %>
+                  </td>
+                  <td class="px-6 py-4">
+                    <% 
+                      let actionColor = 'gray';
+                      if (log.action === 'assign_writers') actionColor = 'blue';
+                      else if (log.action === 'payment_verified') actionColor = 'green';
+                      else if (log.action === 'admin_override') actionColor = 'red';
+                      else if (log.action === 'file_delivered') actionColor = 'purple';
+                      else if (log.action === 'status_change') actionColor = 'yellow';
+                      else if (log.action === 'user_login') actionColor = 'indigo';
+                    %>
+                    <span class="inline-block bg-<%= actionColor %>-100 text-<%= actionColor %>-800 text-xs px-2 py-1 rounded">
+                      <%= log.action || 'unknown' %>
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 font-medium"><%= log.order_id || '-' %></td>
+                  <td class="px-6 py-4"><%= log.full_name || 'System' %></td>
+                  <td class="px-6 py-4 text-sm truncate max-w-xs" title="<%= log.description || '' %>">
+                    <%= log.description || '-' %>
+                  </td>
+                  <td class="px-6 py-4">
+                    <button onclick="viewLogDetail(<%= log.id %>)" class="text-indigo-600 hover:text-indigo-900 text-sm">
+                      View
+                    </button>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr>
+                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                  <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                  </svg>
+                  <p class="text-lg font-medium">No audit logs found</p>
+                  <p class="text-sm">System activity will appear here</p>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <% if (logs && logs.length > 0) { %>
+        <div class="bg-white border-t px-6 py-4 flex justify-between items-center">
+          <p class="text-sm text-gray-600">
+            Showing page <%= page %> of <%= pages %> (<%= total %> total logs)
+          </p>
+          <div class="flex gap-2">
+            <% if (page > 1) { %>
+              <a href="/admin/audit/logs?page=<%= page - 2 %>&action=<%= filters.action %>" 
+                 class="px-3 py-1 border rounded hover:bg-gray-50">← Prev</a>
+            <% } else { %>
+              <button disabled class="px-3 py-1 border rounded text-gray-300 cursor-not-allowed">← Prev</button>
+            <% } %>
+            
+            <% for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) { %>
+              <a href="/admin/audit/logs?page=<%= i - 1 %>&action=<%= filters.action %>" 
+                 class="px-3 py-1 <%= i === page ? 'bg-indigo-100 text-indigo-600' : 'border hover:bg-gray-50' %> rounded">
+                <%= i %>
+              </a>
+            <% } %>
+            
+            <% if (page < pages) { %>
+              <a href="/admin/audit/logs?page=<%= page %>&action=<%= filters.action %>" 
+                 class="px-3 py-1 border rounded hover:bg-gray-50">Next →</a>
+            <% } else { %>
+              <button disabled class="px-3 py-1 border rounded text-gray-300 cursor-not-allowed">Next →</button>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+      <h2 class="text-xl font-bold">Audit Log Details</h2>
+      <button onclick="closeDetailModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+    </div>
+
+    <div id="detailContent" class="p-6 space-y-4">
+      <div class="flex justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function clearFilters() {
+  window.location.href = '/admin/audit/logs';
+}
+
+async function exportAuditLogs() {
+  const action = document.getElementById('actionFilter').value;
+  const userId = document.getElementById('userIdFilter').value;
+  const dateFrom = document.getElementById('dateFromFilter').value;
+  const dateTo = document.getElementById('dateToFilter').value;
+
+  const params = new URLSearchParams();
+  if (action && action !== 'all') params.append('action', action);
+  if (userId) params.append('userId', userId);
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+
+  showToast('Preparing export...', 'info');
+  
+  try {
+    window.location.href = '/admin/audit/export?' + params.toString();
+    showToast('Export started', 'success');
+  } catch (error) {
+    showToast('Export failed: ' + error.message, 'error');
+  }
+}
+
+async function viewLogDetail(logId) {
+  const modal = document.getElementById('detailModal');
+  const content = document.getElementById('detailContent');
+  
+  modal.classList.remove('hidden');
+  content.innerHTML = `
+    <div class="flex justify-center py-8">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+    </div>
+  `;
+  
+  try {
+    const response = await fetch('/admin/audit/logs/' + logId);
+    const data = await response.json();
+    
+    if (data.success && data.log) {
+      const log = data.log;
+      const createdAt = new Date(log.created_at).toLocaleString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      });
+      
+      let eventDataHtml = '';
+      if (log.event_data) {
+        try {
+          const eventData = typeof log.event_data === 'string' ? JSON.parse(log.event_data) : log.event_data;
+          eventDataHtml = `
+            <div class="bg-gray-50 p-4 rounded">
+              <p class="text-sm font-medium mb-2">Event Data</p>
+              <pre class="text-xs bg-gray-100 p-3 rounded overflow-x-auto">${JSON.stringify(eventData, null, 2)}</pre>
+            </div>
+          `;
+        } catch (e) {
+          eventDataHtml = `
+            <div class="bg-gray-50 p-4 rounded">
+              <p class="text-sm font-medium mb-2">Event Data</p>
+              <p class="text-sm">${log.event_data}</p>
+            </div>
+          `;
+        }
+      }
+      
+      content.innerHTML = `
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-medium text-gray-600">Log ID</label>
+              <p class="text-lg font-mono">#${log.id}</p>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-600">Timestamp</label>
+              <p class="text-lg">${createdAt}</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-medium text-gray-600">Action Type</label>
+              <p class="text-lg">
+                <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">${log.action || 'N/A'}</span>
+              </p>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-600">Order/Work Code</label>
+              <p class="text-lg font-mono">${log.order_id || 'N/A'}</p>
+            </div>
+          </div>
+          
+          <div>
+            <label class="text-sm font-medium text-gray-600">User</label>
+            <p class="text-lg">${log.full_name || 'System'} ${log.created_by ? '(ID: ' + log.created_by + ')' : ''}</p>
+          </div>
+          
+          <div>
+            <label class="text-sm font-medium text-gray-600">Description</label>
+            <p class="text-lg">${log.description || 'No description available'}</p>
+          </div>
+          
+          ${log.ip_address ? `
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm font-medium text-gray-600">IP Address</label>
+                <p class="text-sm font-mono">${log.ip_address}</p>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-600">User Agent</label>
+                <p class="text-sm truncate" title="${log.user_agent || ''}">${log.user_agent || 'N/A'}</p>
+              </div>
+            </div>
+          ` : ''}
+          
+          ${eventDataHtml}
+        </div>
+      `;
+    } else {
+      content.innerHTML = `
+        <div class="text-center py-8">
+          <p class="text-red-600">Failed to load log details</p>
+          <p class="text-sm text-gray-500 mt-2">${data.error || 'Unknown error'}</p>
+        </div>
+      `;
+    }
+  } catch (error) {
+    content.innerHTML = `
+      <div class="text-center py-8">
+        <p class="text-red-600">Error loading details</p>
+        <p class="text-sm text-gray-500 mt-2">${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.add('hidden');
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeDetailModal();
+  }
+});
+
+// Close modal on backdrop click
+document.getElementById('detailModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeDetailModal();
+  }
+});
+</script>

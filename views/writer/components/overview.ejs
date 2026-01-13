@@ -1,0 +1,281 @@
+<div class="space-y-8 animate-in fade-in duration-500">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- New Tasks (Pending Acceptance) -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="switchTab('queries'); trackKPIClick('newTasks')">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                    <i class="fi fi-rr-time-fast text-xl"></i>
+                </div>
+                <span class="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-1 rounded-lg uppercase">Pending</span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">New Tasks</p>
+            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-new-tasks">-</h3>
+        </div>
+
+        <!-- Active Tasks (In Progress) -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="switchTab('active_tasks'); trackKPIClick('activeTasks')">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    <i class="fi fi-rr-edit text-xl"></i>
+                </div>
+                <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg uppercase">In Progress</span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Active Tasks</p>
+            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-active-tasks">-</h3>
+        </div>
+
+        <!-- Tasks Due Today -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="trackKPIClick('dueTodayTasks')">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-colors">
+                    <i class="fi fi-rr-alarm-clock text-xl"></i>
+                </div>
+                <span class="text-[10px] font-black text-red-600 bg-red-50 px-2 py-1 rounded-lg uppercase">Critical</span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Tasks Due Today</p>
+            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-due-today">-</h3>
+        </div>
+
+        <!-- Completed Tasks (This Month) -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="trackKPIClick('completedTasks')">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <i class="fi fi-rr-badge-check text-xl"></i>
+                </div>
+                <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg uppercase">Month</span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Completed</p>
+            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-completed-tasks">-</h3>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 space-y-6">
+            <!-- New Tasks Table -->
+            <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h3 class="font-bold text-slate-800">New Task Acceptance</h3>
+                        <p class="text-xs text-slate-500">Action required to move tasks to in-progress</p>
+                    </div>
+                    <button onclick="switchTab('queries')" class="text-xs font-bold text-indigo-600 hover:underline">View All</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[10px] uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                                <th class="px-6 py-4 font-bold">Work Code</th>
+                                <th class="px-6 py-4 font-bold">Topic</th>
+                                <th class="px-6 py-4 font-bold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50" id="pending-tasks-table">
+                            <tr>
+                                <td colspan="3" class="px-6 py-4 text-center text-slate-500">
+                                    <span class="inline-flex items-center gap-2">
+                                        <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading tasks...
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Upcoming Deadlines -->
+            <div class="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <h3 class="font-bold mb-4 flex items-center gap-2">
+                        <i class="fi fi-rr-calendar-clock text-indigo-400"></i>
+                        Upcoming Deadlines
+                    </h3>
+                    <div class="space-y-3" id="upcoming-deadlines">
+                        <div class="text-center text-slate-400 text-xs py-4">
+                            <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading...
+                        </div>
+                    </div>
+                </div>
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-bold text-slate-800 text-sm">Response Deadline</h3>
+                    <i class="fi fi-rr-hourglass text-slate-400"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="text-center">
+                        <p class="text-3xl font-black text-indigo-600" id="pending-response-count">-</p>
+                        <p class="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-widest">Awaiting Your Response</p>
+                    </div>
+                    <button onclick="switchTab('queries')" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 py-2 rounded-xl text-xs font-bold transition-colors">
+                        Review Tasks
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load KPI metrics on page load
+        async function loadDashboardKPIs() {
+            try {
+                const response = await fetch('/writer/api/dashboard/kpis');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('kpi-new-tasks').textContent = data.kpis.newTasks;
+                    document.getElementById('kpi-active-tasks').textContent = data.kpis.activeTasks;
+                    document.getElementById('kpi-due-today').textContent = data.kpis.dueTodayTasks;
+                    document.getElementById('kpi-completed-tasks').textContent = data.kpis.completedTasks;
+                    document.getElementById('pending-response-count').textContent = data.kpis.newTasks;
+                }
+            } catch (error) {
+                console.error('Error loading KPIs:', error);
+            }
+        }
+
+        // Load pending tasks for overview table
+        async function loadPendingTasks() {
+            try {
+                const response = await fetch('/writer/api/tasks/pending?sortBy=deadline_at&order=ASC');
+                const data = await response.json();
+                
+                if (data.success && data.tasks.length > 0) {
+                    const tableBody = document.getElementById('pending-tasks-table');
+                    const tasks = data.tasks.slice(0, 3); // Show only 3 latest
+                    
+                    tableBody.innerHTML = tasks.map(task => `
+                        <tr class="hover:bg-slate-50/50 transition-colors">
+                            <td class="px-6 py-5 font-bold text-indigo-600 text-sm">${task.work_code || 'N/A'}</td>
+                            <td class="px-6 py-5">
+                                <p class="text-sm font-semibold text-slate-700 truncate">${task.topic || 'N/A'}</p>
+                                <p class="text-[11px] text-slate-400">${task.service || ''} • ${task.urgency || 'Normal'} Priority</p>
+                            </td>
+                            <td class="px-6 py-5 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <button onclick="handleTaskAction('accept', ${task.order_id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-lg shadow-emerald-100">
+                                        Accept
+                                    </button>
+                                    <button onclick="handleTaskAction('decline', ${task.order_id})" class="bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-red-50 hover:text-red-600 transition-all">
+                                        Decline
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    document.getElementById('pending-tasks-table').innerHTML = `
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-center text-slate-500">
+                                No pending tasks. Great work!
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading pending tasks:', error);
+            }
+        }
+
+        // Load upcoming deadlines
+        async function loadUpcomingDeadlines() {
+            try {
+                const response = await fetch('/writer/api/deadlines/upcoming?hoursAhead=48');
+                const data = await response.json();
+                
+                if (data.success && data.upcomingDeadlines.length > 0) {
+                    const container = document.getElementById('upcoming-deadlines');
+                    const deadlines = data.upcomingDeadlines.slice(0, 3);
+                    
+                    container.innerHTML = deadlines.map(deadline => {
+                        const hoursRemaining = parseInt(deadline.time_remaining.split(':')[0]);
+                        const colorClass = hoursRemaining < 6 ? 'text-red-400' : hoursRemaining < 24 ? 'text-amber-400' : 'text-emerald-400';
+                        
+                        return `
+                            <div class="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center group hover:bg-white/10 transition-all cursor-default">
+                                <div>
+                                    <p class="text-xs font-bold text-indigo-300">${deadline.work_code || 'Task'}</p>
+                                    <p class="text-sm font-medium text-white truncate">${deadline.topic || 'No topic'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs font-bold ${colorClass}">${hoursRemaining < 1 ? 'Due now!' : hoursRemaining + 'h left'}</p>
+                                    <div class="w-12 bg-slate-700 h-1 rounded-full mt-1 overflow-hidden">
+                                        <div class="bg-indigo-500 h-full" style="width: ${Math.min(100, (hoursRemaining / 48) * 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    document.getElementById('upcoming-deadlines').innerHTML = `
+                        <div class="text-center text-slate-400 text-xs py-4">
+                            No upcoming deadlines
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading deadlines:', error);
+            }
+        }
+
+        // Handle task accept/decline
+        async function handleTaskAction(action, taskId) {
+            const endpoint = action === 'accept' ? 'accept' : 'reject';
+            let reason = '';
+            
+            if (action === 'decline') {
+                reason = await showInputModal(
+                    'Decline Task',
+                    'Please provide a reason for declining this task:',
+                    'Enter your reason...'
+                );
+                if (!reason) return;
+            }
+
+            try {
+                const url = `/writer/api/tasks/${taskId}/${endpoint}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(action === 'decline' ? { reason } : {})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    loadDashboardKPIs();
+                    loadPendingTasks();
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to process task action', 'error');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardKPIs();
+            loadPendingTasks();
+            loadUpcomingDeadlines();
+        });
+
+        // Refresh every 5 minutes
+        setInterval(() => {
+            loadDashboardKPIs();
+            loadUpcomingDeadlines();
+        }, 5 * 60 * 1000);
+
+        function trackKPIClick(metric) {
+            console.log('KPI clicked:', metric);
+        }
+    </script>
+</div>

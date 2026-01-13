@@ -1,0 +1,112 @@
+<div id="sidebar-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-slate-900/60 z-40 hidden lg:hidden backdrop-blur-sm"></div>
+
+<aside id="main-sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-900 text-slate-300 z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out border-r border-slate-800 flex flex-col">
+    
+    <div class="p-6 border-b border-slate-800/50">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                <i class="fi fi-sr-pen-nib text-lg"></i>
+            </div>
+            <span class="text-xl font-bold text-white tracking-tight">A366<span class="text-indigo-400">Writer</span></span>
+        </div>
+    </div>
+
+    <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+        <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Main</p>
+        <a href="/writer" id="nav-overview" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
+            <i class="fi fi-rr-stats"></i> <span class="text-sm font-medium">Dashboard Overview</span>
+        </a>
+
+        <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Workflow</p>
+        <a href="/writer/queries" id="nav-queries" class="nav-btn w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all">
+            <div class="flex items-center gap-3">
+                <i class="fi fi-rr-search-alt"></i> <span class="text-sm font-medium">New Enquiries</span>
+            </div>
+            <span class="bg-red-500 text-[10px] text-white px-2 py-0.5 rounded-full font-bold">New</span>
+        </a>
+
+        <a href="/writer/active-tasks" id="nav-active-tasks" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
+            <i class="fi fi-rr-list-check"></i> <span class="text-sm font-medium">Active Tasks</span>
+        </a>
+
+        <a href="/writer/updates" id="nav-updates" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
+            <i class="fi fi-rr-refresh"></i> <span class="text-sm font-medium">Project Updates</span>
+        </a>
+
+        <a href="/writer/delivery" id="nav-delivery" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
+            <i class="fi fi-rr-box-check"></i> <span class="text-sm font-medium">Submissions</span>
+        </a>
+
+        <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Account</p>
+        <a href="/writer/profile" id="nav-profile" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
+            <i class="fi fi-rr-user"></i> <span class="text-sm font-medium">My Profile</span>
+        </a>
+    </nav>
+
+    <div class="p-4 border-t border-slate-800/50 bg-slate-900/50">
+        <a href="/auth/logout" class="flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all font-semibold text-sm">
+            <i class="fi fi-rr-exit"></i>
+            <span>Sign Out</span>
+        </a>
+    </div>
+</aside>
+
+<script>
+    function toggleMobileMenu() {
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
+    // Highlight active nav button based on current URL
+    function updateActiveNav() {
+        // Remove active class from all nav buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+            btn.classList.add('text-slate-400');
+        });
+        
+        // Determine which link to activate based on current path
+        const path = window.location.pathname;
+        let activeId = 'nav-overview'; // default
+        
+        if (path === '/writer' || path === '/writer/') {
+            activeId = 'nav-overview';
+        } else if (path.includes('/queries')) {
+            activeId = 'nav-queries';
+        } else if (path.includes('/active-tasks')) {
+            activeId = 'nav-active-tasks';
+        } else if (path.includes('/updates')) {
+            activeId = 'nav-updates';
+        } else if (path.includes('/delivery')) {
+            activeId = 'nav-delivery';
+        } else if (path.includes('/profile')) {
+            activeId = 'nav-profile';
+        }
+        
+        // Add active class to matched link
+        const activeElement = document.getElementById(activeId);
+        if (activeElement) {
+            activeElement.classList.remove('text-slate-400');
+            activeElement.classList.add('active', 'bg-indigo-600', 'text-white');
+        }
+    }
+    
+    // Update on page load and when location changes
+    document.addEventListener('DOMContentLoaded', updateActiveNav);
+    window.addEventListener('load', updateActiveNav);
+    window.addEventListener('popstate', updateActiveNav);
+</script>
+
+<style>
+    /* Premium Sidebar Button States */
+    .nav-btn { color: #94a3b8; transition: all 0.2s ease; display: flex; text-decoration: none; }
+    .nav-btn:hover { background-color: rgba(255, 255, 255, 0.05); color: #fff; }
+    .nav-btn.active { background-color: #4f46e5; color: #fff; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3); }
+    
+    /* Custom Scrollbar for Sleek Look */
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+</style>

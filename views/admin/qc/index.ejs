@@ -1,0 +1,330 @@
+<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-black text-slate-800">Quality Control</h1>
+        <p class="text-slate-500 mt-1">Review and approve writer submissions</p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-slate-500">Pending Review</p>
+        <p class="text-3xl font-black text-indigo-600"><%= total %></p>
+      </div>
+    </div>
+
+    <!-- FILTERS CARD -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <h3 class="text-lg font-black text-slate-800 mb-4">Filters</h3>
+      
+      <form method="GET" action="/admin/qc/pending" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Status Filter -->
+          <div>
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Status</label>
+            <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+              <option value="pending_qc" <%= filters.status === 'pending_qc' ? 'selected' : '' %>>Pending QC</option>
+              <option value="approved" <%= filters.status === 'approved' ? 'selected' : '' %>>Approved</option>
+              <option value="revision_required" <%= filters.status === 'revision_required' ? 'selected' : '' %>>Revision Required</option>
+              <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all">
+            <i class="fi fi-rr-search mr-2"></i>Apply Filters
+          </button>
+          <a href="/admin/qc/pending" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-300 transition-all inline-block">
+            <i class="fi fi-rr-arrow-rotate-left mr-2"></i>Reset
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- QC TABLE -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Submission</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Writer</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Order / Topic</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Scores</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Submitted</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <% if (records && records.length > 0) { %>
+              <% records.forEach(record => { %>
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-6 py-4">
+                    <span class="font-bold text-indigo-600">#<%= record.submission_id %></span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <p class="font-semibold text-slate-800"><%= record.writer_name %></p>
+                    <p class="text-xs text-slate-500"><%= record.writer_email %></p>
+                  </td>
+                  <td class="px-6 py-4">
+                    <p class="font-bold text-slate-800"><%= record.query_code || 'N/A' %></p>
+                    <p class="text-xs text-slate-500 truncate max-w-[200px]"><%= record.topic || 'No topic' %></p>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="space-y-1 text-xs">
+                      <div class="flex items-center gap-2">
+                        <span class="text-slate-500">Grammarly:</span>
+                        <span class="font-bold <%= record.grammarly_score >= 90 ? 'text-green-600' : record.grammarly_score >= 70 ? 'text-amber-600' : 'text-red-600' %>">
+                          <%= record.grammarly_score || 'N/A' %>%
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-slate-500">AI:</span>
+                        <span class="font-bold <%= record.ai_score <= 10 ? 'text-green-600' : record.ai_score <= 30 ? 'text-amber-600' : 'text-red-600' %>">
+                          <%= record.ai_score || 'N/A' %>%
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-slate-500">Plagiarism:</span>
+                        <span class="font-bold <%= record.plagiarism_score <= 10 ? 'text-green-600' : record.plagiarism_score <= 20 ? 'text-amber-600' : 'text-red-600' %>">
+                          <%= record.plagiarism_score || 'N/A' %>%
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <% 
+                      const statusColors = {
+                        'pending_qc': 'bg-yellow-100 text-yellow-700',
+                        'approved': 'bg-green-100 text-green-700',
+                        'revision_required': 'bg-red-100 text-red-700',
+                        'completed': 'bg-blue-100 text-blue-700'
+                      };
+                      const statusLabels = {
+                        'pending_qc': 'Pending QC',
+                        'approved': 'Approved',
+                        'revision_required': 'Revision Required',
+                        'completed': 'Completed'
+                      };
+                    %>
+                    <span class="<%= statusColors[record.status] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
+                      <%= statusLabels[record.status] || record.status %>
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-600">
+                    <%= new Date(record.created_at).toLocaleDateString() %>
+                  </td>
+                  <td class="px-6 py-4">
+                    <div class="flex gap-2">
+                      <button onclick="viewQCDetail(<%= record.submission_id %>)" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                        <i class="fi fi-rr-eye mr-1"></i>Review
+                      </button>
+                      <% if (record.status === 'pending_qc') { %>
+                        <button onclick="approveSubmission(<%= record.submission_id %>)" class="bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                          <i class="fi fi-rr-check mr-1"></i>Approve
+                        </button>
+                        <button onclick="rejectSubmission(<%= record.submission_id %>)" class="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                          <i class="fi fi-rr-cross mr-1"></i>Reject
+                        </button>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                  <i class="fi fi-rr-inbox text-4xl block mb-2"></i>
+                  <p>No submissions pending QC review</p>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <% if (pages > 1) { %>
+      <div class="flex justify-center gap-2">
+        <% for (let i = 1; i <= pages; i++) { %>
+          <% if (i === page) { %>
+            <span class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm"><%= i %></span>
+          <% } else { %>
+            <a href="/admin/qc/pending?page=<%= i - 1 %>&status=<%= filters.status %>" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm transition-all">
+              <%= i %>
+            </a>
+          <% } %>
+        <% } %>
+      </div>
+    <% } %>
+
+  </div>
+</section>
+
+<!-- QC Detail Modal -->
+<div id="qcModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+      <h2 class="text-xl font-bold text-slate-800">QC Review</h2>
+      <button onclick="closeQCModal()" class="text-slate-500 hover:text-slate-700 text-2xl">&times;</button>
+    </div>
+    <div id="qcModalContent" class="p-6">
+      <p class="text-slate-500">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+async function viewQCDetail(submissionId) {
+  document.getElementById('qcModal').classList.remove('hidden');
+  document.getElementById('qcModalContent').innerHTML = '<p class="text-slate-500">Loading...</p>';
+  
+  try {
+    const response = await fetch(`/admin/qc/${submissionId}/detail`);
+    const data = await response.json();
+    
+    if (data.success) {
+      const s = data.submission;
+      document.getElementById('qcModalContent').innerHTML = `
+        <div class="space-y-6">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase">Writer</p>
+              <p class="text-slate-800 font-semibold">${s.writer_name}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase">Order</p>
+              <p class="text-slate-800 font-semibold">${s.query_code || 'N/A'}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase">Topic</p>
+              <p class="text-slate-800">${s.paper_topic || 'N/A'}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase">Deadline</p>
+              <p class="text-slate-800">${new Date(s.deadline_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+          
+          <div class="border-t pt-4">
+            <p class="text-xs text-slate-500 font-bold uppercase mb-2">Scores</p>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="bg-slate-50 p-3 rounded-lg text-center">
+                <p class="text-2xl font-black ${s.grammarly_score >= 90 ? 'text-green-600' : 'text-amber-600'}">${s.grammarly_score || 'N/A'}%</p>
+                <p class="text-xs text-slate-500">Grammarly</p>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-lg text-center">
+                <p class="text-2xl font-black ${s.ai_score <= 10 ? 'text-green-600' : 'text-red-600'}">${s.ai_score || 'N/A'}%</p>
+                <p class="text-xs text-slate-500">AI Detection</p>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-lg text-center">
+                <p class="text-2xl font-black ${s.plagiarism_score <= 10 ? 'text-green-600' : 'text-red-600'}">${s.plagiarism_score || 'N/A'}%</p>
+                <p class="text-xs text-slate-500">Plagiarism</p>
+              </div>
+            </div>
+          </div>
+          
+          ${s.file_url ? `
+          <div class="border-t pt-4">
+            <a href="/uploads/${s.file_url}" target="_blank" class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700">
+              <i class="fi fi-rr-download"></i> Download File
+            </a>
+          </div>
+          ` : ''}
+          
+          <div class="border-t pt-4">
+            <p class="text-xs text-slate-500 font-bold uppercase mb-2">Feedback / Notes</p>
+            <textarea id="qcFeedback" class="w-full border rounded-lg p-3 text-sm" rows="3" placeholder="Enter feedback for the writer...">${s.feedback || ''}</textarea>
+          </div>
+          
+          <div class="flex gap-3">
+            <button onclick="approveSubmission(${s.submission_id})" class="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg font-bold hover:bg-green-700">
+              <i class="fi fi-rr-check mr-2"></i> Approve
+            </button>
+            <button onclick="rejectSubmission(${s.submission_id})" class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg font-bold hover:bg-red-700">
+              <i class="fi fi-rr-cross mr-2"></i> Request Revision
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error loading QC detail:', error);
+    document.getElementById('qcModalContent').innerHTML = '<p class="text-red-500">Error loading details</p>';
+  }
+}
+
+function closeQCModal() {
+  document.getElementById('qcModal').classList.add('hidden');
+}
+
+async function approveSubmission(submissionId) {
+  const feedback = document.getElementById('qcFeedback')?.value || 'Approved';
+  
+  const confirmed = await showConfirmModal(
+    'Approve Submission',
+    'Are you sure you want to approve this submission? It will be sent for delivery.',
+    'success'
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(`/admin/qc/${submissionId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      showToast('Submission approved successfully!', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error approving submission:', error);
+    showToast('An error occurred', 'error');
+  }
+}
+
+async function rejectSubmission(submissionId) {
+  let feedback = document.getElementById('qcFeedback')?.value;
+  
+  if (!feedback) {
+    feedback = await showInputModal(
+      'Revision Required',
+      'Please provide detailed feedback for the writer explaining what needs to be revised:',
+      'Enter feedback here...'
+    );
+  }
+  
+  if (!feedback) {
+    showToast('Feedback is required for rejection', 'warning');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/qc/${submissionId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      showToast('Submission rejected. Writer has been notified.', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error rejecting submission:', error);
+    showToast('An error occurred', 'error');
+  }
+}
+</script>

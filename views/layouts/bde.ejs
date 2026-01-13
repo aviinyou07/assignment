@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'BDE Dashboard' %> | A366</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joemottershaw/uicons@latest/css/all.min.css">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    * {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: #f8f9fb;
+    }
+
+    .animate-in {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="flex h-screen bg-slate-50">
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-white border-r border-slate-200 shadow-sm flex flex-col">
+      
+      <!-- LOGO -->
+      <div class="p-6 border-b border-slate-100">
+        <h1 class="text-2xl font-black text-slate-900">
+          <span class="text-green-600">A</span>366 BDE
+        </h1>
+      </div>
+
+      <!-- NAVIGATION -->
+      <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+        <a href="/bde" class="<%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
+          <i class="fi fi-rr-chart-histogram"></i> Dashboard
+        </a>
+
+        <!-- BDE OPERATIONS -->
+        <div class="pt-2">
+          <p class="text-xs font-black text-slate-500 uppercase tracking-widest px-4 mb-2">OPERATIONS</p>
+          
+          <a href="/bde/clients" class="<%= typeof currentPage !== 'undefined' && currentPage === 'clients' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
+            <i class="fi fi-rr-users"></i> Clients
+          </a>
+
+          <a href="/bde/queries" class="<%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
+            <i class="fi fi-rr-inbox"></i> Queries
+          </a>
+
+          <a href="/bde/orders" class="<%= typeof currentPage !== 'undefined' && currentPage === 'orders' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
+            <i class="fi fi-rr-briefcase"></i> Orders
+          </a>
+
+          <a href="/bde/payments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
+            <i class="fi fi-rr-credit"></i> Payments
+          </a>
+        </div>
+      </nav>
+
+      <!-- FOOTER -->
+      <div class="p-4 border-t border-slate-100 space-y-2">
+        <a href="/auth/logout" class="text-slate-600 hover:bg-red-50 hover:text-red-600 px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 w-full">
+          <i class="fi fi-rr-sign-out-alt"></i> Logout
+        </a>
+      </div>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- HEADER -->
+      <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+        
+        <!-- LEFT: PAGE TITLE -->
+        <div>
+          <h2 class="text-2xl font-black text-slate-800">
+            <% 
+              let pageTitle = 'Dashboard';
+              if (typeof currentPage !== 'undefined') {
+                if (currentPage === 'clients') pageTitle = 'Clients';
+                else if (currentPage === 'queries') pageTitle = 'Queries';
+                else if (currentPage === 'orders') pageTitle = 'Orders';
+                else if (currentPage === 'payments') pageTitle = 'Payments';
+              }
+            %>
+            <%= pageTitle %>
+          </h2>
+          <p class="text-sm text-slate-400">Business development management</p>
+        </div>
+
+        <!-- RIGHT: USER MENU -->
+        <div class="flex items-center gap-4">
+          <div class="text-right">
+            <p class="text-sm font-bold text-slate-800">
+              <%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'BDE User' %>
+            </p>
+            <p class="text-xs text-slate-400">Business Development</p>
+          </div>
+          
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 
+            flex items-center justify-center text-white font-bold text-sm shadow-lg">
+            <%= typeof initials !== 'undefined' ? initials : 'BD' %>
+          </div>
+        </div>
+
+      </header>
+
+      <!-- PAGE CONTENT -->
+      <main class="flex-1 overflow-y-auto">
+        <div class="p-8">
+          <%- body %>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Global Modal System -->
+  <%- include('../partials/modal-system') %>
+</body>
+</html>

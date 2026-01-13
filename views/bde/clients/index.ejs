@@ -1,0 +1,90 @@
+<%- include('../../partials/head.ejs') %>
+
+<section class="space-y-6">
+
+  <!-- PAGE HEADER -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-black text-slate-800">Client Management</h1>
+      <p class="text-slate-500 mt-2">Manage your assigned clients and view their queries</p>
+    </div>
+  </div>
+
+  <!-- CLIENTS TABLE -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50">
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Client Name</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Email</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">WhatsApp</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Country</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Orders</th>
+            <th class="px-6 py-4 text-left text-sm font-semibold text-slate-700">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <% if (clients && clients.length > 0) { %>
+            <% clients.forEach(client => { %>
+              <tr class="hover:bg-slate-50 transition">
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-800"><%= client.full_name %></div>
+                </td>
+                <td class="px-6 py-4 text-slate-600 text-sm"><%= client.email %></td>
+                <td class="px-6 py-4 text-slate-600 text-sm">
+                  <% if (client.whatsapp) { %>
+                    <a href="https://wa.me/<%= client.whatsapp.replace(/\D/g, '') %>" target="_blank" class="text-green-600 hover:underline font-semibold">
+                      <i class="fi fi-brands-whatsapp"></i> <%= client.whatsapp %>
+                    </a>
+                  <% } else { %>
+                    <span class="text-slate-400">Not provided</span>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 text-slate-600 text-sm"><%= client.country || 'N/A' %></td>
+                <td class="px-6 py-4 text-center">
+                  <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                    <%= client.confirmed_orders %>/<%= client.total_orders %>
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex gap-2">
+                    <a href="/bde/clients/<%= client.user_id %>" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
+                      View
+                    </a>
+                    <a href="https://wa.me/<%= client.whatsapp ? client.whatsapp.replace(/\D/g, '') : client.mobile_number.replace(/\D/g, '') %>" target="_blank" class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 font-semibold">
+                      <i class="fi fi-brands-whatsapp"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr>
+              <td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                <i class="fi fi-rr-users text-4xl block mb-2"></i>
+                <p>No clients assigned yet</p>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGINATION -->
+  <% if (pagination && pagination.total > 1) { %>
+    <div class="flex justify-center gap-2">
+      <% for (let i = 1; i <= pagination.total; i++) { %>
+        <% if (i === pagination.current) { %>
+          <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold"><%= i %></span>
+        <% } else { %>
+          <a href="/bde/clients?page=<%= i %>" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 font-semibold">
+            <%= i %>
+          </a>
+        <% } %>
+      <% } %>
+    </div>
+  <% } %>
+
+</section>

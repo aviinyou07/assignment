@@ -1,0 +1,200 @@
+<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-black text-slate-800">Task Monitoring</h1>
+        <p class="text-slate-600 mt-1">Monitor writer submissions and task progress</p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-slate-500">Total Tasks</p>
+        <p class="text-3xl font-black text-indigo-600"><%= total %></p>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <h3 class="text-lg font-black text-slate-800 mb-4">Filter</h3>
+      
+      <form method="GET" action="/admin/tasks" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Status</label>
+            <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+              <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All Statuses</option>
+              <option value="pending_qc" <%= filters.status === 'pending_qc' ? 'selected' : '' %>>Pending QC</option>
+              <option value="approved" <%= filters.status === 'approved' ? 'selected' : '' %>>Approved</option>
+              <option value="revision_required" <%= filters.status === 'revision_required' ? 'selected' : '' %>>Revision Required</option>
+              <option value="completed" <%= filters.status === 'completed' ? 'selected' : '' %>>Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all">
+            <i class="fi fi-rr-search mr-2"></i>Apply Filter
+          </button>
+          <a href="/admin/tasks" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-300 transition-all inline-block">
+            <i class="fi fi-rr-arrow-rotate-left mr-2"></i>Reset
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- TASKS TABLE -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Task</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Writer</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Quality Scores</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Submitted</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <% tasks.forEach(task => { %>
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-800"><%= task.order_code %></div>
+                  <div class="text-xs text-slate-500"><%= task.paper_topic.substring(0, 30) %>...</div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-800"><%= task.writer_name || 'Unassigned' %></div>
+                </td>
+                <td class="px-6 py-4">
+                  <% 
+                    const statusColors = {
+                      'pending_qc': 'bg-yellow-100 text-yellow-700',
+                      'approved': 'bg-green-100 text-green-700',
+                      'revision_required': 'bg-red-100 text-red-700',
+                      'completed': 'bg-blue-100 text-blue-700'
+                    };
+                  %>
+                  <span class="<%= statusColors[task.status] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
+                    <%= task.status.replace('_', ' ').toUpperCase() %>
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-sm">
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                      <span class="text-slate-600">Plagiarism:</span>
+                      <span class="<%= task.plagiarism_score <= 20 ? 'text-green-600 font-bold' : task.plagiarism_score <= 50 ? 'text-yellow-600 font-bold' : 'text-red-600 font-bold' %>">
+                        <%= task.plagiarism_score || 'N/A' %>%
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-slate-600">Grammarly:</span>
+                      <span class="font-bold text-slate-700"><%= task.grammarly_score || 'N/A' %></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-slate-600">AI:</span>
+                      <span class="font-bold text-slate-700"><%= task.ai_score || 'N/A' %>%</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-600">
+                  <%= new Date(task.created_at).toLocaleDateString() %>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex gap-2">
+                    <% if (task.file_url) { %>
+                      <a href="<%= task.file_url %>" target="_blank" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                        <i class="fi fi-rr-file mr-1"></i>View File
+                      </a>
+                    <% } %>
+                    <% if (task.status === 'pending_qc') { %>
+                      <button onclick="approveQC(<%= task.submission_id %>, 'approve')" class="bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                        <i class="fi fi-rr-check-circle mr-1"></i>Approve
+                      </button>
+                      <button onclick="approveQC(<%= task.submission_id %>, 'reject')" class="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                        <i class="fi fi-rr-circle-xmark mr-1"></i>Reject
+                      </button>
+                    <% } %>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (tasks.length === 0) { %>
+        <div class="p-8 text-center text-slate-400">
+          <i class="fi fi-rr-inbox text-4xl block mb-2"></i>
+          <p>No tasks found</p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- PAGINATION -->
+    <% if (pages > 1) { %>
+      <div class="flex justify-center gap-2">
+        <% for (let i = 1; i <= pages; i++) { %>
+          <% if (i === page) { %>
+            <span class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+              <%= i %>
+            </span>
+          <% } else { %>
+            <a href="/admin/tasks?page=<%= i %>&status=<%= filters.status %>" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm transition-all">
+              <%= i %>
+            </a>
+          <% } %>
+        <% } %>
+      </div>
+    <% } %>
+
+  </div>
+</section>
+
+<script>
+async function approveQC(submissionId, action) {
+  const confirmTitle = action === 'approve' ? 'Approve Submission' : 'Reject Submission';
+  const confirmMsg = action === 'approve' 
+    ? 'Approve this submission for delivery?' 
+    : 'Reject this submission? Writer will need to revise.';
+  const confirmType = action === 'approve' ? 'success' : 'danger';
+
+  const confirmed = await showConfirmModal(confirmTitle, confirmMsg, confirmType);
+  if (!confirmed) return;
+  
+  let feedback = '';
+  if (action === 'reject') {
+    feedback = await showInputModal(
+      'Revision Feedback',
+      'Please provide feedback for the writer explaining what needs to be revised:',
+      'Enter detailed feedback...'
+    );
+    
+    if (!feedback) {
+      showToast('Feedback is required for rejection', 'warning');
+      return;
+    }
+  }
+
+  const endpoint = action === 'approve' ? 'approve' : 'reject';
+  
+  try {
+    const response = await fetch(`/admin/qc/${submissionId}/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: action, feedback: feedback })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showToast(`Submission ${action === 'approve' ? 'approved' : 'rejected'} successfully!`, 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Failed: ' + (result.message || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+</script>

@@ -1,0 +1,436 @@
+<div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Active Tasks</h2>
+                <p class="text-sm text-slate-500 font-medium">Manage in-progress assignments with real-time status tracking</p>
+            </div>
+            <div class="hidden md:flex gap-4">
+                <div class="text-center px-4 border-r border-slate-100">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Count</p>
+                    <p class="text-xl font-black text-slate-800" id="active-count">-</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Progress</p>
+                    <p class="text-xl font-black text-indigo-600" id="total-progress">-</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-slate-900 p-6 rounded-[2.5rem] shadow-xl text-white flex flex-col justify-center relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1">Response Rate</p>
+                <p class="text-3xl font-black text-white" id="response-rate">-</p>
+                <p class="text-[10px] text-slate-400 mt-1 font-medium italic">Tasks Completed on Time</p>
+            </div>
+            <i class="fi fi-rr-chart-line-up absolute right-[-10px] bottom-[-10px] text-7xl text-white/5"></i>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+            <h3 class="font-bold text-slate-700">Work Progress Console</h3>
+            <div class="flex gap-2">
+                <select id="status-filter" onchange="filterByStatus(this.value)" class="bg-white border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">
+                    <option value="all">All Status</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="research_completed">Research Done</option>
+                    <option value="writing_started">Writing Started</option>
+                    <option value="rework_in_progress">Rework</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr class="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                        <th class="px-8 py-5">Work Code & Topic</th>
+                        <th class="px-6 py-5">Current Status</th>
+                        <th class="px-6 py-5 text-center">Deadline</th>
+                        <th class="px-6 py-5">Progress</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100" id="active-tasks-table">
+                    <tr>
+                        <td colspan="5" class="px-8 py-8 text-center text-slate-500">
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading active tasks...
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Task Execution Modal -->
+    <div id="task-execution-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-auto shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div class="sticky top-0 bg-gradient-to-r from-indigo-900 to-indigo-700 text-white p-6 border-b border-indigo-600">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-black" id="exec-work-code">Work Code</h2>
+                        <p class="text-indigo-200 text-sm mt-1" id="exec-topic">Topic</p>
+                    </div>
+                    <button onclick="closeTaskExecutionModal()" class="text-white hover:text-indigo-200 text-2xl">
+                        <i class="fi fi-rr-cross"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-8 space-y-6">
+                <!-- Current Status -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Current Status</p>
+                    <p class="text-lg font-black text-indigo-900" id="exec-current-status">-</p>
+                </div>
+
+                <!-- Status Update Section -->
+                <div>
+                    <label class="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Update Status</label>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="status-buttons">
+                        <!-- Status buttons will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Progress Notes -->
+                <div>
+                    <label class="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-2">Progress Notes (Optional)</label>
+                    <textarea id="progress-notes" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Describe your progress, challenges, or any notes for the admin..." rows="3"></textarea>
+                </div>
+
+                <!-- File Upload -->
+                <div>
+                    <label class="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">📎 Upload Draft</label>
+                    <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer" onclick="document.getElementById('file-input').click()">
+                        <i class="fi fi-rr-cloud-upload text-4xl text-slate-400 block mb-2"></i>
+                        <p class="text-sm font-bold text-slate-700">Click to upload or drag file here</p>
+                        <p class="text-xs text-slate-500 mt-1">PDF, DOC, DOCX up to 100MB</p>
+                        <input type="file" id="file-input" class="hidden" accept=".pdf,.doc,.docx,.txt,.pptx" onchange="handleFileSelect(event)">
+                    </div>
+                    <div id="file-preview" class="mt-3"></div>
+                </div>
+
+                <!-- File History -->
+                <div>
+                    <label class="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Previous Submissions</label>
+                    <div id="file-history" class="space-y-2">
+                        <p class="text-slate-500 text-sm">No submissions yet</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3 pt-4 border-t border-slate-200">
+                    <button onclick="submitStatusUpdate()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-200">
+                        <i class="fi fi-rr-check-circle mr-2"></i> Update Status
+                    </button>
+                    <button onclick="submitDraftForReview()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-emerald-200">
+                        <i class="fi fi-rr-send mr-2"></i> Submit for QC
+                    </button>
+                    <button onclick="closeTaskExecutionModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentExecutionTaskId = null;
+        let selectedStatus = null;
+        let selectedFile = null;
+
+        const statusHierarchy = [
+            { value: 'in_progress', label: '▶️ In Progress', color: 'indigo' },
+            { value: 'research_completed', label: '📚 Research Done', color: 'blue' },
+            { value: 'writing_started', label: '✏️ Writing Started', color: 'amber' },
+            { value: 'draft_submitted', label: '📤 Submit for QC', color: 'emerald' },
+            { value: 'awaiting_feedback', label: '⏳ Awaiting QC', color: 'purple' },
+            { value: 'rework_in_progress', label: '🔄 Rework', color: 'orange' },
+            { value: 'on_hold', label: '⏸️ On Hold', color: 'slate' }
+        ];
+
+        // Load active tasks
+        async function loadActiveTasks(filterStatus = 'all') {
+            try {
+                const url = filterStatus === 'all' 
+                    ? '/writer/api/tasks/active/list'
+                    : `/writer/api/tasks/active/list?status=${filterStatus}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('active-count').textContent = data.tasks.length;
+                    const tableBody = document.getElementById('active-tasks-table');
+                    
+                    if (data.tasks.length === 0) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="px-8 py-12 text-center">
+                                    <div class="space-y-2">
+                                        <i class="fi fi-rr-inbox text-4xl text-slate-300 block"></i>
+                                        <p class="text-slate-500 font-medium">No active tasks</p>
+                                        <p class="text-slate-400 text-sm">Accept a pending task to get started</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
+                    tableBody.innerHTML = data.tasks.map(task => {
+                        const statusLabel = statusHierarchy.find(s => s.value === task.status)?.label || task.status;
+                        const statusColor = statusHierarchy.find(s => s.value === task.status)?.color || 'slate';
+                        const colors = {
+                            indigo: 'bg-indigo-100 text-indigo-700',
+                            blue: 'bg-blue-100 text-blue-700',
+                            amber: 'bg-amber-100 text-amber-700',
+                            emerald: 'bg-emerald-100 text-emerald-700',
+                            purple: 'bg-purple-100 text-purple-700',
+                            orange: 'bg-orange-100 text-orange-700',
+                            slate: 'bg-slate-100 text-slate-700'
+                        };
+                        
+                        return `
+                            <tr class="hover:bg-slate-50/50 transition-all group">
+                                <td class="px-8 py-6">
+                                    <span class="text-sm font-black text-indigo-600 block mb-1 uppercase tracking-tight">${task.work_code || task.order_id}</span>
+                                    <span class="text-sm font-semibold text-slate-700 truncate max-w-[250px] block">${task.topic || 'No topic'}</span>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <span class="inline-block ${colors[statusColor]} text-xs font-bold px-3 py-1 rounded-full">
+                                        ${statusLabel}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-6 text-center">
+                                    <p class="text-sm font-bold text-slate-700">${new Date(task.deadline_at).toLocaleDateString('en-US', {month: 'short', day: '2-digit'})}</p>
+                                    <p class="text-xs text-slate-400">${task.time_remaining ? task.time_remaining.split(':')[0] + 'h left' : 'Overdue'}</p>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                        <div class="bg-indigo-600 h-full" style="width: 65%"></div>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1">65% complete</p>
+                                </td>
+                                <td class="px-8 py-6 text-right">
+                                    <button onclick="openTaskExecutionModal(${task.order_id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-100">
+                                        Manage Task
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading active tasks:', error);
+            }
+        }
+
+        // Open task execution modal
+        async function openTaskExecutionModal(taskId) {
+            try {
+                const response = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const task = data.task;
+                    currentExecutionTaskId = taskId;
+                    selectedStatus = null;
+                    selectedFile = null;
+                    
+                    document.getElementById('exec-work-code').textContent = task.work_code || task.order_id;
+                    document.getElementById('exec-topic').textContent = task.topic || 'No topic';
+                    document.getElementById('exec-current-status').textContent = task.status || 'Unknown';
+                    
+                    // Create status buttons
+                    const buttonsContainer = document.getElementById('status-buttons');
+                    buttonsContainer.innerHTML = statusHierarchy.map(status => `
+                        <button onclick="selectStatus('${status.value}')" 
+                                class="status-button bg-slate-100 hover:bg-${status.color}-200 text-slate-700 hover:text-${status.color}-900 font-bold py-2 px-3 rounded-lg transition-all text-xs" 
+                                data-status="${status.value}">
+                            ${status.label}
+                        </button>
+                    `).join('');
+                    
+                    // Load file history
+                    await loadFileHistory(taskId);
+                    
+                    document.getElementById('task-execution-modal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error opening task modal:', error);
+                showToast('Failed to load task details', 'error');
+            }
+        }
+
+        function closeTaskExecutionModal() {
+            document.getElementById('task-execution-modal').classList.add('hidden');
+            document.getElementById('progress-notes').value = '';
+            document.getElementById('file-preview').innerHTML = '';
+            selectedFile = null;
+        }
+
+        function selectStatus(status) {
+            selectedStatus = status;
+            document.querySelectorAll('.status-button').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-emerald-400');
+                btn.classList.add('opacity-50');
+            });
+            document.querySelector(`[data-status="${status}"]`).classList.remove('opacity-50');
+            document.querySelector(`[data-status="${status}"]`).classList.add('ring-2', 'ring-emerald-400');
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            selectedFile = file;
+            document.getElementById('file-preview').innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <i class="fi fi-rr-document text-indigo-600 text-lg"></i>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700">${file.name}</p>
+                            <p class="text-xs text-slate-400">${(file.size / 1024).toFixed(2)} KB</p>
+                        </div>
+                    </div>
+                    <button onclick="selectedFile = null; document.getElementById('file-preview').innerHTML = '';" class="text-red-600 hover:text-red-700">
+                        <i class="fi fi-rr-circle-xmark text-lg"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        async function loadFileHistory(taskId) {
+            try {
+                const response = await fetch(`/writer/api/tasks/${taskId}/files`);
+                const data = await response.json();
+                
+                if (data.success && data.files.length > 0) {
+                    document.getElementById('file-history').innerHTML = data.files.map(file => `
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex justify-between items-center group hover:bg-slate-100 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <i class="fi fi-rr-document text-indigo-600"></i>
+                                <div class="flex-1">
+                                    <p class="text-sm font-bold text-slate-700">${file.file_name}</p>
+                                    <p class="text-xs text-slate-400">v${file.version_number} • ${new Date(file.created_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <a href="${file.file_url}" target="_blank" class="text-indigo-600 hover:text-indigo-700 font-bold">
+                                <i class="fi fi-rr-download"></i>
+                            </a>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading file history:', error);
+            }
+        }
+
+        async function submitStatusUpdate() {
+            if (!selectedStatus) {
+                showToast('Please select a new status', 'warning');
+                return;
+            }
+
+            const notes = document.getElementById('progress-notes').value;
+            
+            try {
+                const response = await fetch(`/writer/api/tasks/${currentExecutionTaskId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        newStatus: selectedStatus,
+                        notes: notes || null
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Status updated successfully!', 'success');
+                    closeTaskExecutionModal();
+                    loadActiveTasks();
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to update status', 'error');
+            }
+        }
+
+        async function submitDraftForReview() {
+            if (!selectedFile) {
+                showToast('Please upload a file before submitting for QC review', 'warning');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('taskId', currentExecutionTaskId);
+            formData.append('fileType', 'draft');
+
+            try {
+                // Upload file first
+                const uploadResponse = await fetch(`/writer/api/tasks/${currentExecutionTaskId}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const uploadData = await uploadResponse.json();
+                
+                if (!uploadData.success) {
+                    showToast('Error uploading file: ' + uploadData.error, 'error');
+                    return;
+                }
+
+                // Then submit for QC
+                const qcResponse = await fetch(`/writer/api/tasks/${currentExecutionTaskId}/submit-qc`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileId: uploadData.fileId,
+                        notes: document.getElementById('progress-notes').value || null
+                    })
+                });
+
+                const qcData = await qcResponse.json();
+                
+                if (qcData.success) {
+                    showToast('Draft submitted for QC review! Admin will review and provide feedback.', 'success');
+                    closeTaskExecutionModal();
+                    loadActiveTasks();
+                } else {
+                    showToast('Error: ' + qcData.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to submit draft', 'error');
+            }
+        }
+
+        function filterByStatus(status) {
+            loadActiveTasks(status);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadActiveTasks();
+        });
+
+        // Refresh every 30 seconds
+        setInterval(() => {
+            loadActiveTasks();
+        }, 30000);
+
+        // Close modal when clicking outside
+        document.getElementById('task-execution-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeTaskExecutionModal();
+        });
+    </script>
+</div>

@@ -1,0 +1,320 @@
+<div class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-6xl mx-auto">
+    
+    <!-- HEADER -->
+    <div class="mb-8">
+      <div class="flex items-center gap-3 mb-2">
+        <a href="/admin/users" class="text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+          <i class="fi fi-rr-arrow-left"></i> Back to Users
+        </a>
+      </div>
+      <h1 class="text-3xl font-black text-slate-800">Create New User</h1>
+      <p class="text-slate-600 mt-1">Add a new user to the system</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <!-- MAIN FORM -->
+      <div class="lg:col-span-2">
+
+        <!-- EDIT FORM -->
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-lg font-black text-slate-800 mb-6 pb-4 border-b border-slate-200 flex items-center gap-2">
+            <i class="fi fi-rr-user-plus text-indigo-600"></i>
+            User Details
+          </h3>
+
+          <form id="createUserForm" class="space-y-6">
+
+            <div>
+              <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-address-card text-indigo-500"></i>
+                Personal Information
+              </h4>
+              <div class="space-y-4 pl-6 border-l-2 border-indigo-200">
+                
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Full Name *</label>
+                  <input 
+                    type="text" 
+                    name="full_name"
+                    placeholder="Enter full name"
+                    required
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Email *</label>
+                  <input 
+                    type="email" 
+                    name="email"
+                    placeholder="Enter email address"
+                    required
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Mobile Number *</label>
+                  <input 
+                    type="tel" 
+                    name="mobile_number"
+                    placeholder="Enter mobile number"
+                    required
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">WhatsApp</label>
+                  <input 
+                    type="tel" 
+                    name="whatsapp"
+                    placeholder="Enter WhatsApp number (optional)"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-book text-indigo-500"></i>
+                Educational & Location
+              </h4>
+              <div class="space-y-4 pl-6 border-l-2 border-indigo-200">
+                
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">University</label>
+                  <input 
+                    type="text" 
+                    name="university"
+                    placeholder="Enter university name"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Country</label>
+                  <input 
+                    type="text" 
+                    name="country"
+                    placeholder="Enter country"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Currency Code</label>
+                  <input 
+                    type="text" 
+                    name="currency_code"
+                    maxlength="3"
+                    placeholder="USD"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Referral Code</label>
+                  <input 
+                    type="text" 
+                    name="referal_code"
+                    placeholder="Optional - auto-generated if left blank"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <i class="fi fi-rr-briefcase text-indigo-500"></i>
+                Role & Assignment
+              </h4>
+              <div class="space-y-4 pl-6 border-l-2 border-indigo-200">
+                
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Role *</label>
+                  <select name="role" required class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select a role</option>
+                    <option value="client">Client</option>
+                    <option value="writer">Writer</option>
+                    <option value="bde">BDE</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="text-sm font-bold text-slate-700 mb-2 block">Assigned BDE (User ID)</label>
+                  <input 
+                    type="number" 
+                    name="bde"
+                    placeholder="Enter BDE user ID (optional)"
+                    class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="flex gap-4 pt-6 border-t border-slate-200">
+              <button 
+                type="button"
+                onclick="createUser()"
+                class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2"
+              >
+                <i class="fi fi-rr-check"></i>
+                Create User
+              </button>
+              <a 
+                href="/admin/users"
+                class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-6 rounded-xl transition text-center flex items-center justify-center gap-2"
+              >
+                <i class="fi fi-rr-cross"></i>
+                Cancel
+              </a>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+
+      <!-- SIDEBAR INFO PANELS -->
+      <div class="lg:col-span-1">
+
+        <!-- IMPORTANT INFO PANEL -->
+        <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200 mb-6">
+          <h4 class="font-bold text-amber-900 mb-3 flex items-center gap-2">
+            <i class="fi fi-rr-info text-lg"></i>
+            Important Info
+          </h4>
+          <ul class="text-sm text-amber-800 space-y-2">
+            <li class="flex gap-2">
+              <span class="text-amber-600 font-bold">•</span>
+              <span>Password will be auto-generated (8 digits)</span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-amber-600 font-bold">•</span>
+              <span>Referral code will be auto-generated if left blank</span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-amber-600 font-bold">•</span>
+              <span>Welcome email sent with login credentials</span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-amber-600 font-bold">•</span>
+              <span>Wallet account auto-created</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- ROLE DESCRIPTIONS PANEL -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 mb-6">
+          <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fi fi-rr-shield-check text-indigo-600"></i>
+            Role Descriptions
+          </h4>
+          <div class="space-y-3 text-sm">
+            <div>
+              <span class="font-bold text-slate-700">Client:</span>
+              <p class="text-slate-600">Purchases and uses services</p>
+            </div>
+            <div>
+              <span class="font-bold text-slate-700">Writer:</span>
+              <p class="text-slate-600">Creates and completes orders</p>
+            </div>
+            <div>
+              <span class="font-bold text-slate-700">BDE:</span>
+              <p class="text-slate-600">Business Development Executive</p>
+            </div>
+            <div>
+              <span class="font-bold text-slate-700">Admin:</span>
+              <p class="text-slate-600">Full system access and management</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- AUTO-GENERATED INFO PANEL -->
+        <div class="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl border border-indigo-200">
+          <h4 class="font-bold text-indigo-900 mb-3 flex items-center gap-2">
+            <i class="fi fi-rr-bulb text-lg"></i>
+            Auto-Generated On Create
+          </h4>
+          <ul class="text-sm text-indigo-800 space-y-2">
+            <li class="flex gap-2">
+              <span class="text-indigo-600 font-bold">→</span>
+              <span><strong>Password:</strong> Random 8 digits</span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-indigo-600 font-bold">→</span>
+              <span><strong>Referral Code:</strong> A366+6 chars</span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-indigo-600 font-bold">→</span>
+              <span><strong>Wallet Account:</strong> $0 balance</span>
+            </li>
+            <li class="flex gap-2">
+              <span class="text-indigo-600 font-bold">→</span>
+              <span><strong>Email Notification:</strong> Sent</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+function showNotification(message, type = 'info') {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `fixed top-4 right-4 px-6 py-3 rounded-xl font-bold text-white z-50 animate-in slide-in-from-top ${
+    type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+  }`;
+  alertDiv.textContent = message;
+  document.body.appendChild(alertDiv);
+  setTimeout(() => alertDiv.remove(), 4000);
+}
+
+async function createUser() {
+  const form = document.getElementById('createUserForm');
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData);
+
+  // Validation
+  if (!data.full_name || !data.email || !data.mobile_number || !data.role) {
+    showNotification('Please fill all required fields (marked with *)', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch('/admin/users/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showNotification('User created successfully! Email sent with credentials.', 'success');
+      setTimeout(() => window.location.href = '/admin/users/' + result.userId + '/view', 2000);
+    } else {
+      showNotification(result.message || 'Failed to create user', 'error');
+    }
+  } catch (err) {
+    console.error('Create error:', err);
+    showNotification('An error occurred', 'error');
+  }
+}
+</script>

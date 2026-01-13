@@ -1,0 +1,505 @@
+<div class="space-y-6 animate-in fade-in duration-500">
+    
+    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Submissions & QC Feedback</h2>
+            <p class="text-sm text-slate-500 font-medium">Track submitted drafts, QC decisions, and manage revisions.</p>
+        </div>
+        <div class="flex items-center gap-3 bg-emerald-50 p-4 rounded-3xl border border-emerald-100">
+            <div class="text-right">
+                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest">QC Pending</p>
+                <p class="text-xl font-black text-emerald-700" id="pending-qc-count">-</p>
+            </div>
+            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                <i class="fi fi-rr-check-double"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submissions Table -->
+    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr class="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                        <th class="px-8 py-5">Work Code</th>
+                        <th class="px-6 py-5">Topic</th>
+                        <th class="px-6 py-5">QC Status</th>
+                        <th class="px-6 py-5">Revision #</th>
+                        <th class="px-6 py-5">Submitted On</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100" id="submissions-table">
+                    <tr>
+                        <td colspan="6" class="px-8 py-8 text-center text-slate-500">
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading submissions...
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- QC Feedback Modal -->
+    <div id="qc-feedback-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-auto shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div class="sticky top-0 bg-gradient-to-r from-emerald-900 to-emerald-700 text-white p-6 border-b border-emerald-600">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-black" id="feedback-work-code">Work Code</h2>
+                        <p class="text-emerald-200 text-sm mt-1" id="feedback-topic">Topic</p>
+                    </div>
+                    <button onclick="closeFeedbackModal()" class="text-white hover:text-emerald-200 text-2xl">
+                        <i class="fi fi-rr-cross"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-8 space-y-6">
+                <!-- QC Status Banner -->
+                <div id="qc-status-banner" class="p-4 rounded-2xl border-2">
+                    <p class="text-xs font-bold uppercase tracking-widest mb-2">Current QC Status</p>
+                    <p class="text-lg font-black" id="feedback-qc-status">-</p>
+                </div>
+
+                <!-- Feedback Items -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-widest mb-4">📋 Detailed Feedback</h3>
+                    <div id="feedback-items" class="space-y-3">
+                        <p class="text-slate-500 text-sm">Loading feedback...</p>
+                    </div>
+                </div>
+
+                <!-- Files Section -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">📄 Submitted Files</h3>
+                    <div id="submitted-files" class="space-y-2">
+                        <p class="text-slate-500 text-sm">Loading files...</p>
+                    </div>
+                </div>
+
+                <!-- Revision Upload (if needed) -->
+                <div id="revision-upload-section" class="hidden">
+                    <h3 class="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3">🔄 Upload Revision</h3>
+                    <div class="border-2 border-dashed border-amber-300 rounded-2xl p-6 text-center hover:border-amber-400 hover:bg-amber-50 transition-all cursor-pointer" onclick="document.getElementById('revision-file-input').click()">
+                        <i class="fi fi-rr-cloud-upload text-4xl text-amber-400 block mb-2"></i>
+                        <p class="text-sm font-bold text-slate-700">Click to upload revised file</p>
+                        <p class="text-xs text-slate-500 mt-1">PDF, DOC, DOCX up to 100MB</p>
+                        <input type="file" id="revision-file-input" class="hidden" accept=".pdf,.doc,.docx,.txt,.pptx" onchange="handleRevisionFileSelect(event)">
+                    </div>
+                    <div id="revision-file-preview" class="mt-3"></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div id="action-buttons" class="flex gap-3 pt-4 border-t border-slate-200">
+                    <!-- Buttons will be inserted based on QC status -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFeedbackTaskId = null;
+        let currentFeedbackSubmissionId = null;
+        let revisionFile = null;
+
+        const qcStatusColors = {
+            'pending': { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700' },
+            'approved': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700' },
+            'rejected': { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-700' },
+            'completed': { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-700' }
+        };
+
+        // Load all submissions
+        async function loadSubmissions() {
+            try {
+                const response = await fetch('/writer/api/tasks/active/list');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tableBody = document.getElementById('submissions-table');
+                    
+                    // Get only tasks that have been submitted
+                    const submittedTasks = data.tasks.filter(t => 
+                        ['draft_submitted', 'awaiting_feedback', 'rework_in_progress'].includes(t.status)
+                    );
+                    
+                    document.getElementById('pending-qc-count').textContent = 
+                        submittedTasks.filter(t => t.status === 'draft_submitted').length;
+                    
+                    if (submittedTasks.length === 0) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="px-8 py-12 text-center">
+                                    <div class="space-y-2">
+                                        <i class="fi fi-rr-inbox text-4xl text-slate-300 block"></i>
+                                        <p class="text-slate-500 font-medium">No submissions yet</p>
+                                        <p class="text-slate-400 text-sm">Complete a task and submit for QC review</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
+                    tableBody.innerHTML = submittedTasks.map(task => {
+                        const statusLabels = {
+                            'draft_submitted': '📤 Pending QC',
+                            'awaiting_feedback': '⏳ Awaiting Feedback',
+                            'rework_in_progress': '🔄 Rework Required'
+                        };
+                        
+                        const statusColors = {
+                            'draft_submitted': 'bg-amber-100 text-amber-700',
+                            'awaiting_feedback': 'bg-purple-100 text-purple-700',
+                            'rework_in_progress': 'bg-orange-100 text-orange-700'
+                        };
+                        
+                        return `
+                            <tr class="hover:bg-slate-50/50 transition-all group">
+                                <td class="px-8 py-6">
+                                    <span class="text-sm font-black text-indigo-600 block mb-1 uppercase tracking-tight">${task.work_code || task.order_id}</span>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <p class="text-sm font-semibold text-slate-700 truncate">${task.topic || 'No topic'}</p>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <span class="inline-block ${statusColors[task.status]} text-xs font-bold px-3 py-1 rounded-full">
+                                        ${statusLabels[task.status] || task.status}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <p class="text-sm font-bold text-slate-700">#1</p>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <p class="text-sm text-slate-600">${new Date().toLocaleDateString('en-US', {month: 'short', day: '2-digit'})}</p>
+                                </td>
+                                <td class="px-8 py-6 text-right">
+                                    <button onclick="openFeedbackModal(${task.order_id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-emerald-100">
+                                        View Feedback
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+            }
+        }
+
+        // Open feedback modal
+        async function openFeedbackModal(taskId) {
+            try {
+                const detailsResponse = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const detailsData = await detailsResponse.json();
+                
+                if (detailsData.success) {
+                    const task = detailsData.task;
+                    currentFeedbackTaskId = taskId;
+                    
+                    document.getElementById('feedback-work-code').textContent = task.work_code || task.order_id;
+                    document.getElementById('feedback-topic').textContent = task.topic || 'No topic';
+                    
+                    // Load feedback
+                    const feedbackResponse = await fetch(`/writer/api/tasks/${taskId}/feedback`);
+                    const feedbackData = await feedbackResponse.json();
+                    
+                    if (feedbackData.success) {
+                        const feedbackItems = document.getElementById('feedback-items');
+                        
+                        if (feedbackData.feedbacks.length === 0) {
+                            feedbackItems.innerHTML = '<p class="text-slate-500 text-sm">No feedback yet. Awaiting QC review.</p>';
+                        } else {
+                            feedbackItems.innerHTML = feedbackData.feedbacks.map(feedback => {
+                                const severityColors = {
+                                    'minor': 'bg-blue-50 border-blue-200 text-blue-700',
+                                    'moderate': 'bg-amber-50 border-amber-200 text-amber-700',
+                                    'critical': 'bg-red-50 border-red-200 text-red-700'
+                                };
+                                
+                                return `
+                                    <div class="border ${severityColors[feedback.severity] || severityColors['moderate']} rounded-2xl p-4">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div>
+                                                <p class="text-xs font-bold uppercase tracking-widest">${feedback.feedback_type.replace('_', ' ')}</p>
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded mt-1 inline-block">${feedback.severity.toUpperCase()}</span>
+                                            </div>
+                                            <p class="text-xs text-slate-500">${new Date(feedback.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                        <p class="text-sm text-slate-700 mt-2">${feedback.feedback_text}</p>
+                                        ${feedback.resolved_at ? `<p class="text-xs text-emerald-600 mt-2">✓ Resolved on ${new Date(feedback.resolved_at).toLocaleDateString()}</p>` : ''}
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+                    }
+                    
+                    // Load files
+                    const filesResponse = await fetch(`/writer/api/tasks/${taskId}/files`);
+                    const filesData = await filesResponse.json();
+                    
+                    if (filesData.success && filesData.files.length > 0) {
+                        document.getElementById('submitted-files').innerHTML = filesData.files
+                            .filter(f => f.file_type === 'draft' || f.file_type === 'submission')
+                            .map(file => `
+                                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex justify-between items-center hover:bg-slate-100">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fi fi-rr-document text-indigo-600"></i>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-700">${file.file_name}</p>
+                                            <p class="text-xs text-slate-400">v${file.version_number} • ${new Date(file.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <a href="${file.file_url}" target="_blank" class="text-indigo-600 hover:text-indigo-700 font-bold">
+                                        <i class="fi fi-rr-download"></i>
+                                    </a>
+                                </div>
+                            `).join('');
+                    }
+                    
+                    // Check QC status
+                    const qcResponse = await fetch(`/writer/api/tasks/${taskId}/qc-decision`);
+                    const qcData = await qcResponse.json();
+                    
+                    const statusBanner = document.getElementById('qc-status-banner');
+                    const colors = qcStatusColors[qcData.status] || qcStatusColors['pending'];
+                    statusBanner.className = `p-4 rounded-2xl border-2 ${colors.bg} ${colors.border}`;
+                    
+                    let statusLabel = '';
+                    if (qcData.status === 'approved') {
+                        statusLabel = '✅ APPROVED - Ready for Delivery';
+                    } else if (qcData.status === 'rejected') {
+                        statusLabel = '❌ REJECTED - Revisions Required';
+                    } else {
+                        statusLabel = '⏳ PENDING - Awaiting QC Review';
+                    }
+                    
+                    document.getElementById('feedback-qc-status').innerHTML = `<span class="${colors.text}">${statusLabel}</span>`;
+                    
+                    // Show revision upload if rejected
+                    const revisionSection = document.getElementById('revision-upload-section');
+                    const actionButtons = document.getElementById('action-buttons');
+                    
+                    if (qcData.status === 'rejected') {
+                        revisionSection.classList.remove('hidden');
+                        actionButtons.innerHTML = `
+                            <button onclick="submitRevision()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-orange-200">
+                                <i class="fi fi-rr-send mr-2"></i> Submit Revision
+                            </button>
+                            <button onclick="closeFeedbackModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                                Close
+                            </button>
+                        `;
+                    } else {
+                        revisionSection.classList.add('hidden');
+                        actionButtons.innerHTML = `
+                            <button onclick="closeFeedbackModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-emerald-200">
+                                Close
+                            </button>
+                        `;
+                    }
+                    
+                    document.getElementById('qc-feedback-modal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error opening feedback modal:', error);
+                showToast('Failed to load feedback', 'error');
+            }
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('qc-feedback-modal').classList.add('hidden');
+            revisionFile = null;
+        }
+
+        function handleRevisionFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            revisionFile = file;
+            document.getElementById('revision-file-preview').innerHTML = `
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-between items-center mt-2">
+                    <div class="flex items-center gap-3">
+                        <i class="fi fi-rr-document text-orange-600 text-lg"></i>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700">${file.name}</p>
+                            <p class="text-xs text-slate-400">${(file.size / 1024).toFixed(2)} KB</p>
+                        </div>
+                    </div>
+                    <button onclick="revisionFile = null; document.getElementById('revision-file-preview').innerHTML = '';" class="text-red-600 hover:text-red-700">
+                        <i class="fi fi-rr-circle-xmark text-lg"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        async function submitRevision() {
+            if (!revisionFile) {
+                showToast('Please select a file to upload', 'warning');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', revisionFile);
+            formData.append('taskId', currentFeedbackTaskId);
+            formData.append('fileType', 'revision');
+
+            try {
+                // Upload file
+                const uploadResponse = await fetch(`/writer/api/tasks/${currentFeedbackTaskId}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const uploadData = await uploadResponse.json();
+                
+                if (!uploadData.success) {
+                    showToast('Error uploading file: ' + uploadData.error, 'error');
+                    return;
+                }
+
+                // Submit revision
+                const revisionResponse = await fetch(`/writer/api/tasks/${currentFeedbackTaskId}/revision`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileId: uploadData.fileId,
+                        revisionNotes: 'Revision submitted based on QC feedback'
+                    })
+                });
+
+                const revisionData = await revisionResponse.json();
+                
+                if (revisionData.success) {
+                    showToast('Revision submitted! Your work re-enters the QC review process.', 'success');
+                    closeFeedbackModal();
+                    loadSubmissions();
+                } else {
+                    showToast('Error: ' + revisionData.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to submit revision', 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadSubmissions);
+        
+        // Refresh every 60 seconds
+        setInterval(loadSubmissions, 60000);
+
+        // Close modal when clicking outside
+        document.getElementById('qc-feedback-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeFeedbackModal();
+        });
+    </script>
+</div>
+                                <option>SS20250901 - Management Research</option>
+                                <option>JD20250102 - [REVISION] Ethics Case Study</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Submission Type</label>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer">
+                                <option>Full Draft Submission</option>
+                                <option>Partial/Update Submission</option>
+                                <option>Revision Fixed Draft</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Draft URL (Drive / OneDrive Link)</label>
+                        <div class="relative">
+                            <i class="fi fi-rr-link absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="url" name="url" placeholder="https://docs.google.com/document/d/..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Plagiarism Score (%)</label>
+                            <div class="relative">
+                                <i class="fi fi-rr-copy-alt absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" name="plagiarism_score" placeholder="e.g. 5" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">AI Score (%)</label>
+                            <div class="relative">
+                                <i class="fi fi-rr-robot absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" name="ai_score" placeholder="e.g. 10" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Grammarly Score</label>
+                            <div class="relative">
+                                <i class="fi fi-rr-spell-check absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" name="grammarly_score" placeholder="e.g. 95" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 pl-12 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative group">
+                        <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                        <div class="border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center transition-all group-hover:border-indigo-400 group-hover:bg-indigo-50/30">
+                            <i class="fi fi-rr-upload text-2xl text-slate-300 group-hover:text-indigo-600 mb-2 block"></i>
+                            <p class="font-bold text-slate-700 text-sm">Upload Draft File / Report</p>
+                            <p class="text-[10px] text-slate-400 mt-1 uppercase">Max Size: 50MB (.docx, .pdf, .zip)</p>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-black text-sm shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.01] active:scale-[0.98] transition-all">
+                        Submit Final Draft to QC
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm h-full">
+                <h3 class="font-black text-slate-800 mb-6">Live Status Tracker</h3>
+                
+                <div class="space-y-4">
+                    <div class="p-5 bg-red-50 rounded-3xl border border-red-100 relative overflow-hidden group">
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-black text-red-600 uppercase">#JD20250102</span>
+                                <span class="bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Rejected</span>
+                            </div>
+                            <p class="text-sm font-bold text-slate-800">Ethics Revision</p>
+                            <p class="text-[10px] text-red-500 font-bold mt-2 flex items-center gap-1">
+                                <i class="fi fi-rr-comment-info"></i> AI score too high (25%)
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="p-5 bg-slate-50 rounded-3xl border border-slate-100">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-black text-indigo-600 uppercase">#SS20250901</span>
+                            <span class="bg-amber-100 text-amber-700 text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Pending QC</span>
+                        </div>
+                        <p class="text-sm font-bold text-slate-800">Management Draft</p>
+                        <div class="flex gap-4 mt-3">
+                            <div class="text-[9px] font-bold text-slate-400">Plag: 2%</div>
+                            <div class="text-[9px] font-bold text-slate-400">AI: 5%</div>
+                            <div class="text-[9px] font-bold text-slate-400">Gram: 98</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-10 p-5 bg-indigo-50 rounded-3xl border border-indigo-100">
+                    <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Writer Guide</p>
+                    <p class="text-xs text-indigo-700 leading-relaxed font-medium">
+                        Always ensure <span class="font-bold">Plagiarism < 10%</span> and <span class="font-bold">AI < 5%</span> for first-time approval.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

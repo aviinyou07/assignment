@@ -1,0 +1,206 @@
+<section class="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+
+  <!-- HEADER -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-black text-slate-800">Edit Profile</h1>
+      <p class="text-slate-500 mt-1">Update your account information and security settings</p>
+    </div>
+    <button onclick="window.location.href='/writer/profile'" class="text-indigo-600 hover:text-indigo-700 font-bold text-sm flex items-center gap-2 bg-none border-0 cursor-pointer">
+      <i class="fi fi-rr-arrow-left"></i> Back
+    </button>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <!-- LEFT SIDE - EDIT FORM -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- EDIT PROFILE FORM -->
+      <form id="editProfileForm" class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
+        <h3 class="text-lg font-black text-slate-800 flex items-center gap-2 pb-4 border-b border-slate-200">
+          <i class="fi fi-rr-user-gear text-indigo-500"></i>
+          Personal Information
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Full Name -->
+          <div class="md:col-span-2">
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Full Name *</label>
+            <input 
+              type="text" 
+              name="full_name" 
+              value="<%= profile.full_name %>"
+              placeholder="John Doe"
+              required
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <p class="text-xs text-slate-400 mt-1">Your full name as it appears on documents</p>
+          </div>
+
+          <!-- Email (Read-only) -->
+          <div class="md:col-span-2">
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Email Address</label>
+            <input 
+              type="email" 
+              value="<%= profile.email %>"
+              readonly
+              class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed"
+            >
+            <p class="text-xs text-slate-400 mt-1">Contact admin to change email</p>
+          </div>
+
+          <!-- Mobile Number -->
+          <div class="md:col-span-2">
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Mobile Number *</label>
+            <input 
+              type="tel" 
+              name="mobile_number" 
+              value="<%= profile.mobile_number || '' %>"
+              placeholder="+1234567890"
+              required
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <!-- WhatsApp -->
+          <div class="md:col-span-2">
+            <label class="text-sm font-bold text-slate-700 mb-2 block">WhatsApp</label>
+            <input 
+              type="tel" 
+              name="whatsapp" 
+              value="<%= profile.whatsapp || '' %>"
+              placeholder="+1234567890"
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <!-- University -->
+          <div class="md:col-span-2">
+            <label class="text-sm font-bold text-slate-700 mb-2 block">University/Institution</label>
+            <input 
+              type="text" 
+              name="university" 
+              value="<%= profile.university || '' %>"
+              placeholder="Enter your university"
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+        </div>
+
+        <div class="flex gap-4 pt-4">
+          <button 
+            type="submit"
+            class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg"
+          >
+            <i class="fi fi-rr-check mr-2"></i> Save Changes
+          </button>
+          <a 
+            href="/writer/profile"
+            class="flex-1 bg-slate-100 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all text-center"
+          >
+            <i class="fi fi-rr-cross mr-2"></i> Cancel
+          </a>
+        </div>
+      </form>
+
+    </div>
+
+    <!-- RIGHT SIDE - INFO & STATUS -->
+    <div class="space-y-6">
+
+      <!-- Account Status -->
+      <div class="bg-gradient-to-br from-indigo-50 to-violet-50 p-6 rounded-[2rem] border border-indigo-200">
+        <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <i class="fi fi-rr-shield-check text-indigo-600"></i> Account Status
+        </h4>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600">Verification</span>
+            <span class="<%= profile.is_verified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %> px-3 py-1 rounded-full text-xs font-bold">
+              <%= profile.is_verified ? 'Verified' : 'Pending' %>
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600">Account Role</span>
+            <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold capitalize">
+              <%= profile.role %>
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600">Joined</span>
+            <span class="text-slate-700 font-bold"><%= new Date(profile.created_at).toLocaleDateString() %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Tips -->
+      <div class="bg-white p-6 rounded-[2rem] border border-slate-200">
+        <h4 class="font-bold text-slate-800 mb-4">Security Tips</h4>
+        <ul class="space-y-3 text-sm text-slate-600">
+          <li class="flex gap-2">
+            <i class="fi fi-rr-check text-green-500 mt-0.5"></i>
+            <span>Use a strong password with uppercase, lowercase, numbers, and symbols</span>
+          </li>
+          <li class="flex gap-2">
+            <i class="fi fi-rr-check text-green-500 mt-0.5"></i>
+            <span>Never share your password with anyone</span>
+          </li>
+          <li class="flex gap-2">
+            <i class="fi fi-rr-check text-green-500 mt-0.5"></i>
+            <span>Enable 2FA for additional security</span>
+          </li>
+          <li class="flex gap-2">
+            <i class="fi fi-rr-check text-green-500 mt-0.5"></i>
+            <span>Review login activity regularly</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+<script>
+  // Update Profile
+  document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+
+    try {
+      const response = await fetch('/writer/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showNotification('Profile updated successfully', 'success');
+        setTimeout(() => window.location.href = '/writer/profile', 1500);
+      } else {
+        showNotification(result.message || 'Failed to update profile', 'error');
+      }
+    } catch (err) {
+      console.error('Profile update error:', err);
+      showNotification('An error occurred', 'error');
+    }
+  });
+
+  // Notification Helper
+  function showNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `fixed top-4 right-4 px-6 py-3 rounded-xl font-bold text-white z-50 animate-in slide-in-from-top ${
+      type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    }`;
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+
+    setTimeout(() => alertDiv.remove(), 4000);
+  }
+</script>

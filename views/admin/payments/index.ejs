@@ -1,0 +1,180 @@
+<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-black text-slate-800">Payment Verification</h1>
+        <p class="text-slate-600 mt-1">Verify customer payment receipts and process payments</p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-slate-500">Pending Verifications</p>
+        <p class="text-3xl font-black text-red-600"><%= total %></p>
+      </div>
+    </div>
+
+    <!-- PAYMENT FILTERS -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <h3 class="text-lg font-black text-slate-800 mb-4">Filter</h3>
+      
+      <form method="GET" action="/admin/payments" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-bold text-slate-700 mb-2 block">Status</label>
+            <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+              <option value="pending" <%= filters.status === 'pending' ? 'selected' : '' %>>Pending</option>
+              <option value="verified" <%= filters.status === 'verified' ? 'selected' : '' %>>Verified</option>
+              <option value="rejected" <%= filters.status === 'rejected' ? 'selected' : '' %>>Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all">
+            <i class="fi fi-rr-search mr-2"></i>Apply Filter
+          </button>
+          <a href="/admin/payments" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-300 transition-all inline-block">
+            <i class="fi fi-rr-arrow-rotate-left mr-2"></i>Reset
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- PAYMENTS TABLE -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Order</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Customer</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Amount</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Method</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Receipt</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Uploaded</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            <% payments.forEach(payment => { %>
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-800"><%= payment.order_code || 'N/A' %></div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-800"><%= payment.full_name %></div>
+                  <div class="text-xs text-slate-500"><%= payment.email %></div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-bold text-emerald-600">$<%= parseFloat(payment.amount).toFixed(2) %></div>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-600"><%= payment.payment_method %></td>
+                <td class="px-6 py-4">
+                  <% if (payment.payment_doc) { %>
+                    <a href="<%= payment.payment_doc %>" target="_blank" class="text-blue-600 hover:text-blue-700 font-bold text-sm flex items-center gap-1">
+                      <i class="fi fi-rr-file-pdf"></i> View
+                    </a>
+                  <% } else { %>
+                    <span class="text-slate-500 text-sm">No receipt</span>
+                  <% } %>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-600">
+                  <%= new Date(payment.created_at).toLocaleDateString() %>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex gap-2">
+                    <button onclick="verifyPayment(<%= payment.payment_id %>, 'verified')" class="bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                      <i class="fi fi-rr-check-circle mr-1"></i>Verify
+                    </button>
+                    <button onclick="verifyPayment(<%= payment.payment_id %>, 'rejected')" class="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                      <i class="fi fi-rr-circle-xmark mr-1"></i>Reject
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if (payments.length === 0) { %>
+        <div class="p-8 text-center text-slate-400">
+          <i class="fi fi-rr-inbox text-4xl block mb-2"></i>
+          <p>No pending payments</p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- PAGINATION -->
+    <% if (pages > 1) { %>
+      <div class="flex justify-center gap-2">
+        <% for (let i = 1; i <= pages; i++) { %>
+          <% if (i === page) { %>
+            <span class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+              <%= i %>
+            </span>
+          <% } else { %>
+            <a href="/admin/payments?page=<%= i %>&status=<%= filters.status %>" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm transition-all">
+              <%= i %>
+            </a>
+          <% } %>
+        <% } %>
+      </div>
+    <% } %>
+
+  </div>
+</section>
+
+<script>
+async function verifyPayment(paymentId, action) {
+  let percentage = 100;
+  
+  if (action === 'verified') {
+    const percentageOptions = [
+      { value: '50', label: '50% Payment' },
+      { value: '100', label: '100% Full Payment' }
+    ];
+    
+    const selected = await showInputModal(
+      'Verify Payment',
+      'Select the payment percentage:',
+      '',
+      percentageOptions
+    );
+    
+    if (!selected) return;
+    percentage = parseInt(selected);
+  }
+
+  const confirmTitle = action === 'verified' ? 'Verify Payment' : 'Reject Payment';
+  const confirmMsg = action === 'verified' 
+    ? `Verify this payment for ${percentage}%?` 
+    : 'Are you sure you want to reject this payment?';
+  const confirmType = action === 'verified' ? 'success' : 'danger';
+
+  const confirmed = await showConfirmModal(confirmTitle, confirmMsg, confirmType);
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(`/admin/payments/${paymentId}/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        verification_status: action,
+        percentage: percentage
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showToast(`Payment ${action === 'verified' ? 'verified' : 'rejected'} successfully!`, 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Failed: ' + (result.message || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+</script>

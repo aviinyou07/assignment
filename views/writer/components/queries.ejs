@@ -1,0 +1,455 @@
+<div class="space-y-6 animate-in fade-in duration-500">
+    
+    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">New Task Assignments</h2>
+            <p class="text-sm text-slate-500 font-medium">Review pending assignments and accept/decline within the response deadline.</p>
+        </div>
+        <div class="flex items-center gap-3 bg-orange-50 p-4 rounded-3xl border border-orange-100">
+            <div class="text-right">
+                <p class="text-[10px] font-black text-orange-400 uppercase tracking-widest">Awaiting Response</p>
+                <p class="text-xl font-black text-orange-700" id="pending-count">-</p>
+            </div>
+            <div class="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
+                <i class="fi fi-rr-document-signed"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr class="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                        <th class="px-8 py-5">Work Code</th>
+                        <th class="px-6 py-5">Topic & Details</th>
+                        <th class="px-6 py-5">Deadline</th>
+                        <th class="px-6 py-5">Urgency</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100" id="pending-tasks-list">
+                    <tr>
+                        <td colspan="5" class="px-8 py-6 text-center text-slate-500">
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading pending tasks...
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="task-details-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-auto shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div class="sticky top-0 bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 border-b border-slate-700">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-black" id="modal-work-code">Work Code</h2>
+                        <p class="text-slate-300 text-sm mt-1" id="modal-topic">Topic</p>
+                    </div>
+                    <button onclick="closeTaskModal()" class="text-white hover:text-slate-300 text-2xl">
+                        <i class="fi fi-rr-cross"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-8 space-y-6">
+                <!-- Basic Info -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Service Type</p>
+                        <p class="text-lg font-black text-slate-800 mt-2" id="modal-service">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Subject</p>
+                        <p class="text-lg font-black text-slate-800 mt-2" id="modal-subject">-</p>
+                    </div>
+                </div>
+
+                <!-- Requirements -->
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Task Requirements</p>
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4" id="modal-description">
+                        <p class="text-slate-700">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Deadline & Urgency -->
+                <div class="grid grid-cols-2 gap-6 bg-amber-50 border border-amber-200 p-4 rounded-2xl">
+                    <div>
+                        <p class="text-xs font-bold text-amber-600 uppercase tracking-widest">Deadline</p>
+                        <p class="text-lg font-black text-amber-700 mt-1" id="modal-deadline">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-amber-600 uppercase tracking-widest">Urgency</p>
+                        <p class="text-lg font-black text-amber-700 mt-1" id="modal-urgency">-</p>
+                    </div>
+                </div>
+
+                <!-- Uploaded Documents -->
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">📎 Uploaded Documents</p>
+                    <div id="modal-documents" class="space-y-2">
+                        <p class="text-slate-500 text-sm">No documents uploaded</p>
+                    </div>
+                </div>
+
+                <!-- Admin Notes -->
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Admin Notes</p>
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-slate-700" id="modal-notes">
+                        <p class="text-sm italic text-slate-600">No additional notes</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3 pt-4 border-t border-slate-200">
+                    <button onclick="acceptTaskFromModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-emerald-200">
+                        <i class="fi fi-rr-check-circle mr-2"></i> Accept as DOABLE
+                    </button>
+                    <button onclick="declineTaskFromModal()" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-colors border border-red-200">
+                        <i class="fi fi-rr-circle-xmark mr-2"></i> Decline (NOT DOABLE)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentModalTaskId = null;
+
+        // Load pending tasks
+        async function loadPendingTasks() {
+            try {
+                const response = await fetch('/writer/api/tasks/pending?sortBy=deadline_at&order=ASC');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tasksList = document.getElementById('pending-tasks-list');
+                    document.getElementById('pending-count').textContent = data.tasks.length;
+                    
+                    if (data.tasks.length === 0) {
+                        tasksList.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="px-8 py-12 text-center">
+                                    <div class="space-y-2">
+                                        <i class="fi fi-rr-document-blank text-4xl text-slate-300 block"></i>
+                                        <p class="text-slate-500 font-medium">No pending tasks at the moment</p>
+                                        <p class="text-slate-400 text-sm">Check back later for new assignments</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
+                    tasksList.innerHTML = data.tasks.map(task => {
+                        const urgencyColors = {
+                            'High': 'bg-red-100 text-red-700',
+                            'Medium': 'bg-amber-100 text-amber-700',
+                            'Low': 'bg-emerald-100 text-emerald-700'
+                        };
+                        const urgencyClass = urgencyColors[task.urgency] || 'bg-slate-100 text-slate-700';
+                        
+                        return `
+                            <tr class="hover:bg-slate-50/50 transition-all group">
+                                <td class="px-8 py-6">
+                                    <span class="text-sm font-black text-indigo-600 block mb-1 uppercase tracking-tight">${task.work_code || task.order_id}</span>
+                                    <span class="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-0.5 rounded-md uppercase">${task.subject || 'General'}</span>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <p class="text-sm font-bold text-slate-700 truncate max-w-[250px]">${task.topic || 'No topic'}</p>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase">${task.service || 'Service'} • ${task.uploaded_documents_count || 0} documents</p>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <p class="text-sm font-bold text-slate-700">${new Date(task.deadline_at).toLocaleDateString('en-US', {month: 'short', day: '2-digit', year: 'numeric'})}</p>
+                                    <p class="text-[10px] text-slate-400 font-bold">Response by: ${new Date(task.response_deadline).toLocaleDateString()}</p>
+                                </td>
+                                <td class="px-6 py-6">
+                                    <span class="inline-block ${urgencyClass} text-xs font-black px-3 py-1 rounded-full uppercase">
+                                        ${task.urgency || 'Normal'}
+                                    </span>
+                                </td>
+                                <td class="px-8 py-6 text-right">
+                                    <button onclick="openTaskDetailsModal(${task.order_id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-100">
+                                        Review Details
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading pending tasks:', error);
+            }
+        }
+
+        // Open task details modal
+        async function openTaskDetailsModal(taskId) {
+            try {
+                const response = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const task = data.task;
+                    currentModalTaskId = taskId;
+                    
+                    document.getElementById('modal-work-code').textContent = task.work_code || task.order_id;
+                    document.getElementById('modal-topic').textContent = task.topic || 'No topic';
+                    document.getElementById('modal-service').textContent = task.service || '-';
+                    document.getElementById('modal-subject').textContent = task.subject || '-';
+                    document.getElementById('modal-description').innerHTML = task.description ? `<p class="text-slate-700 whitespace-pre-wrap">${task.description}</p>` : '<p class="text-slate-500">No requirements provided</p>';
+                    document.getElementById('modal-deadline').textContent = new Date(task.deadline_at).toLocaleDateString('en-US', {month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+                    document.getElementById('modal-urgency').textContent = task.urgency || 'Normal';
+                    document.getElementById('modal-notes').innerHTML = task.admin_notes ? `<p class="text-sm text-slate-700">${task.admin_notes}</p>` : '<p class="text-sm italic text-slate-600">No additional notes</p>';
+                    
+                    // Documents
+                    if (task.documents && task.documents.length > 0) {
+                        document.getElementById('modal-documents').innerHTML = task.documents.map(doc => `
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex justify-between items-center group hover:bg-slate-100 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <i class="fi fi-rr-document text-indigo-600 text-lg"></i>
+                                    <div>
+                                        <p class="text-sm font-bold text-slate-700">${doc.file_name}</p>
+                                        <p class="text-xs text-slate-400">${(doc.file_size / 1024).toFixed(2)} KB</p>
+                                    </div>
+                                </div>
+                                <a href="${doc.file_url}" target="_blank" class="text-indigo-600 hover:text-indigo-700 font-bold">
+                                    <i class="fi fi-rr-download"></i>
+                                </a>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    document.getElementById('task-details-modal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading task details:', error);
+                showToast('Failed to load task details', 'error');
+            }
+        }
+
+        function closeTaskModal() {
+            document.getElementById('task-details-modal').classList.add('hidden');
+            currentModalTaskId = null;
+        }
+
+        // Accept task from modal
+        async function acceptTaskFromModal() {
+            if (!currentModalTaskId) return;
+            
+            try {
+                const response = await fetch(`/writer/api/tasks/${currentModalTaskId}/accept`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeTaskModal();
+                    loadPendingTasks();
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to accept task', 'error');
+            }
+        }
+
+        // Decline task from modal
+        async function declineTaskFromModal() {
+            const reason = await showInputModal(
+                'Decline Task',
+                'Please explain why this task is NOT DOABLE for you. Be specific about limitations or requirements you cannot meet.',
+                'Enter your reason...'
+            );
+            
+            if (!reason) return;
+            
+            submitDecline(currentModalTaskId, reason);
+        }
+
+        async function submitDecline(taskId, reason) {
+            try {
+                const response = await fetch(`/writer/api/tasks/${taskId}/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeTaskModal();
+                    loadPendingTasks();
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Failed to decline task', 'error');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', loadPendingTasks);
+        
+        // Refresh every 10 seconds for real-time updates
+        setInterval(loadPendingTasks, 10000);
+
+        // Close modal when clicking outside
+        document.getElementById('task-details-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeTaskModal();
+        });
+    </script>
+</div>
+                                    service: 'Essay Writing',
+                                    subject: 'History',
+                                    urgency: 'High',
+                                    deadline: '2026-01-15',
+                                    words: '3,500',
+                                    description: 'Write a comprehensive essay on climate change impact focusing on the industrial revolution to modern era. Ensure specific data on GDP impact is included.'
+                                })" class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                                    <i class="fi fi-rr-eye"></i>
+                                </button>
+                                
+                                <button onclick="openActionModal('AA20260103', 'accept')" class="bg-emerald-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">Accept</button>
+                                <button onclick="openActionModal('AA20260103', 'reject')" class="bg-white border border-slate-200 text-slate-400 px-5 py-2 rounded-xl text-xs font-bold hover:bg-red-50 hover:text-red-600 transition-all">Reject</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="brief-modal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div class="bg-slate-900 p-8 text-white relative">
+            <div class="relative z-10 flex justify-between items-start">
+                <div>
+                    <span id="br-urgency" class="bg-red-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3 inline-block">High Urgency</span>
+                    <h3 id="br-topic" class="text-xl font-black leading-tight">Project Title</h3>
+                    <p class="text-indigo-300 text-sm font-bold mt-1">Order Code: <span id="br-work-code"></span></p>
+                </div>
+                <button onclick="closeBriefModal()" class="text-white/50 hover:text-white"><i class="fi fi-rr-cross-small text-3xl"></i></button>
+            </div>
+            <i class="fi fi-rr-info absolute right-[-20px] top-1/2 -translate-y-1/2 text-9xl text-white/5 pointer-events-none"></i>
+        </div>
+
+        <div class="p-8 space-y-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">Service</label>
+                    <p id="br-service" class="text-xs font-bold text-slate-800"></p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">Subject</label>
+                    <p id="br-subject" class="text-xs font-bold text-slate-800"></p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">Words</label>
+                    <p id="br-words" class="text-xs font-bold text-slate-800"></p>
+                </div>
+                <div class="p-4 bg-red-50 rounded-2xl border border-red-100">
+                    <label class="text-[9px] font-black text-red-400 uppercase block mb-1">Deadline</label>
+                    <p id="br-deadline" class="text-xs font-bold text-red-600"></p>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-2">Task Description / Brief</label>
+                <div class="p-5 bg-slate-50 rounded-3xl border border-slate-100 text-sm text-slate-600 leading-relaxed max-h-40 overflow-y-auto custom-scrollbar italic" id="br-description">
+                </div>
+            </div>
+
+            <div class="flex gap-4 pt-2">
+                <button onclick="closeBriefModal(); openActionModal(activeBriefCode, 'accept')" class="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all">Accept Task</button>
+                <button onclick="closeBriefModal(); openActionModal(activeBriefCode, 'reject')" class="flex-1 bg-white border border-slate-200 text-slate-400 py-4 rounded-2xl font-black text-sm hover:bg-red-50 hover:text-red-600 transition-all">Decline Assignment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="action-modal" class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8">
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <h3 id="modal-title" class="text-xl font-black text-slate-800">Final Confirmation</h3>
+                <p class="text-sm text-slate-500 font-bold mt-1 tracking-tight">Ref: <span id="modal-work-code" class="text-indigo-600 font-black"></span></p>
+            </div>
+            <button onclick="closeActionModal()"><i class="fi fi-rr-cross-small text-2xl text-slate-400"></i></button>
+        </div>
+        <form class="space-y-5">
+            <input type="hidden" id="action-type">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Reason / Message for <span id="action-label"></span></label>
+                <textarea id="action-reason" required rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Enter your detailed response here..."></textarea>
+            </div>
+            
+            <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+                <i class="fi fi-rr-info text-amber-500"></i>
+                <p class="text-[11px] text-amber-800 leading-tight font-medium">Your decision will be synced with the Admin & BDE panel for real-time tracking.</p>
+            </div>
+
+            <button type="submit" id="submit-btn" class="w-full py-4 rounded-2xl font-black text-sm transition-all shadow-xl">Submit Decision</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let activeBriefCode = "";
+
+    function openBriefModal(data) {
+        activeBriefCode = data.workCode;
+        document.getElementById('br-topic').innerText = data.topic;
+        document.getElementById('br-work-code').innerText = data.workCode;
+        document.getElementById('br-service').innerText = data.service;
+        document.getElementById('br-subject').innerText = data.subject;
+        document.getElementById('br-words').innerText = data.words;
+        document.getElementById('br-deadline').innerText = data.deadline;
+        document.getElementById('br-description').innerText = data.description;
+        
+        const urg = document.getElementById('br-urgency');
+        urg.innerText = data.urgency + " Urgency";
+        urg.className = data.urgency === 'High' ? 'bg-red-500 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3 inline-block text-white' : 'bg-indigo-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3 inline-block text-white';
+
+        document.getElementById('brief-modal').classList.remove('hidden');
+    }
+
+    function closeBriefModal() { document.getElementById('brief-modal').classList.add('hidden'); }
+
+    function openActionModal(code, type) {
+        activeBriefCode = code;
+        const modal = document.getElementById('action-modal');
+        const title = document.getElementById('modal-title');
+        const label = document.getElementById('action-label');
+        const btn = document.getElementById('submit-btn');
+        const reason = document.getElementById('action-reason');
+        
+        document.getElementById('modal-work-code').innerText = code;
+        
+        if(type === 'accept') {
+            title.innerText = "Accept Assignment";
+            label.innerText = "Acceptance";
+            reason.required = false;
+            btn.className = "w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-emerald-100 shadow-xl hover:bg-emerald-700 transition-all";
+        } else {
+            title.innerText = "Reject Assignment";
+            label.innerText = "Rejection (Reason Required)";
+            reason.required = true;
+            btn.className = "w-full bg-red-600 text-white py-4 rounded-2xl font-black text-sm shadow-red-100 shadow-xl hover:bg-red-700 transition-all";
+        }
+        modal.classList.remove('hidden');
+    }
+
+    function closeActionModal() { document.getElementById('action-modal').classList.add('hidden'); }
+</script>
