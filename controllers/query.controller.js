@@ -79,8 +79,10 @@ exports.viewQuery = async (req, res) => {
     // Get order details (query)
     const [[query]] = await db.query(
       `SELECT 
-        o.order_id, o.query_code, o.user_id, u.full_name, u.email, u.mobile_number, u.university,
-        o.paper_topic as topic, o.description, o.urgency, o.deadline_at as deadline, o.status, o.created_at
+        o.order_id, o.query_code, o.query_code as order_code, o.user_id, u.full_name, u.email, u.mobile_number, u.university,
+        o.paper_topic, o.paper_topic as topic, o.description, o.service, o.subject, o.urgency, 
+        o.deadline_at as deadline, o.status, o.created_at,
+        o.basic_price_usd, o.discount_usd, o.total_price_usd
       FROM orders o
       JOIN users u ON o.user_id = u.user_id
       WHERE o.order_id = ?`,
@@ -408,6 +410,65 @@ exports.reassignWriter = async (req, res) => {
     });
   } catch (error) {
     console.error('Error reassigning writer:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Send message to client
+exports.sendMessageToClient = async (req, res) => {
+  try {
+    const { queryId } = req.params;
+    const { userId, subject, message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+
+    // Get client details
+    const [[client]] = await db.query(
+      `SELECT user_id, email, full_name FROM users WHERE user_id = ?`,
+      [userId]
+    );
+
+    if (!client) {
+      return res.status(404).json({ success: false, error: 'Client not found' });
+    }
+
+    // Get query details
+    const [[query]] = await db.query(
+      `SELECT order_id, query_code, paper_topic FROM orders WHERE order_id = ?`,
+      [queryId]
+    );
+
+    // Send email
+    await sendMail({
+      to: client.email,
+      subject: subject || `Message regarding your query`,
+      html: `
+        <p>Hi ${client.full_name},</p>
+        <p>${message.replace(/\n/g, '<br>')}</p>
+        ${query ? `<p><small>Reference: ${query.query_code}</small></p>` : ''}
+        <p>Best regards,<br>Admin Team</p>
+      `
+    });
+
+    // Log action
+    await logAction({
+      userId: req.user.user_id,
+      action: 'message_sent',
+      details: `Message sent to client: ${client.email}`,
+      resource_type: 'order',
+      resource_id: queryId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'Message sent successfully'
+    });
+  } catch (error) {
+    console.error('Error sending message:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

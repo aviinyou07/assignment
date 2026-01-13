@@ -97,6 +97,59 @@
           </div>
         </div>
 
+        <!-- ASSIGNED WRITERS CARD -->
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+            <h3 class="text-lg font-black text-slate-800">Assigned Writers</h3>
+            <span class="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">
+              <%= assignedWriters ? assignedWriters.length : 0 %> Assigned
+            </span>
+          </div>
+
+          <% if (assignedWriters && assignedWriters.length > 0) { %>
+            <div class="space-y-3">
+              <% assignedWriters.forEach(writer => { %>
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm">
+                      <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                    </div>
+                    <div>
+                      <p class="font-bold text-slate-800 text-sm"><%= writer.full_name %></p>
+                      <p class="text-xs text-slate-500"><%= writer.email %></p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <% 
+                      const writerStatusColors = {
+                        'pending': 'bg-yellow-100 text-yellow-700',
+                        'accepted': 'bg-green-100 text-green-700',
+                        'rejected': 'bg-red-100 text-red-700',
+                        'in_progress': 'bg-blue-100 text-blue-700',
+                        'completed': 'bg-emerald-100 text-emerald-700',
+                        'not_doable': 'bg-slate-100 text-slate-700'
+                      };
+                      const writerStatusColor = writerStatusColors[writer.status] || 'bg-slate-100 text-slate-700';
+                    %>
+                    <span class="<%= writerStatusColor %> px-2 py-1 rounded-full text-xs font-bold capitalize">
+                      <%= writer.status ? writer.status.replace('_', ' ') : 'Pending' %>
+                    </span>
+                    <p class="text-xs text-slate-400 mt-1"><%= new Date(writer.assigned_at).toLocaleDateString() %></p>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          <% } else { %>
+            <div class="text-center py-8">
+              <i class="fi fi-rr-users text-4xl text-slate-300 mb-3 block"></i>
+              <p class="text-slate-500 text-sm">No writers assigned yet</p>
+              <button onclick="openAssignWriterModal()" class="mt-3 text-purple-600 hover:text-purple-700 font-bold text-sm">
+                <i class="fi fi-rr-plus mr-1"></i> Assign Writers
+              </button>
+            </div>
+          <% } %>
+        </div>
+
       </div>
 
       <!-- SIDEBAR -->
@@ -163,13 +216,13 @@
           <h3 class="text-lg font-black text-slate-800 mb-4 pb-3 border-b border-slate-200">Actions</h3>
 
           <div class="space-y-2">
-            <button class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
+            <button onclick="openQuotationModal()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
               <i class="fi fi-rr-document-signed"></i>Generate Quotation
             </button>
-            <button class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition flex items-center justify-center gap-2">
+            <button onclick="openAssignWriterModal()" class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition flex items-center justify-center gap-2">
               <i class="fi fi-rr-user-add"></i>Assign Writers
             </button>
-            <button class="w-full bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700 transition flex items-center justify-center gap-2">
+            <button onclick="openMessageModal()" class="w-full bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700 transition flex items-center justify-center gap-2">
               <i class="fi fi-rr-comment"></i>Send Message
             </button>
           </div>
@@ -182,8 +235,108 @@
   </div>
 </section>
 
+<!-- Quotation Modal -->
+<div id="quotation-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+    <div class="p-6 border-b border-slate-200">
+      <h3 class="text-xl font-black text-slate-800">Generate Quotation</h3>
+      <p class="text-sm text-slate-500 mt-1">Create a price quotation for this query</p>
+    </div>
+    <form id="quotation-form" class="p-6 space-y-4">
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Base Price (USD) *</label>
+        <input type="number" name="basePrice" step="0.01" min="0" required
+               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+               placeholder="Enter base price">
+      </div>
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Urgency Charge (USD)</label>
+        <input type="number" name="urgencyCharge" step="0.01" min="0" value="0"
+               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+               placeholder="Additional urgency charge">
+      </div>
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Notes</label>
+        <textarea name="notes" rows="3"
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Additional notes for the quotation..."></textarea>
+      </div>
+      <div class="flex gap-3 pt-4">
+        <button type="button" onclick="closeQuotationModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
+        <button type="submit" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">Generate & Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assign Writer Modal -->
+<div id="assign-writer-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+    <div class="p-6 border-b border-slate-200">
+      <h3 class="text-xl font-black text-slate-800">Assign Writers</h3>
+      <p class="text-sm text-slate-500 mt-1">Select writers to assign to this query</p>
+    </div>
+    <form id="assign-writer-form" class="p-6 space-y-4">
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Select Writers *</label>
+        <div id="writers-list" class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-2">
+          <div class="text-center py-4 text-slate-500">Loading writers...</div>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Assignment Notes</label>
+        <textarea name="notes" rows="2"
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Instructions or notes for the writers..."></textarea>
+      </div>
+      <div class="flex gap-3 pt-4">
+        <button type="button" onclick="closeAssignWriterModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
+        <button type="submit" class="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 transition">Assign Writers</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Send Message Modal -->
+<div id="message-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+    <div class="p-6 border-b border-slate-200">
+      <h3 class="text-xl font-black text-slate-800">Send Message</h3>
+      <p class="text-sm text-slate-500 mt-1">Send a message to the client</p>
+    </div>
+    <form id="message-form" class="p-6 space-y-4">
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Recipient</label>
+        <div class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+          <span class="font-semibold text-slate-800"><%= query.full_name %></span>
+          <span class="text-slate-500 text-sm ml-2">(<%= query.email %>)</span>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Subject</label>
+        <input type="text" name="subject" required
+               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+               value="Regarding Query: <%= query.query_code || query.order_code %>">
+      </div>
+      <div>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Message *</label>
+        <textarea name="message" rows="4" required
+                  class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  placeholder="Type your message here..."></textarea>
+      </div>
+      <div class="flex gap-3 pt-4">
+        <button type="button" onclick="closeMessageModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
+        <button type="submit" class="flex-1 bg-slate-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-700 transition">Send Message</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
-function showStatusModal() {
+const queryId = '<%= query.order_id %>';
+
+// Status Modal
+async function showStatusModal() {
   const statuses = [
     { value: 'new', label: 'New' },
     { value: 'under-review', label: 'Under Review' },
@@ -193,15 +346,16 @@ function showStatusModal() {
     { value: 'closed', label: 'Closed' }
   ];
 
-  const statusStr = statuses.map((s, i) => `${i}: ${s.label}`).join('\n');
-  const selected = prompt('Select new status:\n' + statusStr);
+  const selected = await showInputModal('Update Query Status', 'Select the new status for this query:', '', {
+    options: statuses.map(s => ({ value: s.value, label: s.label }))
+  });
   
-  if (selected === null || isNaN(selected) || selected < 0 || selected > 5) return;
+  if (!selected) return;
 
-  fetch(`/admin/queries/<%= query.order_id %>/status`, {
+  fetch(`/admin/queries/${queryId}/status`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: statuses[selected].value })
+    body: JSON.stringify({ status: selected })
   })
   .then(res => res.json())
   .then(result => {
@@ -214,4 +368,183 @@ function showStatusModal() {
   })
   .catch(err => showToast('Error: ' + err.message, 'error'));
 }
+
+// Quotation Modal
+function openQuotationModal() {
+  document.getElementById('quotation-modal').classList.remove('hidden');
+}
+
+function closeQuotationModal() {
+  document.getElementById('quotation-modal').classList.add('hidden');
+  document.getElementById('quotation-form').reset();
+}
+
+document.getElementById('quotation-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const basePrice = parseFloat(formData.get('basePrice'));
+  const urgencyCharge = parseFloat(formData.get('urgencyCharge')) || 0;
+  const notes = formData.get('notes');
+
+  if (!basePrice || basePrice <= 0) {
+    showToast('Please enter a valid base price', 'warning');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/admin/queries/${queryId}/quotation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ queryId, basePrice, urgencyCharge, notes })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showToast('Quotation generated and sent to client!', 'success');
+      closeQuotationModal();
+      location.reload();
+    } else {
+      showToast('Error: ' + (result.error || 'Failed to generate quotation'), 'error');
+    }
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+});
+
+// Assign Writer Modal
+let availableWriters = [];
+
+async function openAssignWriterModal() {
+  document.getElementById('assign-writer-modal').classList.remove('hidden');
+  
+  // Fetch available writers
+  try {
+    const response = await fetch('/admin/queries/available-writers');
+    const data = await response.json();
+    
+    if (data.success && data.writers.length > 0) {
+      availableWriters = data.writers;
+      document.getElementById('writers-list').innerHTML = data.writers.map(writer => `
+        <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+          <input type="checkbox" name="writerIds" value="${writer.user_id}" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+          <div class="flex-1">
+            <p class="font-semibold text-slate-800 text-sm">${writer.full_name}</p>
+            <p class="text-xs text-slate-500">${writer.email}</p>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full ${writer.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
+            ${writer.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </label>
+      `).join('');
+    } else {
+      document.getElementById('writers-list').innerHTML = '<div class="text-center py-4 text-slate-500">No writers available</div>';
+    }
+  } catch (error) {
+    document.getElementById('writers-list').innerHTML = '<div class="text-center py-4 text-red-500">Failed to load writers</div>';
+  }
+}
+
+function closeAssignWriterModal() {
+  document.getElementById('assign-writer-modal').classList.add('hidden');
+  document.getElementById('assign-writer-form').reset();
+}
+
+document.getElementById('assign-writer-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const writerIds = formData.getAll('writerIds').map(id => parseInt(id));
+  const notes = formData.get('notes');
+
+  if (writerIds.length === 0) {
+    showToast('Please select at least one writer', 'warning');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/admin/queries/${queryId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ queryId, writerIds, notes })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showToast(result.message || 'Writers assigned successfully!', 'success');
+      closeAssignWriterModal();
+      location.reload();
+    } else {
+      showToast('Error: ' + (result.error || 'Failed to assign writers'), 'error');
+    }
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+});
+
+// Message Modal
+function openMessageModal() {
+  document.getElementById('message-modal').classList.remove('hidden');
+}
+
+function closeMessageModal() {
+  document.getElementById('message-modal').classList.add('hidden');
+  document.getElementById('message-form').reset();
+}
+
+document.getElementById('message-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const subject = formData.get('subject');
+  const message = formData.get('message');
+
+  if (!message.trim()) {
+    showToast('Please enter a message', 'warning');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/admin/queries/${queryId}/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        userId: '<%= query.user_id %>', 
+        subject, 
+        message 
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      showToast('Message sent successfully!', 'success');
+      closeMessageModal();
+    } else {
+      showToast('Error: ' + (result.error || 'Failed to send message'), 'error');
+    }
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+});
+
+// Close modals on outside click
+document.querySelectorAll('#quotation-modal, #assign-writer-modal, #message-modal').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+    }
+  });
+});
+
+// Close modals on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('#quotation-modal, #assign-writer-modal, #message-modal').forEach(modal => {
+      modal.classList.add('hidden');
+    });
+  }
+});
 </script>

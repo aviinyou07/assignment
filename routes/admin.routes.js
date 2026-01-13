@@ -139,6 +139,12 @@ router.post(
 );
 
 router.post(
+  "/queries/:queryId/message",
+  authGuard(["admin"]),
+  queryController.sendMessageToClient
+);
+
+router.post(
   "/queries/reassign-writer",
   authGuard(["admin"]),
   queryController.reassignWriter
