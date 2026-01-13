@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const { sendNotification } = require("../utils/notifications");
 const logger = require("../utils/logger");
+const { validateTransition, STATUS } = require('../utils/state-machine');
 
 /* =====================================================
    BDE DASHBOARD - KPI METRICS & OVERVIEW

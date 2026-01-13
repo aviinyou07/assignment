@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const fs = require('fs').promises;
 const path = require('path');
+const { validateTransition, STATUS } = require('../utils/state-machine');
 
 /**
  * WRITER TASK CONTROLLER (SIMPLIFIED)

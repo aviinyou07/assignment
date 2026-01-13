@@ -388,3 +388,168 @@ exports.loginClient = async (req, res) => {
     });
   }
 };
+
+// =======================
+// OTP-BASED LOGIN - REQUEST OTP
+// =======================
+exports.requestLoginOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email required'
+      });
+    }
+
+    // Verify user exists and is a verified client
+    const [users] = await db.query(
+      'SELECT user_id, full_name, is_verified, is_active FROM users WHERE email = ? AND role = "client"',
+      [email]
+    );
+
+    if (!users.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email'
+      });
+    }
+
+    const user = users[0];
+
+    // Check if account is active
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated. Contact support.'
+      });
+    }
+
+    // Check if verified (per requirements: users.is_verified must be true)
+    if (!user.is_verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is not verified. Please complete registration first.'
+      });
+    }
+
+    // Clear old OTPs
+    await db.query('DELETE FROM user_otps WHERE email = ?', [email]);
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await db.query(
+      'INSERT INTO user_otps (email, otp, expires_at) VALUES (?, ?, ?)',
+      [email, otp, expiresAt]
+    );
+
+    // Send OTP email
+    await sendMail({
+      to: email,
+      subject: 'Your Login OTP for A366',
+      html: `
+        <h2>Login Verification</h2>
+        <p>Hi ${user.full_name},</p>
+        <p>Your OTP for login is:</p>
+        <h1 style="color: #4F46E5; font-size: 32px;">${otp}</h1>
+        <p>This OTP expires in 10 minutes.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+      `
+    });
+
+    res.json({
+      success: true,
+      message: 'OTP sent to your email'
+    });
+
+  } catch (err) {
+    console.error('requestLoginOtp error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP'
+    });
+  }
+};
+
+// =======================
+// OTP-BASED LOGIN - VERIFY OTP
+// =======================
+exports.verifyLoginOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP required'
+      });
+    }
+
+    // Verify OTP
+    const [otpRows] = await db.query(
+      'SELECT otp, expires_at FROM user_otps WHERE email = ? ORDER BY id DESC LIMIT 1',
+      [email]
+    );
+
+    if (
+      !otpRows.length ||
+      otpRows[0].otp !== otp ||
+      new Date(otpRows[0].expires_at) < new Date()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Fetch user
+    const [users] = await db.query(
+      'SELECT * FROM users WHERE email = ? AND role = "client" AND is_active = 1 AND is_verified = 1',
+      [email]
+    );
+
+    if (!users.length) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found or account inactive'
+      });
+    }
+
+    const user = users[0];
+
+    // Clear OTP after successful verification
+    await db.query('DELETE FROM user_otps WHERE email = ?', [email]);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        user_id: user.user_id,
+        role: user.role
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        user_id: user.user_id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (err) {
+    console.error('verifyLoginOtp error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Login verification failed'
+    });
+  }
+};

@@ -2,13 +2,15 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/auth.client.controller');
 
-// Step 1: Send OTP
+// Registration Flow
 router.post('/register/send-otp', controller.sendOtp);
-
-// Step 2: Verify OTP & create account
 router.post('/register/verify-otp', controller.verifyOtpAndCreate);
 
-// Login
+// Password-based Login (existing)
 router.post('/login', controller.loginClient);
+
+// OTP-based Login Flow (NEW - per requirements)
+router.post('/login/request-otp', controller.requestLoginOtp);
+router.post('/login/verify-otp', controller.verifyLoginOtp);
 
 module.exports = router;
