@@ -214,14 +214,26 @@ exports.viewClient = async (req, res) => {
       [clientId]
     );
 
-    // Get recent messages
-    const [messages] = await db.query(
-      `SELECT * FROM chats 
-       WHERE (user_id = ? OR admin_id = ?) 
-       ORDER BY created_at DESC 
-       LIMIT 10`,
-      [clientId, bdeId]
+    // Get recent chat messages from order_chats (messages are stored as JSON)
+    const [chats] = await db.query(
+      `SELECT oc.*, o.query_code FROM order_chats oc
+       JOIN orders o ON oc.order_id = o.order_id
+       WHERE o.user_id = ?
+       ORDER BY oc.updated_at DESC
+       LIMIT 5`,
+      [clientId]
     );
+
+    // Extract recent messages from JSON
+    let messages = [];
+    chats.forEach(chat => {
+      try {
+        const chatMsgs = typeof chat.messages === 'string' ? JSON.parse(chat.messages) : chat.messages;
+        if (Array.isArray(chatMsgs)) {
+          messages = messages.concat(chatMsgs.slice(-5));
+        }
+      } catch (e) {}
+    });
 
     res.render("bde/clients/detail", {
       title: "Client Details",
@@ -344,15 +356,29 @@ exports.viewQuery = async (req, res) => {
 
     const query = queries[0];
 
-    // Get quotation if exists
+    // Get quotation if exists and compute display values
     const [quotations] = await db.query(
-      `SELECT * FROM quotations WHERE order_id = ?`,
+      `SELECT q.*, o.basic_price_usd, o.discount_usd, o.total_price_usd
+       FROM quotations q
+       JOIN orders o ON q.order_id = o.order_id
+       WHERE q.order_id = ?`,
       [query.order_id]
     );
 
+    // Transform quotation for view compatibility
+    let quotation = null;
+    if (quotations[0]) {
+      quotation = {
+        ...quotations[0],
+        base_price: parseFloat(quotations[0].basic_price_usd) || parseFloat(quotations[0].quoted_price_usd) || 0,
+        final_price: parseFloat(quotations[0].total_price_usd) || parseFloat(quotations[0].quoted_price_usd) || 0,
+        discount: parseFloat(quotations[0].discount) || parseFloat(quotations[0].discount_usd) || 0
+      };
+    }
+
     // Get chat messages
     const [messages] = await db.query(
-      `SELECT * FROM chats WHERE order_id = ? ORDER BY created_at DESC`,
+      `SELECT * FROM order_chats WHERE order_id = ? ORDER BY created_at DESC`,
       [query.order_id]
     );
 
@@ -361,7 +387,7 @@ exports.viewQuery = async (req, res) => {
       layout: "layouts/bde",
       currentPage: "queries",
       query,
-      quotation: quotations[0] || null,
+      quotation,
       messages
     });
   } catch (err) {
@@ -405,17 +431,22 @@ exports.generateQuotation = async (req, res) => {
     const query = queries[0];
 
     // Save quotation to database
-    const quotationFileUrl = quotationFile ? `/quotations/${quotationFile.filename}` : null;
-
+    // Note: quotations table has: order_id, user_id, tax, discount, quoted_price_usd, notes, created_at
     const [result] = await db.query(
-      `INSERT INTO quotations (order_id, base_price, discount, final_price, file_url, notes, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [query.order_id, basePrice, discount, finalPrice, quotationFileUrl, notes, bdeId]
+      `INSERT INTO quotations (order_id, user_id, quoted_price_usd, discount, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [query.order_id, bdeId, finalPrice, discount, notes]
+    );
+
+    // Also update orders table with pricing
+    await db.query(
+      `UPDATE orders SET basic_price_usd = ?, discount_usd = ?, total_price_usd = ? WHERE order_id = ?`,
+      [basePrice, discount, finalPrice, query.order_id]
     );
 
     // Update order status to "Quotation Sent"
     await db.query(
-      `UPDATE orders SET status = 3, updated_at = NOW() WHERE order_id = ?`,
+      `UPDATE orders SET status = 3 WHERE order_id = ?`,
       [query.order_id]
     );
 
@@ -492,7 +523,7 @@ exports.updateQueryStatus = async (req, res) => {
 
     // Update status
     await db.query(
-      `UPDATE orders SET status = ?, updated_at = NOW() WHERE query_code = ?`,
+      `UPDATE orders SET status = ? WHERE query_code = ?`,
       [newStatus, queryCode]
     );
 
@@ -673,14 +704,25 @@ exports.getChat = async (req, res) => {
       orderId = rows[0].order_id;
     }
 
-    const [messages] = await db.query(
-      `SELECT * FROM chats WHERE order_id = ? ORDER BY created_at ASC`,
+    const [[chat]] = await db.query(
+      `SELECT * FROM order_chats WHERE order_id = ? LIMIT 1`,
       [orderId]
     );
 
+    // Parse messages from JSON
+    let messages = [];
+    if (chat && chat.messages) {
+      try {
+        messages = typeof chat.messages === 'string' ? JSON.parse(chat.messages) : chat.messages;
+      } catch (e) {
+        messages = [];
+      }
+    }
+
     res.json({
       success: true,
-      messages
+      messages,
+      chat_id: chat?.chat_id
     });
   } catch (err) {
     logger.error("Get chat error:", err);
@@ -719,14 +761,41 @@ exports.sendChatMessage = async (req, res) => {
 
     const order = orders[0];
 
-    // Insert chat message
-    const recipientId = recipientType === 'admin' ? null : order.user_id;
-
-    const [result] = await db.query(
-      `INSERT INTO chats (order_id, sender_id, recipient_id, message, recipient_type, created_at)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
-      [order.order_id, bdeId, recipientId, message, recipientType]
+    // Get or create chat for this order
+    let [[chat]] = await db.query(
+      `SELECT * FROM order_chats WHERE order_id = ? LIMIT 1`,
+      [order.order_id]
     );
+
+    const newMessage = {
+      id: Date.now(),
+      sender_id: bdeId,
+      sender_role: 'bde',
+      recipient_type: recipientType,
+      message,
+      created_at: new Date().toISOString()
+    };
+
+    if (!chat) {
+      // Create new chat
+      const [result] = await db.query(
+        `INSERT INTO order_chats (order_id, chat_name, participants, messages, status, created_at, updated_at)
+         VALUES (?, 'Order Chat', ?, ?, 1, NOW(), NOW())`,
+        [order.order_id, JSON.stringify([order.user_id, bdeId]), JSON.stringify([newMessage])]
+      );
+    } else {
+      // Append to existing messages
+      let existingMessages = [];
+      try {
+        existingMessages = typeof chat.messages === 'string' ? JSON.parse(chat.messages) : chat.messages;
+      } catch (e) {}
+      existingMessages.push(newMessage);
+      
+      await db.query(
+        `UPDATE order_chats SET messages = ?, updated_at = NOW() WHERE chat_id = ?`,
+        [JSON.stringify(existingMessages), chat.chat_id]
+      );
+    }
 
     // Send notification
     if (recipientType === 'admin') {

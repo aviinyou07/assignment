@@ -349,18 +349,16 @@ exports.sendMessage = async (req, res) => {
     );
 
     if (!chat) {
-      const context_code = context_id;
       const [result] = await db.query(
-        `INSERT INTO order_chats (order_id, context_code, chat_name, participants, messages, status, created_at, updated_at)
-         VALUES (?, ?, 'Order Chat', ?, '[]', 'active', NOW(), NOW())`,
-        [order.order_id, context_code, JSON.stringify([order.user_id, order.writer_id || null, order.bde].filter(Boolean))]
+        `INSERT INTO order_chats (order_id, chat_name, participants, messages, status, created_at, updated_at)
+         VALUES (?, 'Order Chat', ?, '[]', 1, NOW(), NOW())`,
+        [order.order_id, JSON.stringify([order.user_id, order.writer_id || null, order.bde].filter(Boolean))]
       );
       chat = {
         chat_id: result.insertId,
         order_id: order.order_id,
-        context_code: context_code,
         messages: '[]',
-        status: 'active'
+        status: 1
       };
     }
 
