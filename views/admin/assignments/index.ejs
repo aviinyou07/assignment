@@ -217,16 +217,16 @@ async function loadAvailableWriters() {
     const writersList = document.getElementById('writersList');
     writersList.innerHTML = data.writers.map(writer => `
       <label class="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded">
-        <input type="checkbox" value="${writer.id}" onchange="toggleWriter(${writer.id})" class="mr-3">
+        <input type="checkbox" value="${writer.user_id}" onchange="toggleWriter(${writer.user_id})" class="mr-3">
         <div>
-          <div class="font-medium">${writer.name}</div>
+          <div class="font-medium">${writer.full_name}</div>
           <div class="text-sm text-gray-600">${writer.email}</div>
-          <div class="text-xs text-gray-500">Workload: ${writer.current_workload || 0} tasks</div>
         </div>
       </label>
     `).join('');
   } catch (error) {
     console.error('Error loading writers:', error);
+    document.getElementById('writersList').innerHTML = '<p class="text-red-500">Error loading writers</p>';
   }
 }
 
@@ -277,47 +277,168 @@ document.getElementById('assignForm').addEventListener('submit', async (e) => {
 });
 
 async function viewAssignmentDetail(assignmentId) {
-  // Show loading toast
-  showToast('Loading assignment details...', 'info');
-  
   try {
     const response = await fetch(`/admin/assignments/detail/${assignmentId}`);
     const data = await response.json();
     
     if (data.success) {
-      // Open detail in new tab or show in modal
-      window.location.href = `/admin/assignments/detail/${assignmentId}`;
+      // Show assignment detail in a modal
+      showAssignmentDetailModal(data.assignment, data.submissions);
     } else {
-      showToast('Failed to load assignment details', 'error');
+      showToast('Failed to load assignment details: ' + (data.error || 'Unknown error'), 'error');
     }
   } catch (error) {
+    console.error('Error:', error);
     showToast('Error loading details', 'error');
   }
 }
 
+function showAssignmentDetailModal(assignment, submissions) {
+  const submissionsHtml = submissions && submissions.length > 0 
+    ? submissions.map(s => `
+        <div class="border-b py-2">
+          <p class="text-sm"><strong>Submission #${s.submission_id}</strong></p>
+          <p class="text-xs text-gray-600">Status: ${s.status} | Date: ${new Date(s.created_at).toLocaleDateString()}</p>
+          ${s.file_url ? `<a href="${s.file_url}" target="_blank" class="text-blue-600 text-xs">View File</a>` : ''}
+        </div>
+      `).join('')
+    : '<p class="text-gray-500">No submissions yet</p>';
+
+  const modalHtml = `
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+          <h2 class="text-xl font-bold">Assignment #${assignment.id}</h2>
+          <button onclick="closeDetailModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs text-gray-500 uppercase font-bold">Order</p>
+              <p class="font-semibold">${assignment.query_code || 'N/A'}</p>
+              <p class="text-sm text-gray-600">${assignment.paper_topic || ''}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 uppercase font-bold">Writer</p>
+              <p class="font-semibold">${assignment.full_name}</p>
+              <p class="text-sm text-gray-600">${assignment.email}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 uppercase font-bold">Status</p>
+              <span class="px-2 py-1 rounded text-xs font-bold ${
+                assignment.status === 'doable' ? 'bg-green-100 text-green-700' :
+                assignment.status === 'not_doable' ? 'bg-red-100 text-red-700' :
+                'bg-yellow-100 text-yellow-700'
+              }">${assignment.status}</span>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 uppercase font-bold">Assigned</p>
+              <p class="text-sm">${new Date(assignment.created_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+          ${assignment.comment ? `
+            <div>
+              <p class="text-xs text-gray-500 uppercase font-bold">Comment</p>
+              <p class="text-sm bg-gray-50 p-2 rounded">${assignment.comment}</p>
+            </div>
+          ` : ''}
+          <div>
+            <p class="text-xs text-gray-500 uppercase font-bold mb-2">Submissions</p>
+            ${submissionsHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeDetailModal() {
+  const modal = document.getElementById('detailModal');
+  if (modal) modal.remove();
+}
+
 async function reassignWriter(assignmentId) {
-  const confirmed = await showConfirmModal(
-    'Reassign Writer',
-    'This will remove the current writer and allow you to assign a new one. Continue?',
-    'warning'
-  );
+  // First, load available writers
+  let writers = [];
+  try {
+    const response = await fetch('/admin/assignments/available-writers');
+    const data = await response.json();
+    writers = data.writers || [];
+  } catch (e) {
+    showToast('Failed to load writers', 'error');
+    return;
+  }
+
+  if (writers.length === 0) {
+    showToast('No available writers found', 'warning');
+    return;
+  }
+
+  // Show reassignment modal
+  const modalHtml = `
+    <div id="reassignModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div class="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+        <div class="bg-amber-500 text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
+          <h2 class="text-xl font-bold">Reassign Writer</h2>
+          <button onclick="closeReassignModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Select New Writer</label>
+            <select id="newWriterSelect" class="w-full border rounded px-3 py-2" required>
+              <option value="">-- Select Writer --</option>
+              ${writers.map(w => `<option value="${w.user_id}">${w.full_name} (${w.email})</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Reassignment</label>
+            <textarea id="reassignReason" class="w-full border rounded px-3 py-2 h-20" placeholder="Why is this assignment being reassigned?"></textarea>
+          </div>
+          <div class="flex justify-end gap-2 pt-4 border-t">
+            <button onclick="closeReassignModal()" class="px-4 py-2 text-gray-700 border rounded hover:bg-gray-50">Cancel</button>
+            <button onclick="submitReassignment(${assignmentId})" class="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600">Reassign</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
   
-  if (!confirmed) return;
-  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeReassignModal() {
+  const modal = document.getElementById('reassignModal');
+  if (modal) modal.remove();
+}
+
+async function submitReassignment(assignmentId) {
+  const newWriterId = document.getElementById('newWriterSelect').value;
+  const reason = document.getElementById('reassignReason').value;
+
+  if (!newWriterId) {
+    showToast('Please select a new writer', 'warning');
+    return;
+  }
+
   try {
     const response = await fetch(`/admin/assignments/${assignmentId}/reassign`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newWriterId: parseInt(newWriterId), reason })
     });
     
     const data = await response.json();
     if (data.success) {
-      showToast('Writer reassignment initiated. You can now assign a new writer.', 'success');
+      showToast('Writer reassigned successfully!', 'success');
+      closeReassignModal();
       setTimeout(() => location.reload(), 1000);
     } else {
-      showToast('Error: ' + data.error, 'error');
+      showToast('Error: ' + (data.error || 'Failed to reassign'), 'error');
     }
   } catch (error) {
+    console.error('Error:', error);
     showToast('An error occurred', 'error');
   }
 }
