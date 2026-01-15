@@ -16,6 +16,9 @@ function initRealtimeNotifications() {
                 getCookie('token') ||
                 localStorage.getItem('authToken');
 
+  console.log('Initializing real-time notifications...');
+  console.log('Auth token found:', !!token);
+
   // Load notifications immediately via API (doesn't require WebSocket)
   loadNotifications();
   loadUnreadCount();
@@ -27,11 +30,19 @@ function initRealtimeNotifications() {
 
   // Load Socket.IO if not already loaded
   if (typeof io === 'undefined') {
+    console.log('Loading Socket.IO library...');
     const script = document.createElement('script');
     script.src = '/socket.io/socket.io.js';
-    script.onload = () => connectSocket(token);
+    script.onload = () => {
+      console.log('Socket.IO library loaded successfully');
+      connectSocket(token);
+    };
+    script.onerror = () => {
+      console.error('Failed to load Socket.IO library');
+    };
     document.head.appendChild(script);
   } else {
+    console.log('Socket.IO library already loaded, connecting...');
     connectSocket(token);
   }
 }
@@ -51,6 +62,8 @@ function getCookie(name) {
  */
 function connectSocket(token) {
   try {
+    console.log('Attempting to connect to Socket.IO server with token...');
+    
     notificationSocket = io({
       auth: {
         token: 'Bearer ' + token
@@ -58,17 +71,19 @@ function connectSocket(token) {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
+      reconnectionAttempts: 5,
+      transports: ['websocket', 'polling']
     });
 
     // Connection events
     notificationSocket.on('connect', () => {
-      console.debug('Connected to real-time notifications');
+      console.log('✓ Connected to real-time notifications');
+      console.log('Socket ID:', notificationSocket.id);
       updateConnectionStatus('online');
     });
 
-    notificationSocket.on('disconnect', () => {
-      console.debug('Disconnected from real-time notifications');
+    notificationSocket.on('disconnect', (reason) => {
+      console.warn('Disconnected from real-time notifications:', reason);
       updateConnectionStatus('offline');
     });
 
@@ -77,12 +92,12 @@ function connectSocket(token) {
     });
 
     notificationSocket.on('connect_error', (error) => {
-      console.warn('Socket connection error:', error.message);
+      console.error('Socket connection error:', error);
     });
 
     // Real-time notification events
     notificationSocket.on('notification:new', (notification) => {
-      console.debug('New notification received');
+      console.log('✓ New notification received:', notification);
       addNotificationToDOM(notification);
       incrementUnreadCount();
       updateNotificationBadge();

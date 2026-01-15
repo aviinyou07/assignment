@@ -139,40 +139,8 @@
             <h3 class="text-lg font-black text-slate-800">Writer Assignment Workflow</h3>
           </div>
           <button onclick="openInviteWriterModal()" class="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition">Invite Writers</button>
-                    <!-- Invite Writers Modal -->
-                    <div id="invite-writer-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
-                        <div class="p-6 border-b border-slate-200">
-                          <h3 class="text-xl font-black text-slate-800">Invite Writers</h3>
-                          <p class="text-sm text-slate-500 mt-1">Select writers to invite for this query</p>
-                        </div>
-                        <form id="invite-writer-form" class="p-6 space-y-4">
-                          <div>
-                            <label class="text-sm font-bold text-slate-700 block mb-2">Select Writers *</label>
-                            <div id="invite-writers-list" class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-2">
-                              <% availableWriters.forEach(writer => { %>
-                                <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
-                                  <input type="checkbox" name="writerIds" value="<%= writer.user_id %>" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
-                                  <div class="flex-1">
-                                    <p class="font-semibold text-slate-800 text-sm"><%= writer.full_name %></p>
-                                    <p class="text-xs text-slate-500"><%= writer.email %></p>
-                                  </div>
-                                  <span class="text-xs px-2 py-1 rounded-full <%= writer.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' %>">
-                                    <%= writer.is_active ? 'Active' : 'Inactive' %>
-                                  </span>
-                                </label>
-                              <% }); %>
-                            </div>
-                          </div>
-                          <div class="flex gap-3 pt-4">
-                            <button type="button" onclick="closeInviteWriterModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
-                            <button type="submit" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">Invite Writers</button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-          <h4 class="text-md font-bold text-slate-700 mb-2">Interested Writers</h4>
-                    <h4 class="text-md font-bold text-indigo-700 mb-2 mt-4">Invited Writers</h4>
+
+          <h4 class="text-md font-bold text-indigo-700 mb-2 mt-4">Invited Writers</h4>
                     <% if (invitedWriters && invitedWriters.length > 0) { %>
                       <div class="space-y-2 mb-4">
                         <% invitedWriters.forEach(writer => { %>
@@ -193,6 +161,8 @@
                     <% } else { %>
                       <div class="text-center py-2 text-slate-500">No writers have been invited yet.</div>
                     <% } %>
+
+          <h4 class="text-md font-bold text-slate-700 mb-2 mt-4">Interested Writers</h4>
           <% if (interestedWriters && interestedWriters.length > 0) { %>
             <div class="space-y-2 mb-4">
               <% interestedWriters.forEach(writer => { %>
@@ -555,17 +525,20 @@ function openInviteWriterModal() {
           e.preventDefault();
           const formData = new FormData(e.target);
           const writerIds = formData.getAll('writerIds').map(id => parseInt(id));
+          console.log('Selected writerIds:', writerIds);
           if (writerIds.length === 0) {
             showToast('Please select at least one writer', 'warning');
             return;
           }
           try {
-            const response = await fetch(`/admin/query/${queryId}/invite-writers`, {
+            console.log('Sending invitation request with:', { queryId, writerIds });
+            const response = await fetch(`/admin/queries/${queryId}/invite-writers`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ writerIds })
             });
             const result = await response.json();
+            console.log('Response:', result);
             if (result.success) {
               showToast('Writers invited successfully!', 'success');
               closeInviteWriterModal();
@@ -574,6 +547,7 @@ function openInviteWriterModal() {
               showToast('Error: ' + (result.message || 'Failed to invite writers'), 'error');
             }
           } catch (error) {
+            console.error('Fetch error:', error);
             showToast('Error: ' + error.message, 'error');
           }
         });

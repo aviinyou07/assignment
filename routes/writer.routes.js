@@ -226,6 +226,28 @@ router.get(
   authGuard(['writer']),
   writerQueriesController.listInvitedQueries
 );
+
+// Get single query details
+router.get(
+  '/api/queries/:queryId',
+  authGuard(['writer']),
+  queriesController.getQueryDetails
+);
+
+// Show interest in a query
+router.post(
+  '/api/queries/:orderId/show-interest',
+  authGuard(['writer']),
+  queriesController.writerShowInterest
+);
+
+// Decline invitation to a query
+router.post(
+  '/api/queries/:orderId/decline-invitation',
+  authGuard(['writer']),
+  queriesController.writerDeclineInvitation
+);
+
 // ============================================================================
 
 // Get dashboard KPI metrics

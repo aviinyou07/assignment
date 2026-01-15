@@ -245,10 +245,6 @@ exports.rejectTaskAssignment = async (req, res) => {
     const writerId = req.user.user_id;
     const { reason = '' } = req.body;
 
-    if (!reason || reason.trim().length < 10) {
-      return res.status(400).json({ success: false, error: 'Please provide a reason (at least 10 characters)' });
-    }
-
     // Verify writer is assigned to this task via task_evaluations
     const [[evaluation]] = await connection.query(
       `SELECT te.*, o.paper_topic, o.query_code 

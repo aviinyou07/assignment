@@ -1,3 +1,7 @@
+const db = require('../config/db');
+const { logAction } = require('../utils/logger');
+const { emitToUser } = require('../utils/socket');
+
 /**
  * Admin generates quotation for a query
  */
@@ -36,45 +40,67 @@ exports.generateQuotation = async (req, res) => {
     );
 
     // Notify client
-    emitToUser(order.user_id, 'notification:new', {
-      // Update query status
-      exports.updateQueryStatus = async (req, res) => {
-        try {
-          const { queryId } = req.params;
-          const { status, notes } = req.body;
+    const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
+    for (const admin of admins) {
+      emitToUser(admin.user_id, 'notification:new', {
+        type: 'quotation_sent',
+        orderId: order.order_id,
+        price: finalPrice
+      });
+    }
+    res.json({ success: true, message: 'Quotation sent successfully.' });
+  } catch (err) {
+    console.error('Error in generateQuotation:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 
-          // Fetch the order
-          const [[order]] = await db.query(
-            'SELECT * FROM orders WHERE order_id = ?',
-            [queryId]
-          );
-          if (!order) {
-            return res.status(404).json({ success: false, error: 'Query not found' });
-          }
+/**
+ * Writer accept invitation to a query
+ */
+exports.writerAcceptInvitation = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const writerId = req.user.user_id;
 
-          // Update status
-          await db.query(
-            'UPDATE orders SET status = ? WHERE order_id = ?',
-            [status, queryId]
-          );
+    // Update writer interest status
+    await db.query(
+      `UPDATE writer_query_interest SET status = 'accepted' WHERE order_id = ? AND writer_id = ?`,
+      [orderId, writerId]
+    );
 
-          // Log action
-          await logAction({
-            userId: req.user.user_id,
-            action: 'query_status_update',
-            details: `Status updated from ${order.status} to ${status}. Notes: ${notes || 'N/A'}`,
-            resource_type: 'order',
-            resource_id: queryId,
-            ip: req.ip,
-            userAgent: req.get('User-Agent')
-          });
+    // Notify admins
+    const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
+    for (const admin of admins) {
+      emitToUser(admin.user_id, 'notification:new', {
+        type: 'writer_accepted',
+        orderId,
+        writerId
+      });
+    }
+    res.json({ success: true, message: 'Invitation accepted.' });
+  } catch (err) {
+    console.error('Error in writerAcceptInvitation:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 
-          res.json({ success: true, message: 'Query status updated' });
-        } catch (error) {
-          console.error('Error in updateQueryStatus:', error);
-          res.status(500).json({ success: false, error: error.message });
-        }
-      };
+/**
+ * Writer reject invitation to a query
+ */
+exports.writerRejectInvitation = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const writerId = req.user.user_id;
+    const { reason } = req.body;
+
+    // Update writer interest status
+    await db.query(
+      `UPDATE writer_query_interest SET status = 'rejected' WHERE order_id = ? AND writer_id = ?`,
+      [orderId, writerId]
+    );
+
+    // Notify admins
     const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
     for (const admin of admins) {
       emitToUser(admin.user_id, 'notification:new', {
@@ -90,9 +116,8 @@ exports.generateQuotation = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
-const db = require('../config/db');
-const { logAction } = require('../utils/logger');
-const { emitToUser } = require('../utils/socket');
+
+
 
 
 exports.listQueries = async (req, res) => {
@@ -152,6 +177,30 @@ exports.listQueries = async (req, res) => {
   } catch (error) {
     console.error('Error in listQueries:', error);
     res.status(500).render('errors/404', { title: 'Error', layout: false });
+  }
+};
+
+/**
+ * Get query details for writer (API endpoint)
+ */
+exports.getQueryDetails = async (req, res) => {
+  try {
+    const { queryId } = req.params;
+    
+    const [[query]] = await db.query(
+      `SELECT order_id, query_code, paper_topic, service, subject, urgency, deadline_at, description 
+       FROM orders WHERE order_id = ?`,
+      [parseInt(queryId)]
+    );
+    
+    if (!query) {
+      return res.status(404).json({ success: false, message: 'Query not found' });
+    }
+    
+    res.json({ success: true, query });
+  } catch (error) {
+    console.error('Error in getQueryDetails:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -263,73 +312,107 @@ exports.viewQuery = async (req, res) => {
 };
 
 // Update query status
-exports.updateQueryStatus = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { status, notes } = req.body;
-    const adminId = req.user.user_id;
-
-    await db.query(
-      `UPDATE orders SET status = ? WHERE order_id = ?`,
-      [status, orderId]
-    );
-
-    // Log action
-    await logAction({
-      userId: adminId,
-      action: 'status_updated',
-      details: notes || `Status changed to ${status}`,
-      resource_type: 'order',
-      resource_id: orderId,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
-
-    res.json({ success: true, message: 'Query status updated' });
-  } catch (error) {
-    console.error('Error in updateQueryStatus:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
 /**
  * Admin invites writers to a query
  */
 const { createNotification } = require('../utils/notification.service');
 exports.inviteWriters = async (req, res) => {
   try {
-    const { orderId } = req.params;
+    const { queryId } = req.params;
     const { writerIds } = req.body;
+    
+    console.log('inviteWriters called with queryId:', queryId, 'writerIds:', writerIds);
+    
     if (!Array.isArray(writerIds) || writerIds.length === 0) {
       return res.status(400).json({ success: false, message: 'No writers selected.' });
     }
-    // Insert or update invite status
-    for (const writerId of writerIds) {
-      await db.query(
-        `INSERT INTO writer_query_interest (order_id, writer_id, status) VALUES (?, ?, 'invited')
-         ON DUPLICATE KEY UPDATE status = 'invited'`,
-        [orderId, writerId]
-      );
+    
+    // Verify the order exists
+    const [[order]] = await db.query(
+      'SELECT order_id FROM orders WHERE order_id = ?',
+      [parseInt(queryId)]
+    );
+    
+    if (!order) {
+      console.error(`Order ${queryId} not found`);
+      return res.status(404).json({ success: false, message: 'Query/Order not found' });
     }
+    
+    // Verify all writers exist
+    const [writers] = await db.query(
+      `SELECT user_id FROM users WHERE user_id IN (${writerIds.map(() => '?').join(',')}) AND role = 'writer'`,
+      writerIds.map(id => parseInt(id))
+    );
+    
+    if (writers.length !== writerIds.length) {
+      console.error(`Only ${writers.length} out of ${writerIds.length} writers found`);
+      return res.status(400).json({ success: false, message: 'Some writers not found or are not active writers' });
+    }
+    
+    // Insert or update invite status
+    let successCount = 0;
+    const errors = [];
+    const invitedWriters = [];
+    
+    for (const writerId of writerIds) {
+      try {
+        console.log(`Inviting writer ${writerId} to query ${queryId}`);
+        const result = await db.query(
+          `INSERT INTO writer_query_interest (order_id, writer_id, status) VALUES (?, ?, 'invited')
+           ON DUPLICATE KEY UPDATE status = 'invited'`,
+          [parseInt(queryId), parseInt(writerId)]
+        );
+        console.log('Insert result for writer', writerId, ':', result[0].affectedRows, 'rows affected');
+        invitedWriters.push(writerId);
+        successCount++;
+      } catch (inviteErr) {
+        console.error(`Error inviting writer ${writerId}:`, inviteErr);
+        errors.push(`Error inviting writer ${writerId}: ${inviteErr.message}`);
+      }
+    }
+    
+    console.log(`Successfully invited writers: ${invitedWriters.join(', ')}`);
+    console.log(`Total success: ${successCount}/${writerIds.length}`);
+    
+    if (successCount === 0) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to invite writers',
+        errors 
+      });
+    }
+    
     // Fetch order details for notification
     const [orderRows] = await db.query(
       'SELECT paper_topic, deadline_at FROM orders WHERE order_id = ?',
-      [orderId]
+      [parseInt(queryId)]
     );
-    const order = orderRows[0] || {};
+    const orderData = orderRows[0] || {};
+    
+    // Send notifications
     for (const writerId of writerIds) {
-      await createNotification({
-        user_id: writerId,
-        type: 'info',
-        title: 'You have been invited to a new query',
-        message: order ? `Topic: ${order.paper_topic}, Deadline: ${order.deadline_at}` : 'You have a new query invitation.',
-        link_url: `/writer/queries/${orderId}`
-      }, req.app.get('io'));
+      try {
+        await createNotification({
+          user_id: parseInt(writerId),
+          type: 'info',
+          title: 'You have been invited to a new query',
+          message: orderData ? `Topic: ${orderData.paper_topic}, Deadline: ${orderData.deadline_at}` : 'You have a new query invitation.',
+          link_url: `/writer/queries/${queryId}`
+        }, req.app.get('io'));
+      } catch (notifErr) {
+        console.error('Notification error for writer', writerId, ':', notifErr);
+      }
     }
-    res.json({ success: true, message: 'Writers invited.' });
+    
+    res.json({ 
+      success: true, 
+      message: `${successCount} writer(s) invited successfully.`, 
+      writerCount: successCount,
+      errors: errors.length > 0 ? errors : undefined
+    });
   } catch (err) {
     console.error('Error in inviteWriters:', err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message, sqlState: err.sqlState });
   }
 };
 
@@ -340,6 +423,9 @@ exports.writerShowInterest = async (req, res) => {
   try {
     const writerId = req.user.user_id;
     const { orderId } = req.params;
+    const { comments } = req.body;
+    
+    console.log(`Writer ${writerId} showing interest in order ${orderId} with comments: ${comments}`);
     
     // Check if the writer was invited
     const [[invite]] = await db.query(
@@ -360,15 +446,15 @@ exports.writerShowInterest = async (req, res) => {
 
       // If not invited and not interested, a new interest can be shown
       await db.query(
-        `INSERT INTO writer_query_interest (order_id, writer_id, status) VALUES (?, ?, 'interested')`,
-        [orderId, writerId]
+        `INSERT INTO writer_query_interest (order_id, writer_id, status, comment) VALUES (?, ?, 'interested', ?)`,
+        [orderId, writerId, comments || null]
       );
 
     } else {
        // If the writer was invited, update their status to 'interested'
       await db.query(
-        `UPDATE writer_query_interest SET status = 'interested' WHERE id = ?`,
-        [invite.id]
+        `UPDATE writer_query_interest SET status = 'interested', comment = ? WHERE id = ?`,
+        [comments || null, invite.id]
       );
     }
 
@@ -384,6 +470,51 @@ exports.writerShowInterest = async (req, res) => {
     res.json({ success: true, message: 'Interest registered.' });
   } catch (err) {
     console.error('Error in writerShowInterest:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * Writer declines invitation to a query
+ */
+exports.writerDeclineInvitation = async (req, res) => {
+  try {
+    const writerId = req.user.user_id;
+    const { orderId } = req.params;
+    const { reason } = req.body;
+    
+    console.log(`Writer ${writerId} declining order ${orderId} with reason: ${reason}`);
+    
+    // Check if the writer was invited
+    const [[invite]] = await db.query(
+      `SELECT id FROM writer_query_interest WHERE order_id = ? AND writer_id = ? AND status = 'invited'`,
+      [orderId, writerId]
+    );
+
+    if (!invite) {
+      return res.status(400).json({ success: false, message: 'No invitation found for this query' });
+    }
+
+    // Update status to 'rejected' with reason
+    await db.query(
+      `UPDATE writer_query_interest SET status = 'rejected', comment = ? WHERE id = ?`,
+      [reason || '', invite.id]
+    );
+
+    // Notify admin
+    const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
+    for (const admin of admins) {
+      emitToUser(admin.user_id, 'notification:new', {
+        type: 'writer_declined',
+        orderId,
+        writerId,
+        reason
+      });
+    }
+    
+    res.json({ success: true, message: 'Invitation declined.' });
+  } catch (err) {
+    console.error('Error in writerDeclineInvitation:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
@@ -436,80 +567,6 @@ exports.adminAssignWriter = async (req, res) => {
   }
 };
 
-
-// Update query status
-exports.updateQueryStatus = async (req, res) => {
-  try {
-    const { queryId } = req.params;
-    for (const writerId of writerIds) {
-      await db.query(
-        `INSERT INTO writer_query_interest (order_id, writer_id, status) VALUES (?, ?, 'invited')
-         ON DUPLICATE KEY UPDATE status = 'invited'`,
-      // Notify writers with DB + real-time notification
-      const [order] = (await db.query(
-        'SELECT paper_topic, deadline_at FROM orders WHERE order_id = ?',
-        [orderId]
-      ))[0] || {};
-      for (const writerId of writerIds) {
-        await createNotification({
-          user_id: writerId,
-          type: 'info',
-          title: 'You have been invited to a new query',
-          message: order ? `Topic: ${order.paper_topic}, Deadline: ${order.deadline_at}` : 'You have a new query invitation.',
-          link_url: `/writer/queries/${orderId}`
-        }, req.app.get('io'));
-      }
-      });
-    }
-      return res.status(404).json({ success: false, error: 'Query not found' });
-    }
-
-    // Update status
-    await db.query(
-      `UPDATE orders SET status = ? WHERE order_id = ?`,
-      [status, queryId]
-    );
-
-    // Log action
-    await logAction({
-        userId: req.user.user_id,
-        action: 'query_status_update',
-        details: `Status updated from ${query.oldStatus} to ${status}. Notes: ${notes || 'N/A'}`,
-        resource_type: 'order',
-        resource_id: queryId,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-    });
-
-
-    // Send notification to client if status changed significantly
-    const [[client]] = await db.query(
-      `SELECT email, full_name FROM users WHERE user_id = ?`,
-      [query.user_id]
-    );
-
-    if (client && ['closed', 'failed', 'quotation_sent'].includes(status)) {
-      sendMail({
-        to: client.email,
-        subject: `Update on Your Query: ${query.paper_topic}`,
-        html: `
-            <p>Hi ${client.full_name},</p>
-            <p>There is an update on your query: ${query.query_code}</p>
-            <p>New Status: ${status}</p>
-            <p>Notes: ${notes || 'No additional information'}</p>
-        `
-      }).catch(err => console.error('Email error:', err));
-    }
-
-    res.json({
-      success: true,
-      message: `Query status updated to ${status}`
-    });
-  } catch (error) {
-    console.error('Error updating query status:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
 
 // Reassign writer on rejection
 exports.reassignWriter = async (req, res) => {
@@ -594,6 +651,47 @@ exports.sendMessageToClient = async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending message:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Update query status
+ */
+exports.updateQueryStatus = async (req, res) => {
+  try {
+    const { queryId } = req.params;
+    const { status, notes } = req.body;
+
+    // Fetch the order
+    const [[order]] = await db.query(
+      'SELECT * FROM orders WHERE order_id = ?',
+      [queryId]
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Query not found' });
+    }
+
+    // Update status
+    await db.query(
+      'UPDATE orders SET status = ? WHERE order_id = ?',
+      [status, queryId]
+    );
+
+    // Log action
+    await logAction({
+      userId: req.user.user_id,
+      action: 'query_status_update',
+      details: `Status updated from ${order.status} to ${status}. Notes: ${notes || 'N/A'}`,
+      resource_type: 'order',
+      resource_id: queryId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    res.json({ success: true, message: 'Query status updated' });
+  } catch (error) {
+    console.error('Error in updateQueryStatus:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

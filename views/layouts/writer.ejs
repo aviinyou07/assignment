@@ -21,6 +21,9 @@
     
     <!-- Global Chat Modal -->
     <%- include('../partials/global-chat-modal', { userRole: 'writer', userId: typeof profile !== 'undefined' ? profile.user_id : '' }) %>
+
+    <!-- Real-time Notifications Script -->
+    <script src="/js/realtime-notifications.js"></script>
 </body>
 
 </html>

@@ -1,12 +1,13 @@
+require('dotenv').config();
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 
 async function getDbSchema() {
   const connection = await mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'dev009',
-    database: 'db_assignment_366'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'dev009',
+    database: process.env.DB_NAME || 'db_assignment_366'
   });
 
   try {
@@ -66,7 +67,7 @@ async function getDbSchema() {
     schema += "=".repeat(80) + "\n";
 
     // Save to file
-    const filePath = 'c:\\Users\\Softmgmt\\Desktop\\a366\\DATABASE_SCHEMA.md';
+    const filePath = 'DATABASE_SCHEMA.md';
     fs.writeFileSync(filePath, schema);
     
     console.log('\n✅ Database schema saved to: DATABASE_SCHEMA.md\n');
