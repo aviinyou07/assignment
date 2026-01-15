@@ -1,10 +1,24 @@
+
 const express = require("express");
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-
 const { authGuard } = require("../middleware/auth.admin.middleware");
-const writerProfileController = require("../controllers/writer.profile.controller");
+const queriesController = require('../controllers/queries.controller');
+// Accept invitation to a query (writer)
+router.post(
+  '/api/invitations/:orderId/accept',
+  authGuard(['writer']),
+  queriesController.writerAcceptInvitation
+);
+
+// Reject invitation to a query (writer)
+router.post(
+  '/api/invitations/:orderId/reject',
+  authGuard(['writer']),
+  queriesController.writerRejectInvitation
+);
+const writerProfileController = require("../controllers/writer.edit.controller");
 const writerEditController = require("../controllers/writer.edit.controller");
 const writerTaskController = require("../controllers/writer.task.controller");
 const db = require("../config/db");
@@ -77,6 +91,19 @@ router.get(
   (req, res) => {
     res.render("writer/dashboard", {
       title: "Writer Dashboard",
+      layout: "layouts/writer"
+    });
+  }
+);
+
+// Notifications Page
+router.get(
+  "/notifications",
+  authGuard(["writer"]),
+  fetchWriterProfile,
+  (req, res) => {
+    res.render("writer/notifications", {
+      title: "Notifications",
       layout: "layouts/writer"
     });
   }
@@ -192,6 +219,13 @@ router.post(
 
 // ============================================================================
 // TASK MANAGEMENT API ROUTES
+// Get invited queries for writer
+const writerQueriesController = require('../controllers/writer.queries.controller');
+router.get(
+  '/api/queries/invited',
+  authGuard(['writer']),
+  writerQueriesController.listInvitedQueries
+);
 // ============================================================================
 
 // Get dashboard KPI metrics
@@ -327,6 +361,19 @@ router.get(
   "/api/tasks/:taskId/permissions",
   authGuard(["writer"]),
   writerTaskController.checkTaskPermission
+);
+
+// Chat Hub
+router.get(
+  "/chat",
+  authGuard(["writer"]),
+  fetchWriterProfile,
+  (req, res) => {
+    res.render("writer/chat", {
+      title: "Chat",
+      layout: "layouts/writer"
+    });
+  }
 );
 
 module.exports = router;

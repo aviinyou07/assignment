@@ -1,4 +1,123 @@
 <div class="space-y-6 animate-in fade-in duration-500">
+    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Invited Queries</h2>
+            <p class="text-sm text-slate-500 font-medium">Queries you have been invited to. Show interest to be considered for assignment.</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr class="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                        <th class="px-8 py-5">Query Code</th>
+                        <th class="px-6 py-5">Topic & Details</th>
+                        <th class="px-6 py-5">Deadline</th>
+                        <th class="px-6 py-5">Urgency</th>
+                        <th class="px-8 py-5 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100" id="invited-queries-list">
+                    <tr>
+                        <td colspan="5" class="px-8 py-6 text-center text-slate-500">
+                            <span class="inline-flex items-center gap-2">
+                                <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading invited queries...
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize real-time notifications for writers
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof initRealtimeNotifications === 'function') {
+        initRealtimeNotifications();
+    }
+});
+// Load invited queries
+async function loadInvitedQueries() {
+    try {
+        const response = await fetch('/writer/api/queries/invited');
+        const data = await response.json();
+        if (data.success) {
+            const queriesList = document.getElementById('invited-queries-list');
+            if (data.queries.length === 0) {
+                queriesList.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-8 py-12 text-center">
+                            <div class="space-y-2">
+                                <i class="fi fi-rr-document-blank text-4xl text-slate-300 block"></i>
+                                <p class="text-slate-500 font-medium">No invited queries at the moment</p>
+                                <p class="text-slate-400 text-sm">Check back later for new invitations</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            queriesList.innerHTML = data.queries.map(query => {
+                const urgencyColors = {
+                    'High': 'bg-red-100 text-red-700',
+                    'Medium': 'bg-amber-100 text-amber-700',
+                    'Low': 'bg-emerald-100 text-emerald-700'
+                };
+                const urgencyClass = urgencyColors[query.urgency] || 'bg-slate-100 text-slate-700';
+                return `
+                    <tr class="hover:bg-slate-50/50 transition-all group">
+                        <td class="px-8 py-6">
+                            <span class="text-sm font-black text-indigo-600 block mb-1 uppercase tracking-tight">${query.query_code || query.order_id}</span>
+                        </td>
+                        <td class="px-6 py-6">
+                            <p class="text-sm font-bold text-slate-700 truncate max-w-[250px]">${query.topic || 'No topic'}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">${query.service || 'Service'}</p>
+                        </td>
+                        <td class="px-6 py-6">
+                            <p class="text-sm font-bold text-slate-700">${new Date(query.deadline_at).toLocaleDateString('en-US', {month: 'short', day: '2-digit', year: 'numeric'})}</p>
+                        </td>
+                        <td class="px-6 py-6">
+                            <span class="inline-block ${urgencyClass} text-xs font-black px-3 py-1 rounded-full uppercase">
+                                ${query.urgency || 'Normal'}
+                            </span>
+                        </td>
+                        <td class="px-8 py-6 text-right">
+                            <button onclick="showInterest(${query.order_id})" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-purple-100">
+                                Show Interest
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error loading invited queries:', error);
+    }
+}
+
+async function showInterest(orderId) {
+    try {
+        const response = await fetch(`/writer/query/${orderId}/show-interest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        if (result.success) {
+            showToast('Interest registered!', 'success');
+            loadInvitedQueries();
+        } else {
+            showToast('Error: ' + (result.message || 'Failed to register interest'), 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadInvitedQueries);
+</script>
+<div class="space-y-6 animate-in fade-in duration-500">
     
     <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
@@ -241,10 +360,26 @@
         async function acceptTaskFromModal() {
             if (!currentModalTaskId) return;
             
+            // Show confirmation with optional comment
+            const confirmed = await showConfirmModal(
+                'Accept Task',
+                'Are you sure you want to accept this task? Once accepted, you will be responsible for delivering it on time.'
+            );
+            
+            if (!confirmed) return;
+            
+            // Optional: Ask for any notes
+            let comment = '';
+            const addNote = await showConfirmModal('Add Note (Optional)', 'Would you like to add any notes about accepting this task?');
+            if (addNote) {
+                comment = await showInputModal('Your Notes', 'Add any comments or notes (e.g., expected delivery time, questions):', '') || '';
+            }
+            
             try {
                 const response = await fetch(`/writer/api/tasks/${currentModalTaskId}/accept`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment })
                 });
                 
                 const data = await response.json();

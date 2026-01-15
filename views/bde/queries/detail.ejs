@@ -1,5 +1,3 @@
-<%- include('../../partials/head.ejs') %>
-
 <section class="space-y-6">
 
   <!-- PAGE HEADER & STATUS -->
@@ -165,6 +163,16 @@
           <% } %>
         </div>
       </div>
+
+      <!-- CHAT PANEL -->
+      <% if (typeof query !== 'undefined' && query.query_code) { %>
+      <%- include('../../partials/chat-panel', { 
+        contextCode: query.query_code,
+        contextType: 'query',
+        recipientName: query.full_name,
+        recipientRole: 'client'
+      }) %>
+      <% } %>
 
     </div>
 

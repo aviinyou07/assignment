@@ -283,7 +283,7 @@ async function viewAssignmentDetail(assignmentId) {
     
     if (data.success) {
       // Show assignment detail in a modal
-      showAssignmentDetailModal(data.assignment, data.submissions);
+        showAssignmentDetailModal(data.assignment, data.submissions, data.evaluations);
     } else {
       showToast('Failed to load assignment details: ' + (data.error || 'Unknown error'), 'error');
     }
@@ -293,7 +293,7 @@ async function viewAssignmentDetail(assignmentId) {
   }
 }
 
-function showAssignmentDetailModal(assignment, submissions) {
+function showAssignmentDetailModal(assignment, submissions, evaluations = []) {
   const submissionsHtml = submissions && submissions.length > 0 
     ? submissions.map(s => `
         <div class="border-b py-2">
@@ -311,7 +311,7 @@ function showAssignmentDetailModal(assignment, submissions) {
           <h2 class="text-xl font-bold">Assignment #${assignment.id}</h2>
           <button onclick="closeDetailModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
         </div>
-        <div class="p-6 space-y-4">
+          <div class="p-6 space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <p class="text-xs text-gray-500 uppercase font-bold">Order</p>
@@ -345,6 +345,20 @@ function showAssignmentDetailModal(assignment, submissions) {
           <div>
             <p class="text-xs text-gray-500 uppercase font-bold mb-2">Submissions</p>
             ${submissionsHtml}
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 uppercase font-bold mb-2">Finalize Assignment</p>
+            <p class="text-sm text-gray-600 mb-2">Select the final writer from accepted writers (status = doable):</p>
+            <div class="space-y-2">
+              <select id="finalWriterSelect" class="w-full border rounded px-3 py-2">
+                <option value="">-- Select Final Writer --</option>
+                ${evaluations.filter(e => e.status === 'doable').map(e => `<option value="${e.writer_id}" data-evalid="${e.id}">${e.full_name} (${e.email})</option>`).join('')}
+              </select>
+            </div>
+            <div class="pt-3 flex gap-2">
+              <button onclick="finalizeAssignment(${assignment.id})" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">Finalize</button>
+              <span id="finalizeStatus" class="text-sm text-gray-600"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -446,5 +460,42 @@ async function submitReassignment(assignmentId) {
 async function viewAssignments(workCode) {
   // Load and display assignments for this work code
   window.location.href = '/admin/assignments/' + workCode;
+}
+
+async function finalizeAssignment(assignmentId) {
+  const select = document.getElementById('finalWriterSelect');
+  if (!select) return showToast('Finalize selector not found', 'error');
+
+  const chosenWriterId = select.value;
+  const selectedOption = select.options[select.selectedIndex];
+  const taskEvalId = selectedOption ? selectedOption.getAttribute('data-evalid') : null;
+
+  if (!chosenWriterId || !taskEvalId) {
+    return showToast('Please select a writer to finalize', 'warning');
+  }
+
+  const statusSpan = document.getElementById('finalizeStatus');
+  if (statusSpan) statusSpan.textContent = 'Finalizing...';
+
+  try {
+    const res = await fetch(`/admin/assignments/${taskEvalId}/finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chosenWriterId: parseInt(chosenWriterId) })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Writer finalized', 'success');
+      if (statusSpan) statusSpan.textContent = 'Done';
+      setTimeout(() => location.reload(), 900);
+    } else {
+      showToast('Error: ' + (data.error || 'Failed to finalize'), 'error');
+      if (statusSpan) statusSpan.textContent = '';
+    }
+  } catch (err) {
+    console.error('Finalize error:', err);
+    showToast('An error occurred while finalizing', 'error');
+    if (statusSpan) statusSpan.textContent = '';
+  }
 }
 </script>

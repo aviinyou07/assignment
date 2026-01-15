@@ -1,0 +1,317 @@
+<!-- 
+  REUSABLE CHAT PANEL COMPONENT
+  
+  Usage: include('../partials/chat-panel', { 
+    contextCode: 'QUERY_123',   (can also be 'WORK_123')
+    contextType: 'query',        (can also be 'order')
+    recipientName: 'John Doe',
+    recipientRole: 'client'
+  })
+-->
+
+<div id="chat-panel" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+  
+  <!-- Chat Header -->
+  <div class="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+        <i class="fi fi-rr-comment text-lg"></i>
+      </div>
+      <div>
+        <h3 class="font-bold flex items-center gap-2">
+          Chat
+          <span id="chat-context" class="text-[11px] bg-white/15 px-2 py-0.5 rounded-full uppercase tracking-wide"></span>
+        </h3>
+        <p class="text-xs text-slate-300 flex items-center gap-2 flex-wrap" id="chat-participants"></p>
+      </div>
+    </div>
+    <button onclick="toggleChatPanel()" class="p-2 hover:bg-white/20 rounded-lg transition">
+      <i class="fi fi-rr-minus text-sm"></i>
+    </button>
+  </div>
+
+  <!-- Chat Messages -->
+  <div id="chat-messages" class="h-80 overflow-y-auto p-4 space-y-3 bg-slate-50">
+    <div class="text-center py-8">
+      <i class="fi fi-rr-spinner-alt text-2xl text-slate-400 animate-spin"></i>
+      <p class="text-slate-400 text-sm mt-2">Loading chat history...</p>
+    </div>
+  </div>
+
+  <!-- Chat Input -->
+  <div class="border-t border-slate-200 p-4 bg-white">
+    <form id="chat-form" class="flex gap-2">
+      <input 
+        type="text" 
+        id="chat-input" 
+        placeholder="Type your message..." 
+        class="flex-1 px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        autocomplete="off"
+      >
+      <button 
+        type="submit" 
+        class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold flex items-center gap-2"
+      >
+        <i class="fi fi-rr-paper-plane"></i>
+        <span class="hidden sm:inline">Send</span>
+      </button>
+    </form>
+    <p id="chat-typing" class="text-xs text-slate-400 mt-2 hidden">
+      <i class="fi fi-rr-comment-dots animate-pulse"></i> Someone is typing...
+    </p>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const CHAT_CONFIG = {
+    contextCode: '<%= typeof contextCode !== "undefined" ? contextCode : "" %>',
+    contextType: '<%= typeof contextType !== "undefined" ? contextType : "query" %>',
+    recipientRole: '<%= typeof recipientRole !== "undefined" ? recipientRole : "" %>',
+    userId: window.AUTH_USER_ID || null
+  };
+
+  let chatMessages = [];
+  let isLoading = false;
+  let chatMeta = { participants: [], context: CHAT_CONFIG.contextCode };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (CHAT_CONFIG.contextCode) {
+      loadChatHistory();
+      setupChatSocketListeners();
+    }
+  });
+
+  async function loadChatHistory() {
+    if (!CHAT_CONFIG.contextCode || isLoading) return;
+    isLoading = true;
+    const messagesContainer = document.getElementById('chat-messages');
+
+    try {
+      const response = await fetch(`/chat/${CHAT_CONFIG.contextCode}`);
+      const data = await response.json();
+
+      if (data.success) {
+        chatMessages = data.messages || [];
+        chatMeta = data.data || chatMeta;
+        renderHeader();
+        renderMessages();
+      } else {
+        messagesContainer.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fi fi-rr-comment-slash text-2xl text-slate-400"></i>
+            <p class="text-slate-400 text-sm mt-2">${data.message || 'Unable to load chat'}</p>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Error loading chat:', error);
+      messagesContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fi fi-rr-exclamation text-2xl text-red-400"></i>
+          <p class="text-red-400 text-sm mt-2">Failed to load chat history</p>
+        </div>
+      `;
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function renderMessages() {
+    const container = document.getElementById('chat-messages');
+
+    if (!chatMessages.length) {
+      container.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fi fi-rr-comment text-3xl text-slate-300"></i>
+          <p class="text-slate-400 text-sm mt-2">No messages yet</p>
+          <p class="text-slate-300 text-xs">Start the conversation!</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = chatMessages.map(msg => {
+      const isMine = !!msg.is_mine;
+      const time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      const text = msg.content || msg.message || '';
+      const senderRole = msg.sender_role ? ` (${msg.sender_role})` : '';
+
+      if (msg.is_system || msg.message_type === 'system') {
+        return `
+          <div class="text-center">
+            <span class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+              ${escapeHtml(text)}
+            </span>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-[80%]">
+            <div class="${isMine 
+              ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+              : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-md'
+            } px-4 py-2 shadow-sm">
+              ${!isMine ? `<p class="text-xs font-semibold ${msg.sender_role === 'admin' ? 'text-red-600' : 'text-indigo-600'} mb-1">${escapeHtml(msg.sender_name || 'Unknown')}${escapeHtml(senderRole)}</p>` : ''}
+              <p class="text-sm whitespace-pre-wrap">${escapeHtml(text)}</p>
+            </div>
+            <p class="text-[10px] ${isMine ? 'text-right' : 'text-left'} text-slate-400 mt-1 px-2">${time}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function renderHeader() {
+    const contextEl = document.getElementById('chat-context');
+    const participantsEl = document.getElementById('chat-participants');
+    if (contextEl) {
+      contextEl.textContent = chatMeta?.context || CHAT_CONFIG.contextCode || '';
+    }
+    if (participantsEl) {
+      const pills = (chatMeta?.participants || []).map(p => {
+        const roleColor = p.role === 'admin' ? 'bg-red-500/20 text-red-100 border border-red-200/40' :
+                        p.role === 'bde' ? 'bg-amber-500/15 text-amber-100 border border-amber-200/40' :
+                        p.role === 'writer' ? 'bg-purple-500/15 text-purple-100 border border-purple-200/40' :
+                        'bg-green-500/15 text-green-100 border border-green-200/40';
+        return `<span class="text-[11px] px-2 py-1 rounded-full ${roleColor}">${escapeHtml(p.full_name || 'User')} • ${escapeHtml(p.role)}</span>`;
+      });
+      participantsEl.innerHTML = pills.join('');
+    }
+  }
+
+  document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message || !CHAT_CONFIG.contextCode) return;
+
+    const tempId = `temp_${Date.now()}`;
+    const tempMsg = {
+      message_id: tempId,
+      content: message,
+      sender_name: 'You',
+      sender_role: 'you',
+      is_mine: true,
+      created_at: new Date().toISOString()
+    };
+    chatMessages.push(tempMsg);
+    renderMessages();
+    input.value = '';
+
+    try {
+      const response = await fetch(`/chat/${CHAT_CONFIG.contextCode}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        chatMessages = chatMessages.filter(m => m.message_id !== tempId);
+        renderMessages();
+        if (typeof showToast === 'function') {
+          showToast(data.message || 'Failed to send message', 'error');
+        }
+        return;
+      }
+
+      if (data.data) {
+        chatMessages = chatMessages.map(m => m.message_id === tempId ? { ...data.data, is_mine: true } : m);
+        renderMessages();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      chatMessages = chatMessages.filter(m => m.message_id !== tempId);
+      renderMessages();
+      if (typeof showToast === 'function') {
+        showToast('Network error. Please try again.', 'error');
+      }
+    }
+  });
+
+  function setupChatSocketListeners() {
+    if (!window.realtimeNotifications || !window.realtimeNotifications.socket) {
+      setTimeout(setupChatSocketListeners, 1000);
+      return;
+    }
+
+    const socket = window.realtimeNotifications.socket();
+    if (!socket) return;
+
+    socket.on('chat:new_message', (data) => {
+      if (data.context_code === CHAT_CONFIG.contextCode && data.message) {
+        const incoming = data.message;
+        const exists = chatMessages.some(m => m.message_id === incoming.message_id);
+        if (!exists) {
+          chatMessages.push({ ...incoming, is_mine: false });
+          renderMessages();
+        }
+      }
+    });
+
+    socket.on('chat:typing', (data) => {
+      if (data.context_code === CHAT_CONFIG.contextCode && !data.is_mine) {
+        const typingEl = document.getElementById('chat-typing');
+        typingEl.classList.remove('hidden');
+        setTimeout(() => typingEl.classList.add('hidden'), 3000);
+      }
+    });
+
+    socket.on('chat:system_message', (data) => {
+      if (data.context_code === CHAT_CONFIG.contextCode && data.message) {
+        chatMessages.push({
+          message_id: data.message.message_id || `sys_${Date.now()}`,
+          content: data.message.content || data.message,
+          message_type: 'system',
+          is_system: true,
+          created_at: data.message.created_at || new Date().toISOString()
+        });
+        renderMessages();
+      }
+    });
+  }
+
+  window.toggleChatPanel = function() {
+    const messages = document.getElementById('chat-messages');
+    const input = document.getElementById('chat-form').parentElement;
+    messages.classList.toggle('hidden');
+    input.classList.toggle('hidden');
+  };
+
+  window.handleChatMessage = function(data) {
+    if (data.context_code === CHAT_CONFIG.contextCode && data.message) {
+      if (!chatMessages.find(m => m.message_id === data.message.message_id)) {
+        chatMessages.push({ ...data.message, is_mine: false });
+        renderMessages();
+      }
+    }
+  };
+
+  window.handleChatSystemMessage = function(data) {
+    if (data.context_code === CHAT_CONFIG.contextCode) {
+      chatMessages.push({
+        message_id: `sys_${Date.now()}`,
+        content: data.message,
+        message_type: 'system',
+        is_system: true,
+        created_at: new Date().toISOString()
+      });
+      renderMessages();
+    }
+  };
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+  }
+
+})();
+</script>

@@ -4,7 +4,7 @@ const router = express.Router();
 const { authGuard } = require("../middleware/auth.admin.middleware");
 const adminController = require("../controllers/admin.controller");
 const dashboardController = require("../controllers/admin.dashboard.controller");
-const queryController = require("../controllers/query.controller");
+const queryController = require("../controllers/queries.controller");
 const paymentController = require("../controllers/payment.controller");
 const assignmentController = require("../controllers/assignment.controller");
 const assignmentsController = require("../controllers/assignments.controller");
@@ -50,6 +50,34 @@ router.get(
   authGuard(["admin"]),
   fetchAdminProfile,
   dashboardController.getDashboard
+);
+
+// Notifications Page
+router.get(
+  "/notifications",
+  authGuard(["admin"]),
+  fetchAdminProfile,
+  (req, res) => {
+    res.render("admin/notifications", {
+      title: "Notifications",
+      layout: "layouts/admin",
+      currentPage: "notifications"
+    });
+  }
+);
+
+// Chat Hub
+router.get(
+  "/chat",
+  authGuard(["admin"]),
+  fetchAdminProfile,
+  (req, res) => {
+    res.render("admin/chat", {
+      title: "Chat",
+      layout: "layouts/admin",
+      currentPage: "chat"
+    });
+  }
 );
 
 // Users Management
@@ -100,6 +128,11 @@ router.delete(
 );
 
 // Query Management
+router.post(
+  "/queries/:queryId/invite-writers",
+  authGuard(["admin"]),
+  queryController.inviteWriters
+);
 router.get(
   "/queries",
   authGuard(["admin"]),
@@ -114,23 +147,26 @@ router.get(
   queryController.viewQuery
 );
 
+
 router.get(
   "/queries/available-writers",
   authGuard(["admin"]),
-  queryController.getAvailableWriters
+  assignmentController.getAvailableWriters
 );
+
 
 router.post(
   "/queries/:queryId/assign",
   authGuard(["admin"]),
-  queryController.assignWriters
+  assignmentController.assignWriters
 );
 
-router.post(
-  "/queries/:queryId/quotation",
-  authGuard(["admin"]),
-  queryController.generateQuotation
-);
+
+// router.post(
+//   "/queries/:queryId/quotation",
+//   authGuard(["admin"]),
+//   queryController.generateQuotation
+// );
 
 router.post(
   "/queries/:queryId/status",
@@ -297,6 +333,12 @@ router.post(
   "/assignments/:taskEvalId/reassign",
   authGuard(["admin"]),
   assignmentController.reassignWriter
+);
+
+router.post(
+  "/assignments/:taskEvalId/finalize",
+  authGuard(["admin"]),
+  assignmentController.finalizeAssignment
 );
 
 

@@ -1,0 +1,484 @@
+<%# 
+  GLOBAL CHAT MODAL COMPONENT
+  Opens from header chat icon, lists all accessible chats
+  
+  Usage: include('../partials/global-chat-modal', { userRole: 'admin', userId: profile.user_id })
+%>
+
+<!-- Chat Slide-Over Panel -->
+<div id="global-chat-modal" class="fixed inset-0 z-[9999] hidden">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" onclick="closeGlobalChat()"></div>
+  
+  <!-- Chat Panel -->
+  <div id="chat-panel-container" class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300">
+    
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+          <i class="fi fi-rr-messages text-lg"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-lg">Messages</h3>
+          <p class="text-xs text-white/70" id="chat-subtitle">Select a conversation</p>
+        </div>
+      </div>
+      <button onclick="closeGlobalChat()" class="p-2 hover:bg-white/20 rounded-lg transition">
+        <i class="fi fi-rr-cross-small text-xl"></i>
+      </button>
+    </div>
+
+    <!-- View: Chat List -->
+    <div id="chat-list-view" class="h-[calc(100%-72px)] overflow-hidden flex flex-col">
+      <!-- Search -->
+      <div class="p-3 border-b border-slate-100">
+        <div class="relative">
+          <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="chat-search" placeholder="Search conversations..." 
+            class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            oninput="filterChatList(this.value)">
+        </div>
+      </div>
+      
+      <!-- Chat List -->
+      <div id="chat-list" class="flex-1 overflow-y-auto">
+        <div class="p-8 text-center">
+          <i class="fi fi-rr-spinner-alt text-2xl text-slate-400 animate-spin"></i>
+          <p class="text-slate-400 text-sm mt-2">Loading conversations...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- View: Chat Messages -->
+    <div id="chat-messages-view" class="h-[calc(100%-72px)] hidden flex flex-col">
+      <!-- Chat Header -->
+      <div class="p-3 border-b border-slate-100 flex items-center gap-3">
+        <button onclick="showChatList()" class="p-2 hover:bg-slate-100 rounded-lg transition">
+          <i class="fi fi-rr-arrow-left text-slate-600"></i>
+        </button>
+        <div class="flex-1 min-w-0">
+          <p id="current-chat-title" class="font-bold text-slate-800 truncate">Chat</p>
+          <p id="current-chat-code" class="text-xs text-slate-400"></p>
+        </div>
+        <div id="chat-status-indicator" class="w-2 h-2 bg-green-500 rounded-full"></div>
+      </div>
+      
+      <!-- Messages Container -->
+      <div id="active-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+        <div class="text-center py-8">
+          <i class="fi fi-rr-comment text-3xl text-slate-300"></i>
+          <p class="text-slate-400 text-sm mt-2">Select a conversation</p>
+        </div>
+      </div>
+      
+      <!-- Message Input -->
+      <div id="chat-input-area" class="border-t border-slate-200 p-3 bg-white">
+        <form id="global-chat-form" class="flex gap-2" onsubmit="sendGlobalChatMessage(event)">
+          <input 
+            type="text" 
+            id="global-chat-input" 
+            placeholder="Type your message..." 
+            class="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            autocomplete="off"
+          >
+          <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold">
+            <i class="fi fi-rr-paper-plane"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  // Global Chat State
+  window.globalChatState = {
+    conversations: [],
+    activeConversation: null,
+    messages: [],
+    userRole: '<%= typeof userRole !== "undefined" ? userRole : "client" %>',
+    userId: '<%= typeof userId !== "undefined" ? userId : "" %>'
+  };
+
+  // Open global chat modal
+  window.openGlobalChat = function() {
+    const modal = document.getElementById('global-chat-modal');
+    const panel = document.getElementById('chat-panel-container');
+    
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      panel.classList.remove('translate-x-full');
+    });
+    
+    loadConversations();
+  };
+
+  // Close global chat modal
+  window.closeGlobalChat = function() {
+    const modal = document.getElementById('global-chat-modal');
+    const panel = document.getElementById('chat-panel-container');
+    
+    panel.classList.add('translate-x-full');
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      showChatList(); // Reset to list view
+    }, 300);
+  };
+
+  // Load conversations list
+  async function loadConversations() {
+    const container = document.getElementById('chat-list');
+    
+    try {
+      const response = await fetch('/chat/my-conversations', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        globalChatState.conversations = data.conversations || [];
+        renderConversationList();
+      } else {
+        container.innerHTML = `
+          <div class="p-8 text-center">
+            <i class="fi fi-rr-comment-slash text-3xl text-slate-300"></i>
+            <p class="text-slate-400 text-sm mt-2">${data.message || 'No conversations'}</p>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      container.innerHTML = `
+        <div class="p-8 text-center">
+          <i class="fi fi-rr-exclamation text-3xl text-red-300"></i>
+          <p class="text-red-400 text-sm mt-2">Failed to load conversations</p>
+        </div>
+      `;
+    }
+  }
+
+  // Render conversation list
+  function renderConversationList() {
+    const container = document.getElementById('chat-list');
+    const conversations = globalChatState.conversations;
+
+    if (!conversations || conversations.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center">
+          <i class="fi fi-rr-comment text-3xl text-slate-300"></i>
+          <p class="text-slate-400 text-sm mt-2">No conversations yet</p>
+          <p class="text-slate-300 text-xs">Start chatting from orders or queries</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = conversations.map(conv => {
+      const hasUnread = conv.unread_count > 0;
+      const lastMsgTime = conv.last_message_at ? formatTimeAgo(conv.last_message_at) : '';
+      const name = conv.display_name || conv.title || conv.context_code;
+      const initials = (name || '').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'C';
+      const subtitle = conv.role_label || conv.context_code;
+
+      return `
+        <div class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${hasUnread ? 'bg-indigo-50/50' : ''}"
+             onclick="openConversation('${conv.context_code}', '${escapeHtml(name)}')">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-full ${conv.context_type === 'order' ? 'bg-indigo-100 text-indigo-600' : 'bg-violet-100 text-violet-600'} flex items-center justify-center flex-shrink-0 font-bold">
+              ${escapeHtml(initials)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <p class="font-semibold text-slate-800 truncate ${hasUnread ? 'text-indigo-900' : ''}">${escapeHtml(name)}</p>
+                ${hasUnread ? `<span class="bg-indigo-600 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">${conv.unread_count}</span>` : ''}
+              </div>
+              <p class="text-xs text-slate-500 truncate">${escapeHtml(conv.last_message || 'No messages yet')}</p>
+              <div class="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                <span class="truncate">${escapeHtml(subtitle)}</span>
+                <span class="text-[10px] text-slate-400">${conv.context_code}</span>
+              </div>
+              <div class="flex items-center justify-between mt-1">
+                <span class="text-[10px] text-slate-400">${lastMsgTime}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Filter chat list by search
+  window.filterChatList = function(query) {
+    const filtered = globalChatState.conversations.filter(conv => 
+      (conv.display_name || conv.title || '').toLowerCase().includes(query.toLowerCase()) ||
+      (conv.context_code || '').toLowerCase().includes(query.toLowerCase()) ||
+      (conv.last_message || '').toLowerCase().includes(query.toLowerCase())
+    );
+    
+    const container = document.getElementById('chat-list');
+    const original = globalChatState.conversations;
+    globalChatState.conversations = filtered;
+    renderConversationList();
+    globalChatState.conversations = original;
+  };
+
+  // Open a specific conversation
+  window.openConversation = async function(contextCode, title) {
+    globalChatState.activeConversation = contextCode;
+    
+    // Switch views
+    document.getElementById('chat-list-view').classList.add('hidden');
+    document.getElementById('chat-messages-view').classList.remove('hidden');
+    
+    document.getElementById('current-chat-title').textContent = title;
+    document.getElementById('current-chat-code').textContent = contextCode;
+    document.getElementById('chat-subtitle').textContent = title;
+    
+    // Load messages
+    const container = document.getElementById('active-chat-messages');
+    container.innerHTML = `
+      <div class="text-center py-8">
+        <i class="fi fi-rr-spinner-alt text-2xl text-slate-400 animate-spin"></i>
+        <p class="text-slate-400 text-sm mt-2">Loading messages...</p>
+      </div>
+    `;
+
+    try {
+      const response = await fetch(`/chat/${contextCode}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        globalChatState.messages = data.messages || [];
+        globalChatState.meta = data.data || {};
+        const participants = (globalChatState.meta?.participants || []).map(p => `${p.full_name || 'User'} (${p.role})`).join(' • ');
+        document.getElementById('current-chat-code').textContent = participants ? `${contextCode} • ${participants}` : contextCode;
+        renderGlobalMessages();
+        
+        if (data.is_restricted || data.is_closed) {
+          document.getElementById('chat-input-area').innerHTML = `
+            <div class="text-center text-slate-400 text-sm py-3">
+              <i class="fi fi-rr-lock mr-1"></i> This chat has been ${data.is_closed ? 'closed' : 'restricted'}
+            </div>
+          `;
+        }
+      } else {
+        container.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fi fi-rr-exclamation text-2xl text-red-400"></i>
+            <p class="text-red-400 text-sm mt-2">${data.message || 'Unable to load messages'}</p>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      container.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fi fi-rr-exclamation text-2xl text-red-400"></i>
+          <p class="text-red-400 text-sm mt-2">Failed to load messages</p>
+        </div>
+      `;
+    }
+  };
+
+  // Render messages in global chat
+  function renderGlobalMessages() {
+    const container = document.getElementById('active-chat-messages');
+    const messages = globalChatState.messages;
+
+    if (!messages || messages.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fi fi-rr-comment text-3xl text-slate-300"></i>
+          <p class="text-slate-400 text-sm mt-2">No messages yet</p>
+          <p class="text-slate-300 text-xs">Start the conversation!</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = messages.map(msg => {
+      const isMine = !!msg.is_mine;
+      const time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      const text = msg.content || msg.message || '';
+
+      if (msg.is_system || msg.message_type === 'system') {
+        return `
+          <div class="text-center my-2">
+            <span class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full inline-block">
+              ${escapeHtml(text)}
+            </span>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-[80%]">
+            <div class="${isMine 
+              ? 'bg-indigo-600 text-white rounded-2xl rounded-br-md' 
+              : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-md'
+            } px-4 py-2 shadow-sm">
+              ${!isMine ? `<p class="text-xs font-semibold ${msg.sender_role === 'admin' ? 'text-red-600' : 'text-indigo-600'} mb-1">${escapeHtml(msg.sender_name || 'Unknown')} ${msg.sender_role ? `<span class="text-slate-400 font-normal">(${msg.sender_role})</span>` : ''}</p>` : ''}
+              <p class="text-sm whitespace-pre-wrap">${escapeHtml(text)}</p>
+            </div>
+            <p class="text-[10px] ${isMine ? 'text-right' : 'text-left'} text-slate-400 mt-1 px-2">${time}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // Show chat list view
+  window.showChatList = function() {
+    document.getElementById('chat-list-view').classList.remove('hidden');
+    document.getElementById('chat-messages-view').classList.add('hidden');
+    document.getElementById('chat-subtitle').textContent = 'Select a conversation';
+    globalChatState.activeConversation = null;
+    
+    // Reset input area
+    document.getElementById('chat-input-area').innerHTML = `
+      <form id="global-chat-form" class="flex gap-2" onsubmit="sendGlobalChatMessage(event)">
+        <input 
+          type="text" 
+          id="global-chat-input" 
+          placeholder="Type your message..." 
+          class="flex-1 px-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          autocomplete="off"
+        >
+        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold">
+          <i class="fi fi-rr-paper-plane"></i>
+        </button>
+      </form>
+    `;
+  };
+
+  // Send message in global chat
+  window.sendGlobalChatMessage = async function(e) {
+    e.preventDefault();
+    
+    const input = document.getElementById('global-chat-input');
+    const message = input.value.trim();
+    const contextCode = globalChatState.activeConversation;
+    
+    if (!message || !contextCode) return;
+
+    // Optimistically add message to UI
+    const tempId = 'temp_' + Date.now();
+    const tempMsg = {
+      message_id: tempId,
+      content: message,
+      sender_name: 'You',
+      sender_role: 'you',
+      is_mine: true,
+      created_at: new Date().toISOString()
+    };
+    globalChatState.messages.push(tempMsg);
+    renderGlobalMessages();
+    input.value = '';
+
+    try {
+      const response = await fetch(`/chat/${contextCode}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Remove optimistic message on failure
+        globalChatState.messages = globalChatState.messages.filter(m => m.message_id !== tempId);
+        renderGlobalMessages();
+        
+        // Show error toast
+        if (typeof showNotificationToast === 'function') {
+          showNotificationToast('error', 'Message Failed', data.message || 'Could not send message');
+        } else {
+          alert(data.message || 'Failed to send message');
+        }
+      } else if (data.data) {
+        globalChatState.messages = globalChatState.messages.map(m => m.message_id === tempId ? { ...data.data, is_mine: true } : m);
+        renderGlobalMessages();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      globalChatState.messages = globalChatState.messages.filter(m => m.message_id !== tempId);
+      renderGlobalMessages();
+    }
+  };
+
+  // Handle real-time chat message
+  window.handleGlobalChatMessage = function(data) {
+    if (globalChatState.activeConversation === data.context_code && data.message) {
+      const incoming = data.message;
+      if (!globalChatState.messages.find(m => m.message_id === incoming.message_id)) {
+        globalChatState.messages.push({ ...incoming, is_mine: false });
+        renderGlobalMessages();
+      }
+    }
+
+    loadConversations();
+  };
+
+  // Helper: Format time ago
+  function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+
+  // Helper: Escape HTML
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+  }
+
+  // Listen for socket messages when panel is open
+  if (window.realtimeNotifications) {
+    const checkSocket = setInterval(() => {
+      const socket = window.realtimeNotifications.socket?.();
+      if (socket) {
+        clearInterval(checkSocket);
+        socket.on('chat:new_message', (data) => {
+          if (document.getElementById('global-chat-modal') && 
+              !document.getElementById('global-chat-modal').classList.contains('hidden')) {
+            handleGlobalChatMessage(data);
+          }
+        });
+      }
+    }, 1000);
+  }
+
+})();
+</script>
+
+<style>
+#global-chat-modal .custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+#global-chat-modal .custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+#global-chat-modal .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+</style>

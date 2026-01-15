@@ -201,10 +201,10 @@ exports.verifyPayment = async (req, res) => {
     const work_code = generateUniqueCode('WORK', 12);
 
     // =======================
-    // UPDATE ORDER WITH WORK_CODE (CONFIRMS ORDER)
+    // UPDATE ORDER WITH WORK_CODE AND STATUS (30 - Payment Verified)
     // =======================
     await connection.query(
-      `UPDATE orders SET work_code = ? WHERE order_id = ?`,
+      `UPDATE orders SET work_code = ?, status = 30 WHERE order_id = ?`,
       [work_code, payment.order_id]
     );
 

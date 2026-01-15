@@ -1,5 +1,5 @@
 const db = require("../config/db");
-const { sendNotification } = require("../utils/notifications");
+const { createNotificationWithRealtime } = require('./notifications.controller');
 const logger = require("../utils/logger");
 const { validateTransition, STATUS } = require('../utils/state-machine');
 
@@ -40,17 +40,16 @@ exports.getDashboard = async (req, res) => {
       `SELECT COUNT(*) as count
        FROM orders o
        JOIN users u ON o.user_id = u.user_id
-       WHERE u.bde = ? AND o.status = 1 AND DATE(o.created_at) = ?`,
+       WHERE u.bde = ? AND o.status = 26 AND DATE(o.created_at) = ?`,
       [bdeId, today.toISOString().split("T")[0]]
     );
 
-    // KPI 2: Pending Quotations (orders with quotations but status < 4)
+    // KPI 2: Pending Quotations
     const [pendingQuotations] = await db.query(
       `SELECT COUNT(DISTINCT o.order_id) as count
        FROM orders o
        JOIN users u ON o.user_id = u.user_id
-       JOIN quotations q ON o.order_id = q.order_id
-       WHERE u.bde = ? AND o.status = 3`,
+       WHERE u.bde = ? AND o.status = 27`,
       [bdeId]
     );
 
@@ -62,7 +61,7 @@ exports.getDashboard = async (req, res) => {
       `SELECT COUNT(*) as count
        FROM orders o
        JOIN users u ON o.user_id = u.user_id
-       WHERE u.bde = ? AND o.status >= 4 
+       WHERE u.bde = ? AND o.status >= 30 
        AND DATE(o.created_at) BETWEEN ? AND ?`,
       [bdeId, monthStart.toISOString().split("T")[0], monthEnd.toISOString().split("T")[0]]
     );
@@ -72,18 +71,17 @@ exports.getDashboard = async (req, res) => {
       `SELECT COALESCE(SUM(o.total_price_usd), 0) as total
        FROM orders o
        JOIN users u ON o.user_id = u.user_id
-       WHERE u.bde = ? AND o.status >= 4
+       WHERE u.bde = ? AND o.status >= 30
        AND DATE(o.created_at) BETWEEN ? AND ?`,
       [bdeId, monthStart.toISOString().split("T")[0], monthEnd.toISOString().split("T")[0]]
     );
 
-    // KPI 5: Pending Payments (orders with no payments or incomplete payments)
+    // KPI 5: Pending Payments
     const [pendingPayments] = await db.query(
       `SELECT COUNT(DISTINCT o.order_id) as count
        FROM orders o
        JOIN users u ON o.user_id = u.user_id
-       LEFT JOIN payments p ON o.order_id = p.order_id
-       WHERE u.bde = ? AND o.status >= 3 AND (p.payment_id IS NULL OR COALESCE(p.amount, 0) < o.total_price_usd)`,
+       WHERE u.bde = ? AND o.status IN (28, 29)`,
       [bdeId]
     );
 
@@ -145,7 +143,7 @@ exports.listClients = async (req, res) => {
         u.country,
         u.university,
         COUNT(DISTINCT o.order_id) as total_orders,
-        SUM(CASE WHEN o.status >= 4 THEN 1 ELSE 0 END) as confirmed_orders
+        SUM(CASE WHEN o.status >= 30 THEN 1 ELSE 0 END) as confirmed_orders
       FROM users u
       LEFT JOIN orders o ON u.user_id = o.user_id
       WHERE u.bde = ? AND u.role = 'client' AND u.is_active = 1
@@ -444,9 +442,9 @@ exports.generateQuotation = async (req, res) => {
       [basePrice, discount, finalPrice, query.order_id]
     );
 
-    // Update order status to "Quotation Sent"
+    // Update order status to "Quotation Sent" (27)
     await db.query(
-      `UPDATE orders SET status = 3 WHERE order_id = ?`,
+      `UPDATE orders SET status = 27 WHERE order_id = ?`,
       [query.order_id]
     );
 
@@ -458,8 +456,10 @@ exports.generateQuotation = async (req, res) => {
       {
         queryCode,
         basePrice,
-        finalPrice
-      }
+        finalPrice,
+        link_url: `/client/orders/${queryCode}`
+      },
+      req.io
     );
 
     // Notify admin
@@ -469,8 +469,10 @@ exports.generateQuotation = async (req, res) => {
       `quotation-generated`,
       {
         role: "admin",
-        queryCode
-      }
+        queryCode,
+        link_url: `/admin/queries`
+      },
+      req.io
     );
 
     res.json({
@@ -704,24 +706,52 @@ exports.getChat = async (req, res) => {
       orderId = rows[0].order_id;
     }
 
-    const [[chat]] = await db.query(
+    // Fetch/create chat metadata
+    let [[chat]] = await db.query(
       `SELECT * FROM order_chats WHERE order_id = ? LIMIT 1`,
       [orderId]
     );
 
-    // Parse messages from JSON
-    let messages = [];
-    if (chat && chat.messages) {
-      try {
-        messages = typeof chat.messages === 'string' ? JSON.parse(chat.messages) : chat.messages;
-      } catch (e) {
-        messages = [];
-      }
+    if (!chat) {
+      const [result] = await db.query(
+        `INSERT INTO order_chats (order_id, chat_name, status, created_at, updated_at)
+         VALUES (?, 'Order Chat', 'active', NOW(), NOW())`,
+        [orderId]
+      );
+      [[chat]] = await db.query(`SELECT * FROM order_chats WHERE chat_id = ? LIMIT 1`, [result.insertId]);
+    }
+
+    // Ensure participants (client + bde)
+    const [[orderMeta]] = await db.query(`SELECT user_id FROM orders WHERE order_id = ?`, [orderId]);
+    const participantValues = [
+      orderMeta?.user_id ? `(${chat.chat_id}, ${orderMeta.user_id}, 'client', 0, NOW())` : null,
+      `(${chat.chat_id}, ${bdeId}, 'bde', 0, NOW())`
+    ].filter(Boolean).join(',');
+    if (participantValues) {
+      await db.query(
+        `INSERT IGNORE INTO order_chat_participants (chat_id, user_id, role, is_muted, joined_at) VALUES ${participantValues}`
+      );
+    }
+
+    // Fetch messages from normalized table
+    const [messagesRows] = await db.query(
+      `SELECT m.*, CASE WHEN r.user_id IS NULL THEN 0 ELSE 1 END as is_read
+       FROM order_chat_messages m
+       LEFT JOIN order_chat_message_reads r ON m.message_id = r.message_id AND r.user_id = ?
+       WHERE m.chat_id = ?
+       ORDER BY m.created_at ASC`,
+      [bdeId, chat.chat_id]
+    );
+
+    const unread = messagesRows.filter(m => m.is_read === 0 && m.sender_id !== bdeId).map(m => m.message_id);
+    if (unread.length) {
+      const values = unread.map(id => `(${id}, ${bdeId}, NOW())`).join(',');
+      await db.query(`INSERT IGNORE INTO order_chat_message_reads (message_id, user_id, read_at) VALUES ${values}`);
     }
 
     res.json({
       success: true,
-      messages,
+      messages: messagesRows,
       chat_id: chat?.chat_id
     });
   } catch (err) {
@@ -761,69 +791,107 @@ exports.sendChatMessage = async (req, res) => {
 
     const order = orders[0];
 
-    // Get or create chat for this order
+    // Get or create chat metadata
     let [[chat]] = await db.query(
       `SELECT * FROM order_chats WHERE order_id = ? LIMIT 1`,
       [order.order_id]
     );
 
-    const newMessage = {
-      id: Date.now(),
-      sender_id: bdeId,
-      sender_role: 'bde',
-      recipient_type: recipientType,
-      message,
-      created_at: new Date().toISOString()
-    };
-
     if (!chat) {
-      // Create new chat
       const [result] = await db.query(
-        `INSERT INTO order_chats (order_id, chat_name, participants, messages, status, created_at, updated_at)
-         VALUES (?, 'Order Chat', ?, ?, 1, NOW(), NOW())`,
-        [order.order_id, JSON.stringify([order.user_id, bdeId]), JSON.stringify([newMessage])]
+        `INSERT INTO order_chats (order_id, context_code, chat_name, status, created_at, updated_at)
+         VALUES (?, ?, 'Order Chat', 'active', NOW(), NOW())`,
+        [order.order_id, queryCode]
       );
-    } else {
-      // Append to existing messages
-      let existingMessages = [];
-      try {
-        existingMessages = typeof chat.messages === 'string' ? JSON.parse(chat.messages) : chat.messages;
-      } catch (e) {}
-      existingMessages.push(newMessage);
-      
-      await db.query(
-        `UPDATE order_chats SET messages = ?, updated_at = NOW() WHERE chat_id = ?`,
-        [JSON.stringify(existingMessages), chat.chat_id]
-      );
+      [[chat]] = await db.query(`SELECT * FROM order_chats WHERE chat_id = ? LIMIT 1`, [result.insertId]);
     }
 
-    // Send notification
-    if (recipientType === 'admin') {
-      await sendNotification(
-        null,
-        `New message from BDE for query ${queryCode}`,
-        `bde-message`,
-        {
-          role: "admin",
-          queryCode,
-          bdeId
-        }
-      );
-    } else {
-      await sendNotification(
-        order.user_id,
-        `New message from your BDE`,
-        `bde-message`,
-        {
-          queryCode
-        }
-      );
+    // Ensure participants (client + bde)
+    const participantValues = [
+      `(${chat.chat_id}, ${order.user_id}, 'client', 0, NOW())`,
+      `(${chat.chat_id}, ${bdeId}, 'bde', 0, NOW())`
+    ].join(',');
+    await db.query(
+      `INSERT IGNORE INTO order_chat_participants (chat_id, user_id, role, is_muted, joined_at) VALUES ${participantValues}`
+    );
+
+    // Insert message in normalized table
+    const [insertRes] = await db.query(
+      `INSERT INTO order_chat_messages (chat_id, order_id, sender_id, sender_role, message_type, content, attachments, is_edited, is_deleted, created_at)
+       VALUES (?, ?, ?, 'bde', 'text', ?, NULL, 0, 0, NOW())`,
+      [chat.chat_id, order.order_id, bdeId, message.trim()]
+    );
+
+    const messageId = insertRes.insertId;
+    const [[savedMsg]] = await db.query(`SELECT * FROM order_chat_messages WHERE message_id = ? LIMIT 1`, [messageId]);
+
+    const [[senderUser]] = await db.query(`SELECT full_name FROM users WHERE user_id = ?`, [bdeId]);
+    const senderName = senderUser?.full_name || 'BDE';
+
+    const newMessage = {
+      ...savedMsg,
+      sender_name: senderName,
+      message: savedMsg.content,
+      is_mine: true,
+      is_read: true
+    };
+
+    const emittedMessage = { ...newMessage, is_mine: false, is_read: false };
+
+    // Mark sender read
+    await db.query(
+      `INSERT IGNORE INTO order_chat_message_reads (message_id, user_id, read_at) VALUES (?, ?, NOW())`,
+      [messageId, bdeId]
+    );
+
+    // Emit real-time chat message via Socket.IO
+    if (req.io) {
+      req.io.to(`context:${queryCode}`).emit('chat:new_message', {
+        chat_id: chat.chat_id,
+        context_code: queryCode,
+        message: emittedMessage
+      });
+    }
+
+    // Notifications (admin + client)
+    if (req.io) {
+      const buildLink = (targetRole) => {
+        if (targetRole === 'admin') return `/admin/queries/${order.order_id}/view`;
+        if (targetRole === 'bde') return `/bde/queries/${queryCode}`;
+        return `/client/orders/${queryCode}`;
+      };
+
+      // Client
+      await createNotificationWithRealtime(req.io, {
+        user_id: order.user_id,
+        type: 'chat',
+        title: `New chat from ${senderName}`,
+        message: savedMsg.content || 'New message',
+        link_url: buildLink('client'),
+        context_code: queryCode,
+        triggered_by: { user_id: bdeId, role: 'bde' }
+      });
+
+      // Admins
+      const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
+      for (const admin of admins) {
+        await createNotificationWithRealtime(req.io, {
+          user_id: admin.user_id,
+          type: 'chat',
+          title: `New chat message in ${queryCode}`,
+          message: savedMsg.content || 'New message',
+          link_url: buildLink('admin'),
+          context_code: queryCode,
+          triggered_by: { user_id: bdeId, role: 'bde' }
+        });
+      }
     }
 
     res.json({
       success: true,
       message: "Message sent",
-      messageId: result.insertId
+      messageId,
+      data: newMessage
     });
   } catch (err) {
     logger.error("Send message error:", err);
@@ -938,8 +1006,10 @@ exports.sendPaymentReminder = async (req, res) => {
       `payment-reminder`,
       {
         queryCode,
-        amount: order.total_price_usd
-      }
+        amount: order.total_price_usd,
+        link_url: `/client/orders/${queryCode}`
+      },
+      req.io
     );
 
     // Log reminder

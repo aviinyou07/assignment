@@ -43,6 +43,11 @@ const authGuardBDE = (requiredRoles = ["bde"]) => {
 
       // Attach user info to request
       req.user = decoded;
+      
+      // Make token available to templates for WebSocket auth
+      res.locals.authToken = token;
+      res.locals.user = decoded;
+      
       next();
     } catch (err) {
       console.error("Authentication error:", err);

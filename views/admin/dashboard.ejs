@@ -231,13 +231,20 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-slate-600"><%= activity.paper_topic.substring(0, 40) %>...</td>
                 <td class="px-4 py-3">
-                  <% const statuses = {1: 'New', 2: 'Under Review', 3: 'Quotation', 4: 'Awaiting', 5: 'Confirmed', 6: 'Closed'}; %>
+                  <% const statusNames = {
+                    26: 'Pending', 27: 'Quotation', 28: 'Accepted', 29: 'Awaiting', 
+                    30: 'Verified', 31: 'Assigned', 32: 'In Progress', 33: 'QC Phase',
+                    34: 'Approved', 35: 'Completed', 36: 'Revision', 37: 'Delivered'
+                  }; %>
                   <span class="px-3 py-1 rounded-full text-xs font-bold <%= 
-                    activity.status == 1 || activity.status == 2 ? 'bg-yellow-100 text-yellow-700' :
-                    activity.status == 3 ? 'bg-blue-100 text-blue-700' :
-                    activity.status >= 5 ? 'bg-green-100 text-green-700' :
+                    activity.status == 26 ? 'bg-yellow-100 text-yellow-700' :
+                    activity.status == 27 ? 'bg-indigo-100 text-indigo-700' :
+                    activity.status == 28 ? 'bg-blue-100 text-blue-700' :
+                    activity.status == 30 ? 'bg-green-100 text-green-700' :
+                    activity.status == 31 ? 'bg-purple-100 text-purple-700' :
+                    activity.status >= 35 ? 'bg-green-100 text-green-700' :
                     'bg-slate-100 text-slate-700'
-                  %>"><%= statuses[activity.status] %></span>
+                  %>"><%= statusNames[activity.status] || activity.status %></span>
                 </td>
                 <td class="px-4 py-3 text-sm text-slate-600"><%= new Date(activity.created_at).toLocaleDateString() %></td>
                 <td class="px-4 py-3">

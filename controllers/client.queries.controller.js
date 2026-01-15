@@ -7,6 +7,10 @@ const {
   createOrderHistory
 } = require('../utils/audit');
 
+const notificationsController = require('../controllers/notifications.controller');
+const socketUtils = require('../utils/socket');
+const logger = require('../utils/logger');
+
 /**
  * CLIENT QUERIES CONTROLLER
  * 
@@ -80,15 +84,9 @@ exports.createQuery = async (req, res) => {
     await connection.beginTransaction();
 
     // =======================
-    // GET INITIAL STATUS FROM MASTER_STATUS
+    // ENTERPRISE STATUS (26 - Pending Query)
     // =======================
-    const [[initialStatus]] = await connection.query(
-      `SELECT id FROM master_status 
-       WHERE status_name = 'Query Created' OR status_name = 'pending' 
-       LIMIT 1`
-    );
-
-    const statusId = initialStatus?.id || 1;
+    const statusId = 26;
 
     // =======================
     // GENERATE QUERY CODE
@@ -107,6 +105,19 @@ exports.createQuery = async (req, res) => {
     );
 
     const orderId = queryResult.insertId;
+
+    // ============================================================================
+    // AUTO-GENERATE QUOTATION (ENTERPRISE FLOW)
+    // Create auto-quotation record (Status 27)
+    // ============================================================================
+    await connection.query(
+      `INSERT INTO quotations (order_id, user_id, quoted_price_usd, notes, created_at)
+       VALUES (?, ?, 0.00, 'Auto-generated quotation. Pending final review by admin.', NOW())`,
+      [orderId, userId]
+    );
+    
+    // Update order status to 27 (Quotation Sent)
+    await connection.query(`UPDATE orders SET status = 27 WHERE order_id = ?`, [orderId]);
 
     // =======================
     // HANDLE FILE UPLOAD (if provided)
@@ -142,31 +153,136 @@ exports.createQuery = async (req, res) => {
     });
 
     // =======================
-    // SEND NOTIFICATION TO CLIENT
+    // SEND NOTIFICATION TO CLIENT (DB + realtime when possible)
     // =======================
-    await createNotification({
-      user_id: userId,
-      type: 'success',
-      title: 'Query Created Successfully',
-      message: `Your query (${query_code}) has been created. A BDE will send you a quotation soon.`,
-      link_url: `/client/queries/${orderId}`
-    });
+    try {
+      const io = req.io || socketUtils.getIO();
+      if (io && notificationsController && notificationsController.createNotificationWithRealtime) {
+        logger.debug(`[Query Notification] Using IO from ${req.io ? 'req.io' : 'socket singleton'} to notify client ${userId}`);
+        await notificationsController.createNotificationWithRealtime(io, {
+          user_id: userId,
+          type: 'success',
+          title: 'Query Created Successfully',
+          message: `Your query (${query_code}) has been created. A BDE will send you a quotation soon.`,
+          link_url: `/client/queries/${orderId}`
+        });
+      } else {
+        logger.debug(`[Query Notification] No IO available, falling back to DB-only for client ${userId}`);
+        await createNotification({
+          user_id: userId,
+          type: 'success',
+          title: 'Query Created Successfully',
+          message: `Your query (${query_code}) has been created. A BDE will send you a quotation soon.`,
+          link_url: `/client/queries/${orderId}`
+        });
+      }
+      } catch (err) {
+      logger.error(`Failed to send client realtime notification: ${err && err.message ? err.message : err}`);
+      await createNotification({
+        user_id: userId,
+        type: 'success',
+        title: 'Query Created Successfully',
+        message: `Your query (${query_code}) has been created. A BDE will send you a quotation soon.`,
+        link_url: `/client/queries/${orderId}`
+      });
+    }
 
     // =======================
-    // SEND NOTIFICATION TO ADMIN/BDE
+    // SEND NOTIFICATION TO ADMIN/BDE (DB + realtime when possible)
     // =======================
     const [admins] = await connection.query(
-      `SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1 LIMIT 1`
+      `SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1 LIMIT 1`
     );
     
     if (admins.length > 0) {
-      await createNotification({
-        user_id: admins[0].user_id,
-        type: 'critical',
-        title: 'New Query Received',
-        message: `New query created by ${user.full_name}: ${paper_topic}`,
-        link_url: `/admin/queries/${orderId}`
-      });
+      const adminId = admins[0].user_id;
+      try {
+        const io = req.io || socketUtils.getIO();
+        const adminNotification = {
+          type: 'critical',
+          title: 'New Query Received',
+          message: `New query created by ${user.full_name}: ${paper_topic}`,
+          link_url: `/admin/queries/${orderId}/view`
+        };
+
+        // Prefer broadcasting to all connected admins so any admin receives it
+        if (io && notificationsController && notificationsController.broadcastNotificationToRole) {
+          logger.debug('[Query Notification] Broadcasting to admin role via IO');
+          await notificationsController.broadcastNotificationToRole(io, 'admin', adminNotification);
+        } else {
+          logger.debug(`[Query Notification] No IO available, falling back to DB-only for admin ${adminId}`);
+          await createNotification({
+            user_id: adminId,
+            type: adminNotification.type,
+            title: adminNotification.title,
+            message: adminNotification.message,
+            link_url: adminNotification.link_url
+          });
+        }
+      } catch (err) {
+        logger.error(`Failed to send admin realtime notification: ${err && err.message ? err.message : err}`);
+        await createNotification({
+          user_id: adminId,
+          type: 'critical',
+          title: 'New Query Received',
+          message: `New query created by ${user.full_name}: ${paper_topic}`,
+          link_url: `/admin/queries/${orderId}`
+        });
+      }
+    }
+
+    // Notify the client's assigned BDE (preferred) so only the owning BDE sees the detail
+    try {
+      const assignedBdeId = user.bde || null;
+      const ioForBde = req.io || socketUtils.getIO();
+      const bdeNotification = {
+        type: 'info',
+        title: 'New Query Requires Quotation',
+        message: `New query from ${user.full_name}: ${paper_topic}`,
+        link_url: `/bde/queries/${query_code}`
+      };
+
+      if (assignedBdeId) {
+        // Notify the specific BDE
+        if (ioForBde && notificationsController && notificationsController.createNotificationWithRealtime) {
+          logger.debug(`[Query Notification] Notifying assigned BDE via IO ${assignedBdeId}`);
+          await notificationsController.createNotificationWithRealtime(ioForBde, {
+            ...bdeNotification,
+            user_id: assignedBdeId
+          });
+        } else {
+          logger.debug(`[Query Notification] No IO available, inserting DB notification for assigned BDE ${assignedBdeId}`);
+          await createNotification({
+            user_id: assignedBdeId,
+            type: bdeNotification.type,
+            title: bdeNotification.title,
+            message: bdeNotification.message,
+            link_url: bdeNotification.link_url
+          });
+        }
+      } else {
+        // Fallback: broadcast to all BDEs (legacy behavior)
+        if (ioForBde && notificationsController && notificationsController.broadcastNotificationToRole) {
+          logger.debug('[Query Notification] No assigned BDE, broadcasting to bde role via IO');
+          await notificationsController.broadcastNotificationToRole(ioForBde, 'bde', bdeNotification);
+        } else {
+          logger.debug('[Query Notification] No IO for BDE broadcast, inserting DB notifications for BDEs');
+          const [bdes] = await connection.query(
+            `SELECT user_id FROM users WHERE role = 'bde' AND is_active = 1`
+          );
+          for (const bde of bdes) {
+            await createNotification({
+              user_id: bde.user_id,
+              type: bdeNotification.type,
+              title: bdeNotification.title,
+              message: bdeNotification.message,
+              link_url: bdeNotification.link_url
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.error(`Failed to notify BDEs about new query: ${err && err.message ? err.message : err}`);
     }
 
     return res.status(201).json({
@@ -182,7 +298,7 @@ exports.createQuery = async (req, res) => {
 
   } catch (err) {
     await connection.rollback();
-    console.error('Error creating query:', err);
+    logger.error(`Error creating query: ${err && err.message ? err.message : err}`);
     return res.status(500).json({
       success: false,
       message: 'Failed to create query',

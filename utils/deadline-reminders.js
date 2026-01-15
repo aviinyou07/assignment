@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const db = require('../config/db');
 const { createAuditLog } = require('./audit');
+const logger = require('./logger');
 
 /**
  * DEADLINE REMINDER SYSTEM
@@ -19,7 +20,7 @@ let scheduledJob = null;
 const initializeDeadlineReminders = async (io) => {
   // Run every hour at :00 minutes
   scheduledJob = cron.schedule('0 * * * *', async () => {
-    console.log('[DEADLINE REMINDER] Checking for upcoming deadlines...');
+    logger.info('[DEADLINE REMINDER] Checking for upcoming deadlines...');
     
     try {
       // Get all active orders with approaching deadlines
@@ -38,7 +39,7 @@ const initializeDeadlineReminders = async (io) => {
           dr.is_sent
         FROM orders o
         LEFT JOIN deadline_reminders dr ON o.order_id = dr.order_id AND dr.user_id = o.writer_id
-        WHERE o.status = 3
+        WHERE o.status IN (31, 32)
         AND o.deadline_at > NOW()
         AND TIMESTAMPDIFF(HOUR, NOW(), o.deadline_at) <= 24
         AND o.writer_id IS NOT NULL
@@ -150,9 +151,9 @@ const initializeDeadlineReminders = async (io) => {
         }
       }
       
-      console.log(`[DEADLINE REMINDER] Processed ${orders.length} orders with approaching deadlines`);
+      logger.info(`[DEADLINE REMINDER] Processed ${orders.length} orders with approaching deadlines`);
     } catch (error) {
-      console.error('[DEADLINE REMINDER] Error:', error.message);
+      logger.error(`[DEADLINE REMINDER] Error: ${error && error.message ? error.message : error}`);
       
       // Log error
       try {
@@ -167,19 +168,19 @@ const initializeDeadlineReminders = async (io) => {
           user_agent: 'SYSTEM'
         });
       } catch (auditError) {
-        console.error('[DEADLINE REMINDER] Could not log error:', auditError.message);
+        logger.error(`[DEADLINE REMINDER] Could not log error: ${auditError && auditError.message ? auditError.message : auditError}`);
       }
     }
   });
   
-  console.log('[DEADLINE REMINDER] System initialized - runs every hour');
+  logger.info('[DEADLINE REMINDER] System initialized - runs every hour');
 };
 
 const stopDeadlineReminders = () => {
   if (scheduledJob) {
     scheduledJob.stop();
     scheduledJob.destroy();
-    console.log('[DEADLINE REMINDER] System stopped');
+    logger.info('[DEADLINE REMINDER] System stopped');
   }
 };
 

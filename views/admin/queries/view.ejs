@@ -1,3 +1,39 @@
+          <!-- Assign Writer Modal -->
+          <div id="assign-writer-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+              <div class="p-6 border-b border-slate-200">
+                <h3 class="text-xl font-black text-slate-800">Assign Writer</h3>
+                <p class="text-sm text-slate-500 mt-1">Select an interested writer to assign this query</p>
+              </div>
+              <form id="assign-writer-form" class="p-6 space-y-4">
+                <div>
+                  <label class="text-sm font-bold text-slate-700 block mb-2">Select Writer *</label>
+                  <div id="assign-writers-list" class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-2">
+                    <% if (interestedWriters.length === 0) { %>
+                      <p class="text-slate-500 text-sm">No writers have shown interest yet.</p>
+                    <% } else { %>
+                      <% interestedWriters.forEach(writer => { %>
+                        <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                          <input type="radio" name="writerId" value="<%= writer.user_id %>" class="w-4 h-4 text-green-600 rounded border-slate-300 focus:ring-green-500">
+                          <div class="flex-1">
+                            <p class="font-semibold text-slate-800 text-sm"><%= writer.full_name %></p>
+                            <p class="text-xs text-slate-500"><%= writer.email %></p>
+                          </div>
+                          <span class="text-xs px-2 py-1 rounded-full <%= writer.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' %>">
+                            <%= writer.is_active ? 'Active' : 'Inactive' %>
+                          </span>
+                        </label>
+                      <% }); %>
+                    <% } %>
+                  </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                  <button type="button" onclick="closeAssignWriterModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
+                  <button type="submit" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition">Assign Writer</button>
+                </div>
+              </form>
+            </div>
+          </div>
 <section class="min-h-screen bg-slate-50 p-4 md:p-8">
   <div class="max-w-7xl mx-auto space-y-6">
 
@@ -100,53 +136,145 @@
         <!-- ASSIGNED WRITERS CARD -->
         <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
           <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-            <h3 class="text-lg font-black text-slate-800">Assigned Writers</h3>
-            <span class="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">
-              <%= assignedWriters ? assignedWriters.length : 0 %> Assigned
-            </span>
+            <h3 class="text-lg font-black text-slate-800">Writer Assignment Workflow</h3>
           </div>
-
-          <% if (assignedWriters && assignedWriters.length > 0) { %>
-            <div class="space-y-3">
-              <% assignedWriters.forEach(writer => { %>
-                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm">
+          <button onclick="openInviteWriterModal()" class="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition">Invite Writers</button>
+                    <!-- Invite Writers Modal -->
+                    <div id="invite-writer-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+                        <div class="p-6 border-b border-slate-200">
+                          <h3 class="text-xl font-black text-slate-800">Invite Writers</h3>
+                          <p class="text-sm text-slate-500 mt-1">Select writers to invite for this query</p>
+                        </div>
+                        <form id="invite-writer-form" class="p-6 space-y-4">
+                          <div>
+                            <label class="text-sm font-bold text-slate-700 block mb-2">Select Writers *</label>
+                            <div id="invite-writers-list" class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-2">
+                              <% availableWriters.forEach(writer => { %>
+                                <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                                  <input type="checkbox" name="writerIds" value="<%= writer.user_id %>" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+                                  <div class="flex-1">
+                                    <p class="font-semibold text-slate-800 text-sm"><%= writer.full_name %></p>
+                                    <p class="text-xs text-slate-500"><%= writer.email %></p>
+                                  </div>
+                                  <span class="text-xs px-2 py-1 rounded-full <%= writer.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' %>">
+                                    <%= writer.is_active ? 'Active' : 'Inactive' %>
+                                  </span>
+                                </label>
+                              <% }); %>
+                            </div>
+                          </div>
+                          <div class="flex gap-3 pt-4">
+                            <button type="button" onclick="closeInviteWriterModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
+                            <button type="submit" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">Invite Writers</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+          <h4 class="text-md font-bold text-slate-700 mb-2">Interested Writers</h4>
+                    <h4 class="text-md font-bold text-indigo-700 mb-2 mt-4">Invited Writers</h4>
+                    <% if (invitedWriters && invitedWriters.length > 0) { %>
+                      <div class="space-y-2 mb-4">
+                        <% invitedWriters.forEach(writer => { %>
+                          <div class="flex items-center justify-between p-2 bg-indigo-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white font-bold text-xs">
+                                <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                              </div>
+                              <div>
+                                <p class="font-bold text-indigo-800 text-xs"><%= writer.full_name %></p>
+                                <p class="text-xs text-indigo-700 mt-1"><%= writer.email %></p>
+                              </div>
+                            </div>
+                            <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-bold">Invited</span>
+                          </div>
+                        <% }); %>
+                      </div>
+                    <% } else { %>
+                      <div class="text-center py-2 text-slate-500">No writers have been invited yet.</div>
+                    <% } %>
+          <% if (interestedWriters && interestedWriters.length > 0) { %>
+            <div class="space-y-2 mb-4">
+              <% interestedWriters.forEach(writer => { %>
+                <% if (writer.status === 'interested' || writer.status === 'assigned') { %>
+                <div class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-violet-500 flex items-center justify-center text-white font-bold text-xs">
                       <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
                     </div>
                     <div>
-                      <p class="font-bold text-slate-800 text-sm"><%= writer.full_name %></p>
-                      <p class="text-xs text-slate-500"><%= writer.email %></p>
+                      <p class="font-bold text-slate-800 text-xs"><%= writer.full_name %></p>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <% 
-                      const writerStatusColors = {
-                        'pending': 'bg-yellow-100 text-yellow-700',
-                        'accepted': 'bg-green-100 text-green-700',
-                        'rejected': 'bg-red-100 text-red-700',
-                        'in_progress': 'bg-blue-100 text-blue-700',
-                        'completed': 'bg-emerald-100 text-emerald-700',
-                        'not_doable': 'bg-slate-100 text-slate-700'
-                      };
-                      const writerStatusColor = writerStatusColors[writer.status] || 'bg-slate-100 text-slate-700';
-                    %>
-                    <span class="<%= writerStatusColor %> px-2 py-1 rounded-full text-xs font-bold capitalize">
-                      <%= writer.status ? writer.status.replace('_', ' ') : 'Pending' %>
-                    </span>
-                    <p class="text-xs text-slate-400 mt-1"><%= new Date(writer.assigned_at).toLocaleDateString() %></p>
+                  <div>
+                    <% if (writer.status === 'assigned') { %>
+                      <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Assigned</span>
+                    <% } else { %>
+                      <button class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold" onclick="assignWriter('<%= writer.writer_id %>')">Assign</button>
+                    <% } %>
                   </div>
+                </div>
+                <% } %>
+              <% }); %>
+            </div>
+          <% } else { %>
+            <div class="text-center py-4 text-slate-500">No writers have shown interest yet.</div>
+          <% } %>
+
+          <h4 class="text-md font-bold text-green-700 mb-2 mt-4">Accepted Writers</h4>
+          <% if (acceptedWriters && acceptedWriters.length > 0) { %>
+            <div class="space-y-2 mb-4">
+              <% acceptedWriters.forEach(writer => { %>
+                <div class="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 flex items-center justify-center text-white font-bold text-xs">
+                      <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                    </div>
+                    <div>
+                      <p class="font-bold text-green-800 text-xs"><%= writer.full_name %></p>
+                    </div>
+                  </div>
+                  <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Accepted</span>
                 </div>
               <% }); %>
             </div>
           <% } else { %>
-            <div class="text-center py-8">
-              <i class="fi fi-rr-users text-4xl text-slate-300 mb-3 block"></i>
-              <p class="text-slate-500 text-sm">No writers assigned yet</p>
-              <button onclick="openAssignWriterModal()" class="mt-3 text-purple-600 hover:text-purple-700 font-bold text-sm">
-                <i class="fi fi-rr-plus mr-1"></i> Assign Writers
-              </button>
+            <div class="text-center py-2 text-slate-500">No writers have accepted yet.</div>
+          <% } %>
+
+          <h4 class="text-md font-bold text-rose-700 mb-2 mt-4">Rejected Writers</h4>
+          <% if (rejectedWriters && rejectedWriters.length > 0) { %>
+            <div class="space-y-2 mb-4">
+              <% rejectedWriters.forEach(writer => { %>
+                <div class="flex items-center justify-between p-2 bg-rose-50 rounded-lg">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white font-bold text-xs">
+                      <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                    </div>
+                    <div>
+                      <p class="font-bold text-rose-800 text-xs"><%= writer.full_name %></p>
+                      <p class="text-xs text-rose-700 mt-1">Reason: <%= writer.reason %></p>
+                    </div>
+                  </div>
+                  <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-xs font-bold">Rejected</span>
+                </div>
+              <% }); %>
             </div>
+          <% } else { %>
+            <div class="text-center py-2 text-slate-500">No writers have rejected yet.</div>
+          <% } %>
+          <h4 class="text-md font-bold text-slate-700 mb-2 mt-4">Assigned Writer</h4>
+          <% if (assignedWriter) { %>
+            <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 flex items-center justify-center text-white font-bold text-xs">
+                <%= assignedWriter.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+              </div>
+              <div>
+                <p class="font-bold text-green-800 text-xs"><%= assignedWriter.full_name %></p>
+              </div>
+            </div>
+          <% } else { %>
+            <div class="text-center py-4 text-slate-500">No writer assigned yet.</div>
           <% } %>
         </div>
 
@@ -191,14 +319,20 @@
 
           <% 
             const statusColors = {
-              1: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', name: 'New' },
-              2: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', name: 'Under Review' },
-              3: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', name: 'Quotation Sent' },
-              4: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', name: 'Awaiting Response' },
-              5: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', name: 'Confirmed' },
-              6: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', name: 'Closed' }
+              26: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', name: 'Pending Query' },
+              27: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', name: 'Quotation Sent' },
+              28: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', name: 'Accepted' },
+              29: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', name: 'Payment Submitted' },
+              30: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', name: 'Payment Verified' },
+              31: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', name: 'Writer Assigned' },
+              32: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', name: 'In Progress' },
+              33: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', name: 'QC Phase' },
+              34: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', name: 'Revision' },
+              35: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', name: 'Completed' },
+              36: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', name: 'Failed' },
+              37: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', name: 'Closed' }
             };
-            const current = statusColors[query.status] || statusColors[1];
+            const current = statusColors[query.status] || statusColors[26];
           %>
 
           <div class="<%= current.bg %> <%= current.border %> border-2 rounded-xl p-4 mb-4">
@@ -227,6 +361,16 @@
             </button>
           </div>
         </div>
+
+        <!-- CHAT PANEL -->
+        <% if (typeof query !== 'undefined' && (query.query_code || query.order_code)) { %>
+        <%- include('../../partials/chat-panel', { 
+          contextCode: query.query_code || query.order_code,
+          contextType: 'query',
+          recipientName: query.full_name,
+          recipientRole: 'client'
+        }) %>
+        <% } %>
 
       </div>
 
@@ -333,17 +477,147 @@
 </div>
 
 <script>
+// Assign Writer Modal Logic
+function openAssignWriterModal() {
+  document.getElementById('assign-writer-modal').classList.remove('hidden');
+}
+function closeAssignWriterModal() {
+  document.getElementById('assign-writer-modal').classList.add('hidden');
+  document.getElementById('assign-writer-form').reset();
+}
+document.getElementById('assign-writer-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const writerId = formData.get('writerId');
+  if (!writerId) {
+    showToast('Please select a writer to assign', 'warning');
+    return;
+  }
+  try {
+    const response = await fetch(`/admin/query/${queryId}/assign-writer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writerId: parseInt(writerId) })
+    });
+    const result = await response.json();
+    if (result.success) {
+      showToast('Writer assigned successfully!', 'success');
+      closeAssignWriterModal();
+      location.reload();
+    } else {
+      showToast('Error: ' + (result.message || 'Failed to assign writer'), 'error');
+    }
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+});
+// Invite writers modal logic
+function openInviteWriterModal() {
+  fetch('/admin/queries/available-writers')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.writers.length > 0) {
+        const modalHtml = `
+          <div id="invite-writer-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in zoom-in-95 duration-200">
+              <div class="p-6 border-b border-slate-200">
+                <h3 class="text-xl font-black text-slate-800">Invite Writers</h3>
+                <p class="text-sm text-slate-500 mt-1">Select writers to invite for this query</p>
+              </div>
+              <form id="invite-writer-form" class="p-6 space-y-4">
+                <div>
+                  <label class="text-sm font-bold text-slate-700 block mb-2">Select Writers *</label>
+                  <div id="invite-writers-list" class="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-2">
+                    ${data.writers.map(writer => `
+                      <label class="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" name="writerIds" value="${writer.user_id}" class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+                        <div class="flex-1">
+                          <p class="font-semibold text-slate-800 text-sm">${writer.full_name}</p>
+                          <p class="text-xs text-slate-500">${writer.email}</p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full ${writer.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
+                          ${writer.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </label>
+                    `).join('')}
+                  </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                  <button type="button" onclick="closeInviteWriterModal()" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-300 transition">Cancel</button>
+                  <button type="submit" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">Invite Writers</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('invite-writer-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const writerIds = formData.getAll('writerIds').map(id => parseInt(id));
+          if (writerIds.length === 0) {
+            showToast('Please select at least one writer', 'warning');
+            return;
+          }
+          try {
+            const response = await fetch(`/admin/query/${queryId}/invite-writers`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ writerIds })
+            });
+            const result = await response.json();
+            if (result.success) {
+              showToast('Writers invited successfully!', 'success');
+              closeInviteWriterModal();
+              location.reload();
+            } else {
+              showToast('Error: ' + (result.message || 'Failed to invite writers'), 'error');
+            }
+          } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+          }
+        });
+      } else {
+        showToast('No writers available to invite', 'warning');
+      }
+    });
+}
+
+function closeInviteWriterModal() {
+  const modal = document.getElementById('invite-writer-modal');
+  if (modal) modal.remove();
+}
+// Assign a writer from interested list
+async function assignWriter(writerId) {
+  try {
+    const response = await fetch(`/admin/query/${queryId}/assign-writer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writerId })
+    });
+    const result = await response.json();
+    if (result.success) {
+      showToast('Writer assigned successfully!', 'success');
+      location.reload();
+    } else {
+      showToast('Error: ' + (result.message || 'Failed to assign writer'), 'error');
+    }
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+}
 const queryId = '<%= query.order_id %>';
 
 // Status Modal
 async function showStatusModal() {
   const statuses = [
-    { value: 'new', label: 'New' },
-    { value: 'under-review', label: 'Under Review' },
-    { value: 'quotation-sent', label: 'Quotation Sent' },
-    { value: 'awaiting-response', label: 'Awaiting Response' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'closed', label: 'Closed' }
+    { value: 26, label: 'Pending Query' },
+    { value: 27, label: 'Quotation Sent' },
+    { value: 28, label: 'Accepted' },
+    { value: 30, label: 'Payment Verified' },
+    { value: 31, label: 'Writer Assigned' },
+    { value: 35, label: 'Completed' },
+    { value: 37, label: 'Closed' }
   ];
 
   const selected = await showInputModal('Update Query Status', 'Select the new status for this query:', '', {

@@ -1,0 +1,288 @@
+<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-black text-slate-800">Notifications</h1>
+        <p class="text-slate-500 mt-1">Stay updated with system events and alerts</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="unread-count" class="text-sm font-bold text-slate-500">0 unread</span>
+        <button onclick="markAllRead()" class="px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-lg hover:bg-indigo-700 transition">
+          <i class="fi fi-rr-check-double mr-2"></i>Mark All Read
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTER TABS -->
+    <div class="flex gap-2 bg-white p-2 rounded-xl border border-slate-200">
+      <button onclick="filterNotifications('all')" class="filter-btn active px-4 py-2 rounded-lg text-sm font-semibold transition" data-filter="all">
+        All
+      </button>
+      <button onclick="filterNotifications('unread')" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold transition" data-filter="unread">
+        Unread
+      </button>
+      <button onclick="filterNotifications('critical')" class="filter-btn px-4 py-2 rounded-lg text-sm font-semibold transition" data-filter="critical">
+        Critical
+      </button>
+    </div>
+
+    <!-- NOTIFICATIONS LIST -->
+    <div id="notifications-list" class="space-y-3">
+      <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center">
+        <div class="animate-pulse flex justify-center">
+          <i class="fi fi-rr-spinner-alt text-3xl text-slate-400 animate-spin"></i>
+        </div>
+        <p class="text-slate-500 mt-4">Loading notifications...</p>
+      </div>
+    </div>
+
+    <!-- LOAD MORE -->
+    <div id="load-more-container" class="text-center hidden">
+      <button onclick="loadMoreNotifications()" class="px-6 py-3 bg-slate-100 text-slate-600 font-semibold rounded-xl hover:bg-slate-200 transition">
+        Load More
+      </button>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty-state" class="hidden bg-white p-12 rounded-2xl border border-slate-200 text-center">
+      <i class="fi fi-rr-bell-slash text-5xl text-slate-300 mb-4 block"></i>
+      <h3 class="text-xl font-bold text-slate-600 mb-2">No Notifications</h3>
+      <p class="text-slate-400">You're all caught up! No notifications at this time.</p>
+    </div>
+
+  </div>
+</section>
+
+<style>
+  .filter-btn {
+    color: #64748b;
+    background: transparent;
+  }
+  .filter-btn:hover {
+    background: #f1f5f9;
+  }
+  .filter-btn.active {
+    background: #4f46e5;
+    color: white;
+  }
+  
+  .notification-item {
+    transition: all 0.2s ease;
+  }
+  .notification-item:hover {
+    transform: translateX(4px);
+  }
+  .notification-item.unread {
+    border-left: 4px solid #4f46e5;
+  }
+</style>
+
+<script>
+let currentPage = 0;
+let currentFilter = 'all';
+let hasMore = true;
+const LIMIT = 20;
+
+// Load notifications on page load
+document.addEventListener('DOMContentLoaded', () => {
+  loadNotifications();
+  loadUnreadCount();
+});
+
+async function loadNotifications(append = false) {
+  try {
+    const params = new URLSearchParams({
+      page: currentPage,
+      limit: LIMIT
+    });
+    
+    if (currentFilter === 'unread') {
+      params.append('unread', 'true');
+    } else if (currentFilter === 'critical') {
+      params.append('type', 'critical');
+    }
+
+    const response = await fetch(`/notifications?${params.toString()}`);
+    const data = await response.json();
+
+    if (data.success) {
+      const list = document.getElementById('notifications-list');
+      const notifications = data.notifications || [];
+      
+      if (!append) {
+        list.innerHTML = '';
+      }
+
+      if (notifications.length === 0 && currentPage === 0) {
+        document.getElementById('empty-state').classList.remove('hidden');
+        document.getElementById('load-more-container').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('empty-state').classList.add('hidden');
+      
+      notifications.forEach(notif => {
+        list.innerHTML += renderNotification(notif);
+      });
+
+      hasMore = notifications.length === LIMIT;
+      document.getElementById('load-more-container').classList.toggle('hidden', !hasMore);
+    }
+  } catch (err) {
+    console.error('Error loading notifications:', err);
+    showToast('Failed to load notifications', 'error');
+  }
+}
+
+async function loadUnreadCount() {
+  try {
+    const response = await fetch('/notifications/unread-count');
+    const data = await response.json();
+    
+    if (data.success) {
+      const count = data.unread || data.count || 0;
+      document.getElementById('unread-count').textContent = `${count} unread`;
+    }
+  } catch (err) {
+    console.error('Error loading unread count:', err);
+  }
+}
+
+function renderNotification(notif) {
+  const typeIcons = {
+    'info': 'fi-rr-info',
+    'success': 'fi-rr-check-circle',
+    'warning': 'fi-rr-triangle-warning',
+    'error': 'fi-rr-cross-circle',
+    'critical': 'fi-rr-exclamation',
+    'payment': 'fi-rr-credit-card',
+    'order': 'fi-rr-shopping-bag',
+    'task': 'fi-rr-clipboard-list-check',
+    'chat': 'fi-rr-comment',
+    'deadline': 'fi-rr-clock'
+  };
+  
+  const typeColors = {
+    'info': 'bg-blue-100 text-blue-600',
+    'success': 'bg-green-100 text-green-600',
+    'warning': 'bg-amber-100 text-amber-600',
+    'error': 'bg-red-100 text-red-600',
+    'critical': 'bg-red-500 text-white',
+    'payment': 'bg-emerald-100 text-emerald-600',
+    'order': 'bg-indigo-100 text-indigo-600',
+    'task': 'bg-purple-100 text-purple-600',
+    'chat': 'bg-cyan-100 text-cyan-600',
+    'deadline': 'bg-orange-100 text-orange-600'
+  };
+
+  const icon = typeIcons[notif.type] || 'fi-rr-bell';
+  const colors = typeColors[notif.type] || 'bg-slate-100 text-slate-600';
+  const unreadClass = notif.is_read ? '' : 'unread';
+  const unreadBg = notif.is_read ? 'bg-white' : 'bg-indigo-50/50';
+
+  return `
+    <div class="notification-item ${unreadBg} ${unreadClass} p-4 rounded-xl border border-slate-200 flex items-start gap-4 cursor-pointer hover:shadow-md"
+         onclick="handleNotificationClick(${notif.notification_id}, '${notif.link_url || ''}')">
+      <div class="w-10 h-10 ${colors} rounded-full flex items-center justify-center flex-shrink-0">
+        <i class="fi ${icon}"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-2">
+          <h4 class="font-bold text-slate-800 ${notif.is_read ? '' : 'text-indigo-900'}">${escapeHtml(notif.title)}</h4>
+          <span class="text-xs text-slate-400 whitespace-nowrap">${formatTimeAgo(notif.created_at)}</span>
+        </div>
+        <p class="text-sm text-slate-600 mt-1 line-clamp-2">${escapeHtml(notif.message)}</p>
+        ${notif.link_url ? `<span class="inline-block mt-2 text-xs font-semibold text-indigo-600">View Details →</span>` : ''}
+      </div>
+      ${!notif.is_read ? `
+        <button onclick="event.stopPropagation(); markAsRead(${notif.notification_id})" 
+                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                title="Mark as read">
+          <i class="fi fi-rr-check"></i>
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+async function handleNotificationClick(id, linkUrl) {
+  await markAsRead(id);
+  if (linkUrl) {
+    window.location.href = linkUrl;
+  }
+}
+
+async function markAsRead(id) {
+  try {
+    await fetch(`/notifications/${id}/read`, { method: 'PATCH' });
+    
+    // Update UI
+    const item = document.querySelector(`.notification-item[onclick*="${id}"]`);
+    if (item) {
+      item.classList.remove('unread', 'bg-indigo-50/50');
+      item.classList.add('bg-white');
+      const readBtn = item.querySelector('button[onclick*="markAsRead"]');
+      if (readBtn) readBtn.remove();
+    }
+    
+    loadUnreadCount();
+  } catch (err) {
+    console.error('Error marking as read:', err);
+  }
+}
+
+async function markAllRead() {
+  try {
+    await fetch('/notifications/all/read', { method: 'PATCH' });
+    showToast('All notifications marked as read', 'success');
+    currentPage = 0;
+    loadNotifications();
+    loadUnreadCount();
+  } catch (err) {
+    console.error('Error marking all as read:', err);
+    showToast('Failed to mark all as read', 'error');
+  }
+}
+
+function filterNotifications(filter) {
+  currentFilter = filter;
+  currentPage = 0;
+  
+  // Update active state
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  
+  loadNotifications();
+}
+
+function loadMoreNotifications() {
+  if (hasMore) {
+    currentPage++;
+    loadNotifications(true);
+  }
+}
+
+function formatTimeAgo(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+</script>

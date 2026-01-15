@@ -22,18 +22,18 @@ router.get(
   notificationsController.getNotifications
 );
 
+// Mark all as read - MUST come BEFORE /:notificationId/read
+router.patch(
+  '/all/read',
+  requireRole(['client', 'bde', 'writer', 'admin']),
+  notificationsController.markAllAsRead
+);
+
 // Mark single notification as read
 router.patch(
   '/:notificationId/read',
   requireRole(['client', 'bde', 'writer', 'admin']),
   notificationsController.markAsRead
-);
-
-// Mark all as read
-router.patch(
-  '/all/read',
-  requireRole(['client', 'bde', 'writer', 'admin']),
-  notificationsController.markAllAsRead
 );
 
 // Get critical alerts

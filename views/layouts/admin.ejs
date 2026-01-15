@@ -4,41 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Admin Dashboard' %> | A366</title>
+  <% if (typeof authToken !== 'undefined' && authToken) { %>
+  <meta name="auth-token" content="<%= authToken %>">
+  <% } %>
   
   <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/styles.css">
   
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/joemottershaw/uicons@latest/css/all.min.css">
+  <!-- Flaticons -->
+  <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+  <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/2.6.0/uicons-solid-rounded/css/uicons-solid-rounded.css'>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    
-    * {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      background: #f8f9fb;
-    }
-
-    .animate-in {
-      animation: slideIn 0.3s ease-out;
-    }
-
+    body { font-family: 'Inter', sans-serif; background: #f8f9fb; }
+    html { scroll-behavior: smooth; }
+    .animate-in { animation: slideIn 0.3s ease-out; }
     @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -63,5 +51,8 @@
 
   <!-- Global Modal System -->
   <%- include('../partials/modal-system') %>
+  
+  <!-- Global Chat Modal -->
+  <%- include('../partials/global-chat-modal', { userRole: 'admin', userId: typeof profile !== 'undefined' ? profile.user_id : '' }) %>
 </body>
 </html>

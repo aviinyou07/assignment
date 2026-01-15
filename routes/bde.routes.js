@@ -47,6 +47,34 @@ router.get(
   bdeController.getDashboard
 );
 
+// Notifications page
+router.get(
+  "/notifications",
+  authGuardBDE(["bde"]),
+  fetchBDEProfile,
+  (req, res) => {
+    res.render("bde/notifications", {
+      title: "Notifications",
+      layout: "layouts/bde",
+      currentPage: "notifications"
+    });
+  }
+);
+
+// Chat Hub
+router.get(
+  "/chat",
+  authGuardBDE(["bde"]),
+  fetchBDEProfile,
+  (req, res) => {
+    res.render("bde/chat", {
+      title: "Chat",
+      layout: "layouts/bde",
+      currentPage: "chat"
+    });
+  }
+);
+
 /**
  * CLIENT MANAGEMENT (REFERRAL-BASED)
  */

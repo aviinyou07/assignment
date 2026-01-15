@@ -118,9 +118,9 @@ exports.completeOrder = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    // Update order status
+    // Update order status (37 - Delivered)
     await db.query(
-      `UPDATE orders SET status = 8 WHERE order_id = ?`,
+      `UPDATE orders SET status = 37 WHERE order_id = ?`,
       [orderId]
     );
 
@@ -191,9 +191,9 @@ exports.requestRevision = async (req, res) => {
       [String(orderId), req.user.user_id, reason || 'Revision requested']
     );
 
-    // Update order status
+    // Update order status (36 - Revision Required)
     await db.query(
-      `UPDATE orders SET status = 5 WHERE order_id = ?`,
+      `UPDATE orders SET status = 36 WHERE order_id = ?`,
       [orderId]
     );
 

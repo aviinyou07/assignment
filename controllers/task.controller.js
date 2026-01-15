@@ -1,11 +1,5 @@
 const db = require('../config/db');
 
-/**
- * TASK MONITORING CONTROLLER
- * Admin read-only monitoring of task progress and submissions
- */
-
-// List all active tasks
 exports.listActiveTasks = async (req, res) => {
   try {
     const { page = 0, status } = req.query;

@@ -13,6 +13,13 @@ const chatController = require('../controllers/chat.controller');
  * - Writer ↔ Admin
  */
 
+// Get all conversations for current user (MUST be before :context_id)
+router.get(
+  '/my-conversations',
+  requireRole(['client', 'bde', 'writer', 'admin']),
+  chatController.getMyConversations
+);
+
 // Get chat history for order context
 router.get(
   '/:context_id',

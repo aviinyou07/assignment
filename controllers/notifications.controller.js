@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { sendMail } = require('../utils/mailer');
 const { createAuditLog } = require('../utils/audit');
+const logger = require('../utils/logger');
 
 /**
  * NOTIFICATIONS CONTROLLER
@@ -24,27 +25,34 @@ exports.sendNotification = async (req, res) => {
 
     res.json({ success: true, message: 'Notification sent' });
   } catch (error) {
-    console.error('Error sending notification:', error);
+    logger.error(`Error sending notification: ${error && error.message ? error.message : error}`);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 exports.getNotifications = async (req, res) => {
   try {
-    const { page = 0, unreadOnly = false } = req.query;
-    const limit = 20;
+    const { page = 0, unread, type, limit: queryLimit } = req.query;
+    const limit = parseInt(queryLimit) || 20;
     const offset = page * limit;
     const userId = req.user.user_id;
 
     let whereClause = 'user_id = ?';
     let params = [userId];
 
-    if (unreadOnly === 'true') {
+    // Filter by unread only
+    if (unread === 'true') {
       whereClause += ' AND is_read = 0';
     }
 
+    // Filter by notification type
+    if (type && type !== 'all') {
+      whereClause += ' AND type = ?';
+      params.push(type);
+    }
+
     const [notifications] = await db.query(
-      `SELECT notification_id, type, title, message, is_read, created_at
+      `SELECT notification_id, type, title, message, link_url, is_read, created_at
        FROM notifications
        WHERE ${whereClause}
        ORDER BY created_at DESC
@@ -64,7 +72,7 @@ exports.getNotifications = async (req, res) => {
       totalPages: Math.ceil(total / limit)
     });
   } catch (error) {
-    console.error('Error getting notifications:', error);
+    logger.error(`Error getting notifications: ${error && error.message ? error.message : error}`);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -80,7 +88,7 @@ exports.getUnreadCount = async (req, res) => {
 
     res.json({ success: true, unread });
   } catch (error) {
-    console.error('Error getting unread count:', error);
+    logger.error(`Error getting unread count: ${error && error.message ? error.message : error}`);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -88,14 +96,20 @@ exports.getUnreadCount = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
+    
+    // Validate notificationId is a number
+    const id = parseInt(notificationId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid notification ID' });
+    }
 
     await db.query(
       `UPDATE notifications SET is_read = 1 WHERE notification_id = ?`,
-      [notificationId]
+      [id]
     );
     res.json({ success: true, message: 'Marked as read' });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    logger.error(`Error marking notification as read: ${error && error.message ? error.message : error}`);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -110,7 +124,7 @@ exports.markAllAsRead = async (req, res) => {
     );
     res.json({ success: true, message: 'All marked as read' });
   } catch (error) {
-    console.error('Error marking all as read:', error);
+    logger.error(`Error marking all as read: ${error && error.message ? error.message : error}`);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -125,38 +139,64 @@ exports.deleteNotification = async (req, res) => {
     );
     res.json({ success: true, message: 'Notification deleted' });
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    logger.error(`Error deleting notification: ${error && error.message ? error.message : error}`);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
 // Auto-trigger: Payment uploaded
-exports.notifyPaymentUploaded = async (orderId, userId) => {
+exports.notifyPaymentUploaded = async (orderId, userId, io) => {
   try {
+    const targetUser = process.env.ADMIN_USER_ID || 1;
+    const title = 'Payment Verification Required';
+    const message = `Payment uploaded for order ${orderId}`;
+
+    // If io provided, use realtime helper to create + emit
+    if (io) {
+      await exports.createNotificationWithRealtime(io, {
+        user_id: targetUser,
+        type: 'warning',
+        title,
+        message,
+        context_code: null
+      });
+      return;
+    }
+
     await db.query(
       `INSERT INTO notifications (user_id, type, title, message, is_read, created_at)
-       VALUES (?, 'warning', 'Payment Verification Required', 
-               CONCAT('Payment uploaded for order ', ?),
-               0, NOW())`,
-      [process.env.ADMIN_USER_ID || 1, orderId]
+       VALUES (?, 'warning', ?, ?, 0, NOW())`,
+      [targetUser, title, message]
     );
   } catch (error) {
-    console.error('Error notifying payment uploaded:', error);
+    logger.error(`Error notifying payment uploaded: ${error && error.message ? error.message : error}`);
   }
 };
 
 // Auto-trigger: Draft submitted
-exports.notifyDraftSubmitted = async (orderId, writerId) => {
+exports.notifyDraftSubmitted = async (orderId, writerId, io) => {
   try {
+    const targetUser = process.env.ADMIN_USER_ID || 1;
+    const title = 'New Submission';
+    const message = `Writer submitted work for order ${orderId}`;
+
+    if (io) {
+      await exports.createNotificationWithRealtime(io, {
+        user_id: targetUser,
+        type: 'info',
+        title,
+        message
+      });
+      return;
+    }
+
     await db.query(
       `INSERT INTO notifications (user_id, type, title, message, is_read, created_at)
-       VALUES (?, 'info', 'New Submission', 
-               CONCAT('Writer submitted work for order ', ?),
-               0, NOW())`,
-      [process.env.ADMIN_USER_ID || 1, orderId]
+       VALUES (?, 'info', ?, ?, 0, NOW())`,
+      [targetUser, title, message]
     );
   } catch (error) {
-    console.error('Error notifying draft submitted:', error);
+    logger.error(`Error notifying draft submitted: ${error && error.message ? error.message : error}`);
   }
 };
 
@@ -174,20 +214,34 @@ exports.notifyAssignmentRejected = async (workCode, writerId) => {
       [process.env.ADMIN_USER_ID || 1, `Writer ${writer?.full_name || 'Unknown'} rejected assignment for ${workCode}`]
     );
   } catch (error) {
-    console.error('Error notifying assignment rejected:', error);
+    logger.error(`Error notifying assignment rejected: ${error && error.message ? error.message : error}`);
   }
 };
 
 // Auto-trigger: Overdue task
-exports.notifyOverdueTask = async (workCode) => {
+exports.notifyOverdueTask = async (workCode, io) => {
   try {
+    const targetUser = process.env.ADMIN_USER_ID || 1;
+    const title = 'Overdue Task Alert';
+    const message = `Task ${workCode} is overdue`;
+
+    if (io) {
+      await exports.createNotificationWithRealtime(io, {
+        user_id: targetUser,
+        type: 'critical',
+        title,
+        message
+      });
+      return;
+    }
+
     await db.query(
       `INSERT INTO notifications (user_id, type, title, message, created_at)
-       VALUES (?, 'critical', 'Overdue Task Alert', ?, NOW())`,
-      [process.env.ADMIN_USER_ID || 1, `Task ${workCode} is overdue`]
+       VALUES (?, 'critical', ?, NOW())`,
+      [targetUser, message]
     );
   } catch (error) {
-    console.error('Error notifying overdue task:', error);
+    logger.error(`Error notifying overdue task: ${error && error.message ? error.message : error}`);
   }
 };
 
@@ -281,19 +335,21 @@ exports.createNotificationWithRealtime = async (io, data) => {
     };
 
     // Emit to user's personal channel
+    logger.debug(`[Realtime Notification] Emitting to user:${user_id} - ${notificationId}`);
     io.to(`user:${user_id}`).emit('notification:new', notificationEvent);
 
     // If context provided, also emit to context channel
     if (context_code) {
+      logger.debug(`[Realtime Notification] Emitting to context:${context_code} - ${notificationId}`);
       io.to(`context:${context_code}`).emit('notification:new', notificationEvent);
     }
 
     return notificationId;
 
   } catch (error) {
-    console.error('Failed to create notification with realtime:', error);
+    logger.error(`Failed to create notification with realtime: ${error && error.message ? error.message : error}`);
     // Don't throw - log and continue so UI doesn't break
-    console.error('Notification creation failed but order processing continues');
+    logger.error('Notification creation failed but order processing continues');
   }
 };
 
@@ -320,7 +376,7 @@ exports.broadcastNotificationToRole = async (io, role, data) => {
       });
     }
   } catch (error) {
-    console.error('Failed to broadcast notification:', error);
+    logger.error(`Failed to broadcast notification: ${error && error.message ? error.message : error}`);
   }
 };
 

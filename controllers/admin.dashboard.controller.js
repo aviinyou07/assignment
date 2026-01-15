@@ -61,25 +61,25 @@ exports.getDashboard = async (req, res) => {
          WHERE DATE(created_at) >= DATE(?) AND DATE(created_at) <= DATE(?)`,
         [monthStart, monthEnd]
       ),
-      // 3. New Queries Today (status: New/Under Review)
+      // 3. New Queries Today (status: PENDING_QUERY)
       db.query(
         `SELECT COUNT(*) as count
          FROM orders
-         WHERE DATE(created_at) = DATE(?) AND status IN (1, 2)`,
+         WHERE DATE(created_at) = DATE(?) AND status = 26`,
         [today]
       ),
-      // 4. Pending Quotations (Quotation Sent status)
+      // 4. Pending Quotations (QUOTATION_SENT status)
       db.query(
         `SELECT COUNT(*) as count
          FROM orders
-         WHERE status = 3`,
+         WHERE status = 27`,
         []
       ),
-      // 5. Confirmed Orders Today
+      // 5. Confirmed Orders Today (PAYMENT_VERIFIED and beyond)
       db.query(
         `SELECT COUNT(*) as count
          FROM orders
-         WHERE DATE(created_at) = DATE(?) AND status >= 4`,
+         WHERE DATE(created_at) = DATE(?) AND status >= 30`,
         [today]
       ),
       // 6. Active Tasks In Progress
@@ -96,11 +96,11 @@ exports.getDashboard = async (req, res) => {
          WHERE status = 'completed' AND DATE(created_at) >= DATE(?) AND DATE(created_at) <= DATE(?)`,
         [monthStart, monthEnd]
       ),
-      // 8. Pending Approvals (Payment verification + QC pending)
+      // 8. Pending Approvals (Payment Submitted or Pending QC)
       db.query(
         `SELECT COUNT(DISTINCT po.order_id) as count
          FROM orders po
-         WHERE po.status = 3 OR po.status = 4`,
+         WHERE po.status = 29 OR po.status = 33`,
         []
       )
     ]);
@@ -420,7 +420,7 @@ exports.verifyPayment = async (req, res) => {
         
         // Update order with work_code and convert to confirmed
         await connection.query(
-          'UPDATE orders SET work_code = ?, status = 5 WHERE order_id = ?',
+          'UPDATE orders SET work_code = ?, status = 30 WHERE order_id = ?',
           [workCode, orderId]
         );
       }
@@ -449,12 +449,26 @@ exports.verifyPayment = async (req, res) => {
         ['rejected', paymentId]
       );
 
-      // Notify user
-      await connection.query(
-        `INSERT INTO notifications (user_id, type, title, message)
-         VALUES (?, ?, ?, ?)`,
-        [payment.user_id, 'warning', 'Payment Rejected', 'Your payment receipt was rejected. Please reupload.']
+      // Notify user with real-time emission
+      const [notifResult] = await connection.query(
+        `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at)
+         VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+        [payment.user_id, 'warning', 'Payment Rejected', 'Your payment receipt was rejected. Please reupload.', `/client/orders`]
       );
+      
+      // Emit real-time notification via Socket.IO
+      if (req.io) {
+        req.io.to(`user:${payment.user_id}`).emit('notification:new', {
+          notification_id: notifResult.insertId,
+          user_id: payment.user_id,
+          type: 'warning',
+          title: 'Payment Rejected',
+          message: 'Your payment receipt was rejected. Please reupload.',
+          link_url: '/client/orders',
+          is_read: 0,
+          created_at: new Date().toISOString()
+        });
+      }
       
       // Log action
       await logAction({
@@ -580,9 +594,9 @@ exports.approveQC = async (req, res) => {
         ['approved', submissionId]
       );
 
-      // Update order status to Ready for Delivery
+      // Update order status to 34 (Approved)
       await connection.query(
-        'UPDATE orders SET status = 7 WHERE order_id = ?',
+        'UPDATE orders SET status = 34 WHERE order_id = ?',
         [orderId]
       );
     } else {

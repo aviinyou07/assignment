@@ -10,10 +10,15 @@ const db = require('../config/db');
  */
 const socketAuthMiddleware = async (socket, next) => {
   try {
-    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+    let token = socket.handshake.auth.token || socket.handshake.headers.authorization;
 
     if (!token) {
       return next(new Error('Authentication error: Missing token'));
+    }
+
+    // Remove 'Bearer ' prefix if present
+    if (token.startsWith('Bearer ')) {
+      token = token.slice(7);
     }
 
     // Verify JWT

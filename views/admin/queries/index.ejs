@@ -90,7 +90,7 @@
             <% queries.forEach(query => { %>
               <tr class="hover:bg-slate-50 transition-colors">
                 <td class="px-6 py-4">
-                  <div class="font-bold text-slate-800"><%= query.order_code %></div>
+                  <div class="font-bold text-slate-800"><%= query.order_id %></div>
                   <div class="text-xs text-slate-500"><%= new Date(query.created_at).toLocaleDateString() %></div>
                 </td>
                 <td class="px-6 py-4">
@@ -101,20 +101,32 @@
                 <td class="px-6 py-4">
                   <% 
                     const statusColors = {
-                      1: 'bg-yellow-100 text-yellow-700',
-                      2: 'bg-blue-100 text-blue-700',
-                      3: 'bg-purple-100 text-purple-700',
-                      4: 'bg-orange-100 text-orange-700',
-                      5: 'bg-green-100 text-green-700',
-                      6: 'bg-slate-100 text-slate-700'
+                      26: 'bg-yellow-100 text-yellow-700',
+                      27: 'bg-indigo-100 text-indigo-700',
+                      28: 'bg-blue-100 text-blue-700',
+                      29: 'bg-orange-100 text-orange-700',
+                      30: 'bg-green-100 text-green-700',
+                      31: 'bg-purple-100 text-purple-700',
+                      32: 'bg-blue-100 text-blue-700',
+                      33: 'bg-teal-100 text-teal-700',
+                      34: 'bg-rose-100 text-rose-700',
+                      35: 'bg-green-100 text-green-700',
+                      36: 'bg-slate-100 text-slate-700',
+                      37: 'bg-slate-100 text-slate-700'
                     };
                     const statusNames = {
-                      1: 'New',
-                      2: 'Under Review',
-                      3: 'Quotation Sent',
-                      4: 'Awaiting Response',
-                      5: 'Confirmed',
-                      6: 'Closed'
+                      26: 'Pending Query',
+                      27: 'Quotation Sent',
+                      28: 'Accepted',
+                      29: 'Payment Submitted',
+                      30: 'Payment Verified',
+                      31: 'Writer Assigned',
+                      32: 'In Progress',
+                      33: 'QC Phase',
+                      34: 'Revision',
+                      35: 'Completed',
+                      36: 'Failed',
+                      37: 'Closed'
                     };
                   %>
                   <span class="<%= statusColors[query.status] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
@@ -139,9 +151,15 @@
                 </td>
                 <td class="px-6 py-4">
                   <div class="flex gap-2">
-                    <a href="/admin/queries/<%= query.order_id %>/view" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
-                      <i class="fi fi-rr-eye mr-1"></i>View
-                    </a>
+                    <% if (query.order_id) { %>
+                      <a href="/admin/queries/<%= query.order_id %>/view" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
+                        <i class="fi fi-rr-eye mr-1"></i>View
+                      </a>
+                    <% } else { %>
+                      <span class="bg-slate-200 text-slate-400 px-3 py-1 rounded-lg text-xs font-bold cursor-not-allowed opacity-60">
+                        <i class="fi fi-rr-eye mr-1"></i>View
+                      </span>
+                    <% } %>
                     <button onclick="changeStatus(<%= query.order_id %>)" class="bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
                       <i class="fi fi-rr-edit mr-1"></i>Status
                     </button>

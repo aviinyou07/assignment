@@ -17,10 +17,12 @@ module.exports = pool;
 module.exports.connect = async () => {
   try {
     const connection = await pool.getConnection();    
-    console.log('Database connected successfully');
+    const logger = require('../utils/logger');
+    logger.info('Database connected successfully');
     connection.release();
   } catch (error) {
-    console.error('Database connection failed:', error);
+    const logger = require('../utils/logger');
+    logger.error(`Database connection failed: ${error && error.message ? error.message : error}`);
     process.exit(1);
   }
 };

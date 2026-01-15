@@ -1,4 +1,11 @@
 require("dotenv").config();
+// Validate environment early
+try {
+  require('./utils/env').validateEnv();
+} catch (err) {
+  console.error('Environment validation failed:', err && err.message ? err.message : err);
+  process.exit(1);
+}
 
 const express = require("express");
 const path = require("path");
@@ -11,7 +18,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: process.env.CORS_ORIGIN || '*',
     methods: ["GET", "POST"]
   }
 });
@@ -24,10 +31,14 @@ const port = process.env.PORT || 3000;
 const { socketAuthMiddleware } = require("./middleware/socket.auth.middleware");
 const { initializeRealtime } = require("./utils/realtime");
 const { initializeDeadlineReminders } = require("./utils/deadline-reminders");
+const { setIO } = require('./utils/socket');
 
 io.use(socketAuthMiddleware);
 initializeRealtime(io);
 initializeDeadlineReminders(io);
+
+// Store global io instance for services/controllers that don't have req.io
+setIO(io);
 
 // Make io accessible to routes
 app.use((req, res, next) => {
@@ -55,12 +66,21 @@ app.use(cookieParser());
 // API / MODULE ROUTES
 // =======================
 app.use("/master/countries", require("./routes/masterCountries"));
+
+// Client API (new enterprise routes)
+app.use("/api/client", require("./routes/client.api.routes"));
+
+// Legacy client routes (for backward compatibility)
 app.use("/auth/client", require("./routes/auth.client.routes"));
 app.use("/client", require("./routes/client.profile.routes"));
 app.use("/client/security", require("./routes/client.security.routes"));
 app.use("/client", require("./routes/client.queries.routes"));
+
+// Shared routes
 app.use("/notifications", require("./routes/notifications.routes"));
 app.use("/chat", require("./routes/chat.routes"));
+
+// Role-based routes
 app.use("/bde", require("./routes/bde.routes"));
 app.use("/admin", require("./routes/admin.routes"));
 app.use("/auth", require("./routes/auth.admin.routes"));
@@ -72,6 +92,13 @@ app.use("/writer", require("./routes/writer.routes"));
 app.get("/login", (req, res) => {
   res.render("auth/login", {
     title: "Login | Assignment366",
+    layout: false
+  });
+});
+
+app.get("/register", (req, res) => {
+  res.render("auth/register", {
+    title: "Register | Assignment366",
     layout: false
   });
 });
@@ -93,6 +120,7 @@ const db = require("./config/db");
 db.connect();
 
 server.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
-  console.log(`📡 Real-time WebSocket active`);
+  const logger = require('./utils/logger');
+  logger.info(`Server running at http://localhost:${port}`);
+  logger.info('Real-time WebSocket active');
 });

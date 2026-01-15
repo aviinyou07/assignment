@@ -2,12 +2,6 @@ const db = require('../config/db');
 const { logAction } = require('../utils/logger');
 const { sendMail } = require('../utils/mailer');
 
-/**
- * QC CONTROLLER
- * Manage submissions QC with proper user JOINs
- */
-
-// List submissions pending QC
 exports.listPendingQC = async (req, res) => {
   try {
     const { page = 0, status, dateFrom, dateTo } = req.query;

@@ -1,14 +1,18 @@
 const db = require("../config/db");
+const logger = require('./logger');
 
 /**
- * Send notification to user(s)
+ * Send notification to user(s) with optional real-time Socket.IO emission
  * @param {number|null} userId - User ID (null for admin)
  * @param {string} message - Notification message
  * @param {string} type - Notification type (quotation-generated, payment-reminder, etc.)
  * @param {object} metadata - Additional metadata to store
+ * @param {object} io - Optional Socket.IO instance for real-time emission
  */
-async function sendNotification(userId, message, type, metadata = {}) {
+async function sendNotification(userId, message, type, metadata = {}, io = null) {
   try {
+    let targetUserId = userId;
+    
     // If userId is null, send to all admins
     if (userId === null) {
       const [admins] = await db.query(
@@ -16,24 +20,46 @@ async function sendNotification(userId, message, type, metadata = {}) {
       );
       
       if (admins.length > 0) {
-        userId = admins[0].user_id;
+        targetUserId = admins[0].user_id;
       } else {
-        console.warn("No admin found for notification");
+        logger.warn('No admin found for notification');
         return;
       }
     }
 
     // Insert notification into database
     const [result] = await db.query(
-      `INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-       VALUES (?, ?, ?, ?, 0, NOW())`,
-      [userId, message, message, type]
+      `INSERT INTO notifications (user_id, title, message, type, link_url, is_read, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+      [targetUserId, message, message, type, metadata.link_url || null]
     );
 
-    console.log(`Notification sent to user ${userId}: ${message}`);
+    // Emit real-time notification via Socket.IO if io instance provided
+    if (io && result.insertId) {
+      const notificationPayload = {
+        notification_id: result.insertId,
+        user_id: targetUserId,
+        title: message,
+        message: message,
+        type: type,
+        link_url: metadata.link_url || null,
+        is_read: 0,
+        created_at: new Date().toISOString()
+      };
+      
+      // Emit to user's personal channel
+      io.to(`user:${targetUserId}`).emit('notification:new', notificationPayload);
+      
+      // Also emit to role channel if specified
+      if (metadata.role) {
+        io.to(`role:${metadata.role}`).emit('notification:new', notificationPayload);
+      }
+    }
+
+    logger.info(`Notification sent to user ${targetUserId}: ${message}`);
     return result;
   } catch (error) {
-    console.error("Error sending notification:", error.message);
+    logger.error(`Error sending notification: ${error && error.message ? error.message : error}`);
     // Don't throw - notifications should not break main flow
   }
 }
@@ -55,7 +81,7 @@ async function getNotifications(userId, limit = 10) {
 
     return notifications;
   } catch (error) {
-    console.error("Error fetching notifications:", error.message);
+    logger.error(`Error fetching notifications: ${error && error.message ? error.message : error}`);
     return [];
   }
 }
@@ -73,7 +99,7 @@ async function markAsRead(notificationId) {
 
     return result;
   } catch (error) {
-    console.error("Error marking notification as read:", error.message);
+    logger.error(`Error marking notification as read: ${error && error.message ? error.message : error}`);
   }
 }
 
@@ -90,7 +116,7 @@ async function markAllAsRead(userId) {
 
     return result;
   } catch (error) {
-    console.error("Error marking all notifications as read:", error.message);
+    logger.error(`Error marking all notifications as read: ${error && error.message ? error.message : error}`);
   }
 }
 
@@ -107,7 +133,7 @@ async function deleteNotification(notificationId) {
 
     return result;
   } catch (error) {
-    console.error("Error deleting notification:", error.message);
+    logger.error(`Error deleting notification: ${error && error.message ? error.message : error}`);
   }
 }
 

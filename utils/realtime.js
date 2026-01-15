@@ -1,6 +1,8 @@
 const { validateChannelAccess } = require('../middleware/socket.auth.middleware');
 const db = require('../config/db');
 const { createAuditLog } = require('../utils/audit');
+const { createNotificationWithRealtime } = require('../controllers/notifications.controller');
+const logger = require('../utils/logger');
 
 /**
  * SOCKET.IO REAL-TIME HANDLERS
@@ -14,7 +16,7 @@ const initializeRealtime = (io) => {
   io.on('connection', async (socket) => {
     const { user_id, role } = socket.user;
 
-    console.log(`[Socket] User ${user_id} (${role}) connected - ${socket.id}`);
+    logger.info(`Socket connected: User ${user_id} (${role}) - ${socket.id}`);
 
     // =======================
     // JOIN USER CHANNEL
@@ -58,7 +60,7 @@ const initializeRealtime = (io) => {
         message: 'Subscribed to context channel'
       });
 
-      console.log(`[Socket] User ${user_id} subscribed to context:${context_code}`);
+      logger.debug(`User ${user_id} subscribed to context:${context_code}`);
     });
 
     // =======================
@@ -90,17 +92,21 @@ const initializeRealtime = (io) => {
         }
 
         // =======================
-        // FETCH ORDER
+        // FETCH ORDER (with participants)
         // =======================
         let order;
         if (context_code.startsWith('QUERY_')) {
           [[order]] = await db.query(
-            `SELECT o.order_id FROM orders o WHERE o.query_code = ?`,
+            `SELECT o.order_id, o.user_id, o.writer_id, u.bde as bde_id FROM orders o
+             JOIN users u ON o.user_id = u.user_id
+             WHERE o.query_code = ?`,
             [context_code]
           );
         } else {
           [[order]] = await db.query(
-            `SELECT o.order_id FROM orders o WHERE o.work_code = ?`,
+            `SELECT o.order_id, o.user_id, o.writer_id, u.bde as bde_id FROM orders o
+             JOIN users u ON o.user_id = u.user_id
+             WHERE o.work_code = ?`,
             [context_code]
           );
         }
@@ -110,7 +116,7 @@ const initializeRealtime = (io) => {
         }
 
         // =======================
-        // FETCH CHAT
+        // FETCH/CREATE CHAT
         // =======================
         let [[chat]] = await db.query(
           `SELECT * FROM order_chats WHERE order_id = ?`,
@@ -119,16 +125,27 @@ const initializeRealtime = (io) => {
 
         if (!chat) {
           const [result] = await db.query(
-            `INSERT INTO order_chats (order_id, chat_name, participants, messages, status, created_at, updated_at)
-             VALUES (?, 'Order Chat', ?, '[]', 'active', NOW(), NOW())`,
-            [order.order_id, JSON.stringify([user_id])]
+            `INSERT INTO order_chats (order_id, context_code, chat_name, status, created_at, updated_at)
+             VALUES (?, ?, 'Order Chat', 'active', NOW(), NOW())`,
+            [order.order_id, context_code]
           );
-          chat = {
-            chat_id: result.insertId,
-            order_id: order.order_id,
-            messages: '[]',
-            status: 'active'
-          };
+          [[chat]] = await db.query(`SELECT * FROM order_chats WHERE chat_id = ?`, [result.insertId]);
+        }
+
+        // =======================
+        // ENSURE PARTICIPANTS
+        // =======================
+        const participants = [];
+        if (order.user_id) participants.push({ user_id: order.user_id, role: 'client' });
+        if (order.writer_id) participants.push({ user_id: order.writer_id, role: 'writer' });
+        if (order.bde_id) participants.push({ user_id: order.bde_id, role: 'bde' });
+        if (role === 'admin') participants.push({ user_id, role: 'admin' });
+
+        if (participants.length) {
+          const values = participants.map(p => `(${chat.chat_id}, ${p.user_id}, '${p.role}', 0, NOW())`).join(',');
+          await db.query(
+            `INSERT IGNORE INTO order_chat_participants (chat_id, user_id, role, is_muted, joined_at) VALUES ${values}`
+          );
         }
 
         // =======================
@@ -143,35 +160,138 @@ const initializeRealtime = (io) => {
         }
 
         // =======================
-        // ADD MESSAGE
+        // ROLE TARGET VALIDATION (non-admin)
         // =======================
-        const messages = JSON.parse(chat.messages || '[]');
-        const newMessage = {
-          id: Date.now(),
-          sender_id: user_id,
-          sender_role: role,
-          message_type: 'text',
-          content: message.trim(),
-          timestamp: new Date().toISOString()
-        };
+        if (role !== 'admin') {
+          const allowedTargetsByRole = {
+            client: ['bde', 'admin'],
+            bde: ['client', 'admin'],
+            writer: ['admin']
+          };
+          const allowedTargets = allowedTargetsByRole[role] || [];
+          const participantRoles = participants.map(p => p.role);
+          const canChat = allowedTargets.some(target => target === 'admin' || participantRoles.includes(target)) || participants.length === 0;
+          if (!canChat) {
+            return socket.emit('error', { message: `Chat not allowed for role ${role}` });
+          }
+        }
 
-        messages.push(newMessage);
-
-        await db.query(
-          `UPDATE order_chats SET messages = ?, updated_at = NOW() WHERE chat_id = ?`,
-          [JSON.stringify(messages), chat.chat_id]
+        // =======================
+        // ADD MESSAGE (normalized table)
+        // =======================
+        const [insertRes] = await db.query(
+          `INSERT INTO order_chat_messages (chat_id, order_id, sender_id, sender_role, message_type, content, attachments, is_edited, is_deleted, created_at)
+           VALUES (?, ?, ?, ?, 'text', ?, NULL, 0, 0, NOW())`,
+          [chat.chat_id, order.order_id, user_id, role, message.trim()]
         );
 
-        // =======================
-        // EMIT TO CHANNEL
-        // =======================
-        io.to(`context:${context_code}`).emit('chat:new_message', {
+        const messageId = insertRes.insertId;
+        const [[savedMsg]] = await db.query(`SELECT * FROM order_chat_messages WHERE message_id = ? LIMIT 1`, [messageId]);
+
+        // Mark sender read
+        await db.query(
+          `INSERT IGNORE INTO order_chat_message_reads (message_id, user_id, read_at) VALUES (?, ?, NOW())`,
+          [messageId, user_id]
+        );
+
+        // Resolve sender name and build payloads
+        let senderName = 'System';
+        const [[senderUser]] = await db.query(`SELECT full_name FROM users WHERE user_id = ?`, [user_id]);
+        if (senderUser && senderUser.full_name) {
+          senderName = senderUser.full_name;
+        }
+
+        const emittedMessage = {
+          ...savedMsg,
+          sender_name: senderName,
+          message: savedMsg.content,
+          is_mine: false,
+          is_read: false
+        };
+
+        const senderMessage = {
+          ...emittedMessage,
+          is_mine: true,
+          is_read: true
+        };
+
+        // Determine recipients
+        const recipients = new Set();
+        let notifyAdmins = false;
+
+        if (role === 'admin') {
+          if (order.user_id) recipients.add(order.user_id);
+          if (order.writer_id) recipients.add(order.writer_id);
+          if (order.bde_id) recipients.add(order.bde_id);
+        } else if (role === 'client') {
+          if (order.bde_id) recipients.add(order.bde_id);
+          notifyAdmins = true;
+        } else if (role === 'bde') {
+          if (order.user_id) recipients.add(order.user_id);
+          notifyAdmins = true;
+        } else if (role === 'writer') {
+          notifyAdmins = true;
+        }
+
+        recipients.delete(user_id);
+
+        const emitPayload = {
           chat_id: chat.chat_id,
           context_code,
-          message: newMessage
-        });
+          message: emittedMessage
+        };
 
-        socket.emit('chat:sent', { message: newMessage });
+        for (const rid of recipients) {
+          io.to(`user:${rid}`).emit('chat:new_message', emitPayload);
+        }
+
+        if (notifyAdmins || role === 'admin') {
+          io.to('role:admin').emit('chat:new_message', emitPayload);
+        }
+
+        io.to(`context:${context_code}`).emit('chat:new_message', emitPayload);
+
+        socket.emit('chat:sent', { message: senderMessage, context_code });
+
+        // =======================
+        // CREATE NOTIFICATIONS FOR RECIPIENTS
+        // =======================
+        const participantRoleMap = new Map(participants.map(p => [p.user_id, p.role]));
+        const buildLink = (targetRole) => {
+          if (targetRole === 'admin') return `/admin/queries/${order.order_id}/view`;
+          if (targetRole === 'bde') return `/bde/queries/${context_code}`;
+          if (targetRole === 'writer') return `/writer/orders/${context_code}`;
+          return `/client/orders/${context_code}`;
+        };
+
+        for (const rid of recipients) {
+          const targetRole = participantRoleMap.get(rid) || 'client';
+          await createNotificationWithRealtime(io, {
+            user_id: rid,
+            type: 'chat',
+            title: `New chat reply from ${senderName}`,
+            message: savedMsg.content || 'New message',
+            link_url: buildLink(targetRole),
+            context_code,
+            triggered_by: { user_id, role }
+          });
+        }
+
+        if (notifyAdmins || role === 'admin') {
+          const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
+          for (const admin of admins) {
+            if (admin.user_id === user_id) continue;
+            await createNotificationWithRealtime(io, {
+              user_id: admin.user_id,
+              type: 'chat',
+              title: `New chat message in ${context_code}`,
+              message: savedMsg.content || 'New message',
+              link_url: buildLink('admin'),
+              context_code,
+              triggered_by: { user_id, role }
+            });
+          }
+        }
 
         // =======================
         // AUDIT LOG
@@ -188,7 +308,7 @@ const initializeRealtime = (io) => {
         });
 
       } catch (err) {
-        console.error('Chat send error:', err);
+        logger.error(`Chat send error: ${err && err.message ? err.message : err}`);
         socket.emit('error', { message: err.message });
       }
     });
@@ -227,14 +347,14 @@ const initializeRealtime = (io) => {
     // DISCONNECT HANDLER
     // =======================
     socket.on('disconnect', () => {
-      console.log(`[Socket] User ${user_id} disconnected - ${socket.id}`);
+      logger.info(`Socket disconnected: User ${user_id} - ${socket.id}`);
     });
 
     // =======================
     // ERROR HANDLER
     // =======================
     socket.on('error', (error) => {
-      console.error(`[Socket] Error from ${user_id}:`, error);
+      logger.error(`Socket error from ${user_id}: ${error && error.message ? error.message : error}`);
       socket.emit('error', { message: 'Connection error' });
     });
   });
@@ -251,10 +371,12 @@ const initializeRealtime = (io) => {
  */
 const emitNotificationRealtime = (io, user_id, notification, context_code) => {
   // Emit to user's personal channel
+  logger.debug(`[Realtime] Emitting notification to user:${user_id} - ${JSON.stringify(notification)}`);
   io.to(`user:${user_id}`).emit('notification:new', notification);
 
   // Emit to context channel if provided
   if (context_code) {
+    logger.debug(`Emitting notification to context:${context_code}`);
     io.to(`context:${context_code}`).emit('notification:new', notification);
   }
 
@@ -278,41 +400,33 @@ const emitNotificationRealtime = (io, user_id, notification, context_code) => {
  */
 const emitChatSystemMessage = async (io, order_id, context_code, message) => {
   try {
-    const [[chat]] = await db.query(
+    let [[chat]] = await db.query(
       `SELECT * FROM order_chats WHERE order_id = ?`,
       [order_id]
     );
 
     if (!chat) {
       const [result] = await db.query(
-        `INSERT INTO order_chats (order_id, chat_name, participants, messages, status, created_at, updated_at)
-         VALUES (?, 'Order Chat', '[]', '[]', 'active', NOW(), NOW())`,
-        [order_id]
+        `INSERT INTO order_chats (order_id, context_code, chat_name, status, created_at, updated_at)
+         VALUES (?, ?, 'Order Chat', 'active', NOW(), NOW())`,
+        [order_id, context_code]
       );
-      return;
+      [[chat]] = await db.query(`SELECT * FROM order_chats WHERE chat_id = ?`, [result.insertId]);
     }
 
-    const messages = JSON.parse(chat.messages || '[]');
-    const systemMessage = {
-      id: Date.now(),
-      sender_id: 0, // System message
-      sender_role: 'system',
-      message_type: 'system',
-      content: message,
-      timestamp: new Date().toISOString()
-    };
-
-    messages.push(systemMessage);
-
-    await db.query(
-      `UPDATE order_chats SET messages = ?, updated_at = NOW() WHERE chat_id = ?`,
-      [JSON.stringify(messages), chat.chat_id]
+    const [insertRes] = await db.query(
+      `INSERT INTO order_chat_messages (chat_id, order_id, sender_id, sender_role, message_type, content, attachments, is_edited, is_deleted, created_at)
+       VALUES (?, ?, 0, 'system', 'system', ?, NULL, 0, 0, NOW())`,
+      [chat.chat_id, order_id, message]
     );
+
+    const messageId = insertRes.insertId;
+    const [[savedMsg]] = await db.query(`SELECT * FROM order_chat_messages WHERE message_id = ? LIMIT 1`, [messageId]);
 
     io.to(`context:${context_code}`).emit('chat:system_message', {
       chat_id: chat.chat_id,
       context_code,
-      message: systemMessage
+      message: savedMsg
     });
 
   } catch (err) {

@@ -3,61 +3,42 @@ const fs = require('fs').promises;
 const path = require('path');
 const { validateTransition, STATUS } = require('../utils/state-machine');
 
-/**
- * WRITER TASK CONTROLLER (SIMPLIFIED)
- * Uses existing database tables - NO NEW TABLES NEEDED
- * 
- * Tables used:
- * - orders: Main task/assignment data
- * - task_evaluations: Doable/Not Doable assessment
- * - submissions: QC workflow & feedback
- * - file_versions: File upload versioning
- * - audit_logs: Audit trail (auto-created)
- */
 
-// ============================================================================
-// 1. DASHBOARD KPI OPERATIONS
-// ============================================================================
-
-/**
- * Get dashboard KPI metrics
- */
 exports.getDashboardKPIs = async (req, res) => {
   try {
     const writerId = req.user.user_id;
 
-    // New Tasks (assigned but not yet responded to)
+    // New Tasks (assigned via task_evaluations with pending status)
     const [[newTasks]] = await db.query(
-      `SELECT COUNT(*) as count FROM orders 
-       WHERE writer_id = ? AND status IN (1, 2) 
-       AND NOT EXISTS (
-         SELECT 1 FROM task_evaluations WHERE order_id = orders.order_id AND writer_id = ?
-       )`,
-      [writerId, writerId]
+      `SELECT COUNT(*) as count FROM task_evaluations 
+       WHERE writer_id = ? AND status = 'pending'`,
+      [writerId]
     );
 
-    // Active Tasks (accepted and not completed)
+      // Active Tasks (accepted or assigned and order not completed)
     const [[activeTasks]] = await db.query(
-      `SELECT COUNT(*) as count FROM orders o
-       JOIN task_evaluations te ON o.order_id = te.order_id
-       WHERE te.writer_id = ? AND te.status = 'doable' AND o.status IN (2, 3)`,
+      `SELECT COUNT(*) as count FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
+       WHERE te.writer_id = ? AND te.status IN ('accepted', 'assigned') AND o.status NOT IN (35, 37)`,
       [writerId]
     );
 
-    // Tasks Due Today
+    // Tasks Due Today (active tasks due today)
     const [[dueTasks]] = await db.query(
-      `SELECT COUNT(*) as count FROM orders
-       WHERE writer_id = ? AND DATE(deadline_at) = CURDATE() 
-       AND status IN (2, 3)`,
+      `SELECT COUNT(*) as count FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
+       WHERE te.writer_id = ? AND te.status IN ('accepted', 'assigned') 
+       AND DATE(o.deadline_at) = CURDATE()`,
       [writerId]
     );
 
-    // Completed Tasks (This Month)
+    // Completed Tasks (This Month) - tasks where order is completed
     const [[completedTasks]] = await db.query(
-      `SELECT COUNT(*) as count FROM orders
-       WHERE writer_id = ? AND status = 5
-       AND MONTH(created_at) = MONTH(CURDATE())
-       AND YEAR(created_at) = YEAR(CURDATE())`,
+      `SELECT COUNT(*) as count FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
+       WHERE te.writer_id = ? AND te.status = 'assigned' AND o.status = 35
+       AND MONTH(o.created_at) = MONTH(CURDATE())
+       AND YEAR(o.created_at) = YEAR(CURDATE())`,
       [writerId]
     );
 
@@ -91,21 +72,22 @@ exports.getPendingTaskAssignments = async (req, res) => {
     const allowedSortFields = ['deadline_at', 'created_at', 'urgency'];
     const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'deadline_at';
 
+    // Get tasks assigned to this writer via task_evaluations with pending status
     const [tasks] = await db.query(
       `SELECT 
-        o.order_id, o.work_code, o.paper_topic as topic,
+        o.order_id, o.work_code, o.query_code, o.paper_topic as topic,
         o.service, o.subject, o.urgency, o.deadline_at,
-        o.description, o.created_at as assigned_at,
+        o.description, te.created_at as assigned_at,
+        te.comment as admin_notes, te.status as evaluation_status,
+        DATE_ADD(te.created_at, INTERVAL 24 HOUR) as response_deadline,
         COUNT(fv.id) as uploaded_documents_count
-       FROM orders o
+       FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
        LEFT JOIN file_versions fv ON o.order_id = fv.order_id
-       WHERE o.writer_id = ? AND o.status IN (1, 2)
-       AND NOT EXISTS (
-         SELECT 1 FROM task_evaluations WHERE order_id = o.order_id AND writer_id = ?
-       )
-       GROUP BY o.order_id
+       WHERE te.writer_id = ? AND te.status = 'pending'
+       GROUP BY o.order_id, te.id
        ORDER BY ${sortField} ${order}`,
-      [writerId, writerId]
+      [writerId]
     );
 
     res.json({ success: true, tasks });
@@ -123,14 +105,17 @@ exports.getTaskAssignmentDetail = async (req, res) => {
     const { taskId } = req.params;
     const writerId = req.user.user_id;
 
-    // Verify ownership
-    const [[order]] = await db.query(
-      'SELECT * FROM orders WHERE order_id = ? AND writer_id = ?',
+    // Verify writer is assigned to this task via task_evaluations
+    const [[evaluation]] = await db.query(
+      `SELECT te.*, o.* 
+       FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
+       WHERE te.order_id = ? AND te.writer_id = ?`,
       [taskId, writerId]
     );
 
-    if (!order) {
-      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    if (!evaluation) {
+      return res.status(403).json({ success: false, error: 'You are not assigned to this task' });
     }
 
     // Get files
@@ -142,7 +127,9 @@ exports.getTaskAssignmentDetail = async (req, res) => {
     res.json({
       success: true,
       task: {
-        ...order,
+        ...evaluation,
+        admin_notes: evaluation.comment,
+        evaluation_status: evaluation.status,
         documents: files
       }
     });
@@ -164,40 +151,79 @@ exports.acceptTaskAssignment = async (req, res) => {
     const writerId = req.user.user_id;
     const { comment = '' } = req.body;
 
-    // Verify ownership
-    const [[order]] = await connection.query(
-      'SELECT * FROM orders WHERE order_id = ? AND writer_id = ?',
+    // Verify writer is assigned to this task via task_evaluations
+    const [[evaluation]] = await connection.query(
+      `SELECT te.*, o.paper_topic, o.query_code 
+       FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
+       WHERE te.order_id = ? AND te.writer_id = ? AND te.status = 'pending'`,
       [taskId, writerId]
     );
 
-    if (!order) {
+    if (!evaluation) {
       await connection.rollback();
-      return res.status(403).json({ success: false, error: 'Unauthorized' });
+      return res.status(403).json({ success: false, error: 'You are not assigned to this task or already responded' });
     }
 
-    // Create task evaluation (DOABLE)
+    // Update task evaluation to accepted
     await connection.query(
-      `INSERT INTO task_evaluations (order_id, writer_id, status, comment, created_at)
-       VALUES (?, ?, 'doable', ?, NOW())`,
-      [taskId, writerId, comment]
-    );
-
-    // Update order status
-    await connection.query(
-      'UPDATE orders SET status = 3 WHERE order_id = ?',
-      [taskId]
+      `UPDATE task_evaluations SET status = 'accepted', comment = CONCAT(IFNULL(comment, ''), '\nWriter accepted: ', ?), updated_at = NOW()
+       WHERE order_id = ? AND writer_id = ?`,
+      [comment, taskId, writerId]
     );
 
     // Create audit log
     await connection.query(
-      `INSERT INTO audit_logs (user_id, event_type, resource_type, resource_id, details, created_at)
-       VALUES (?, 'TASK_ACCEPTED', 'order', ?, ?, NOW())`,
+      `INSERT INTO audit_logs (user_id, event_type, action, resource_type, resource_id, details, created_at)
+       VALUES (?, 'TASK_ACCEPTED', 'accept_task', 'order', ?, ?, NOW())`,
       [writerId, taskId, `Writer ${writerId} accepted order ${taskId}`]
     );
 
+    // Notify admin
+    const [adminUsers] = await connection.query(
+      `SELECT user_id FROM users WHERE role = 'admin' LIMIT 1`
+    );
+    
+    if (adminUsers.length > 0) {
+      const adminId = adminUsers[0].user_id;
+      const [notifResult] = await connection.query(
+        `INSERT INTO notifications (user_id, title, message, type, link_url, is_read, created_at)
+         VALUES (?, 'Writer Accepted Task', ?, 'task', ?, 0, NOW())`,
+        [
+          adminId,
+          `Writer has accepted task: ${evaluation.paper_topic}`,
+          `/admin/queries/${taskId}/view`
+        ]
+      );
+      
+      // Emit real-time notification via Socket.IO
+      if (req.io) {
+        req.io.to(`user:${adminId}`).emit('notification:new', {
+          notification_id: notifResult.insertId,
+          user_id: adminId,
+          title: 'Writer Accepted Task',
+          message: `Writer has accepted task: ${evaluation.paper_topic}`,
+          type: 'task',
+          link_url: `/admin/queries/${taskId}/view`,
+          is_read: 0,
+          created_at: new Date().toISOString()
+        });
+        req.io.to('role:admin').emit('notification:new', {
+          notification_id: notifResult.insertId,
+          user_id: adminId,
+          title: 'Writer Accepted Task',
+          message: `Writer has accepted task: ${evaluation.paper_topic}`,
+          type: 'task',
+          link_url: `/admin/queries/${taskId}/view`,
+          is_read: 0,
+          created_at: new Date().toISOString()
+        });
+      }
+    }
+
     await connection.commit();
 
-    res.json({ success: true, message: 'Task accepted successfully' });
+    res.json({ success: true, message: 'Task accepted successfully. You can now start working on it.' });
   } catch (error) {
     await connection.rollback();
     console.error('Error accepting task:', error);
@@ -219,34 +245,83 @@ exports.rejectTaskAssignment = async (req, res) => {
     const writerId = req.user.user_id;
     const { reason = '' } = req.body;
 
-    // Verify ownership
-    const [[order]] = await connection.query(
-      'SELECT * FROM orders WHERE order_id = ? AND writer_id = ?',
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({ success: false, error: 'Please provide a reason (at least 10 characters)' });
+    }
+
+    // Verify writer is assigned to this task via task_evaluations
+    const [[evaluation]] = await connection.query(
+      `SELECT te.*, o.paper_topic, o.query_code 
+       FROM task_evaluations te
+       JOIN orders o ON te.order_id = o.order_id
+       WHERE te.order_id = ? AND te.writer_id = ? AND te.status = 'pending'`,
       [taskId, writerId]
     );
 
-    if (!order) {
+    if (!evaluation) {
       await connection.rollback();
-      return res.status(403).json({ success: false, error: 'Unauthorized' });
+      return res.status(403).json({ success: false, error: 'You are not assigned to this task or already responded' });
     }
 
-    // Create task evaluation (NOT DOABLE)
+    // Update task evaluation to rejected
     await connection.query(
-      `INSERT INTO task_evaluations (order_id, writer_id, status, comment, created_at)
-       VALUES (?, ?, 'not_doable', ?, NOW())`,
-      [taskId, writerId, reason]
+      `UPDATE task_evaluations SET status = 'rejected', comment = CONCAT(IFNULL(comment, ''), '\nWriter rejected: ', ?), updated_at = NOW()
+       WHERE order_id = ? AND writer_id = ?`,
+      [reason, taskId, writerId]
     );
 
     // Create audit log
     await connection.query(
-      `INSERT INTO audit_logs (user_id, event_type, resource_type, resource_id, details, created_at)
-       VALUES (?, 'TASK_REJECTED', 'order', ?, ?, NOW())`,
+      `INSERT INTO audit_logs (user_id, event_type, action, resource_type, resource_id, details, created_at)
+       VALUES (?, 'TASK_REJECTED', 'reject_task', 'order', ?, ?, NOW())`,
       [writerId, taskId, `Writer ${writerId} rejected order ${taskId}: ${reason}`]
     );
 
+    // Notify admin about rejection
+    const [adminUsers] = await connection.query(
+      `SELECT user_id FROM users WHERE role = 'admin' LIMIT 1`
+    );
+    
+    if (adminUsers.length > 0) {
+      const adminId = adminUsers[0].user_id;
+      const [notifResult] = await connection.query(
+        `INSERT INTO notifications (user_id, title, message, type, link_url, is_read, created_at)
+         VALUES (?, 'Writer Rejected Task', ?, 'warning', ?, 0, NOW())`,
+        [
+          adminId,
+          `Writer rejected task: ${evaluation.paper_topic}. Reason: ${reason}`,
+          `/admin/queries/${taskId}/view`
+        ]
+      );
+      
+      // Emit real-time notification via Socket.IO
+      if (req.io) {
+        req.io.to(`user:${adminId}`).emit('notification:new', {
+          notification_id: notifResult.insertId,
+          user_id: adminId,
+          title: 'Writer Rejected Task',
+          message: `Writer rejected task: ${evaluation.paper_topic}. Reason: ${reason}`,
+          type: 'warning',
+          link_url: `/admin/queries/${taskId}/view`,
+          is_read: 0,
+          created_at: new Date().toISOString()
+        });
+        req.io.to('role:admin').emit('notification:new', {
+          notification_id: notifResult.insertId,
+          user_id: adminId,
+          title: 'Writer Rejected Task',
+          message: `Writer rejected task: ${evaluation.paper_topic}. Reason: ${reason}`,
+          type: 'warning',
+          link_url: `/admin/queries/${taskId}/view`,
+          is_read: 0,
+          created_at: new Date().toISOString()
+        });
+      }
+    }
+
     await connection.commit();
 
-    res.json({ success: true, message: 'Task rejected successfully' });
+    res.json({ success: true, message: 'Task rejected. Admin has been notified.' });
   } catch (error) {
     await connection.rollback();
     console.error('Error rejecting task:', error);
@@ -281,8 +356,8 @@ exports.getActiveTasks = async (req, res) => {
       LEFT JOIN submissions s ON o.order_id = s.order_id AND s.submission_id = (
         SELECT MAX(submission_id) FROM submissions WHERE order_id = o.order_id
       )
-      WHERE o.writer_id = ? AND te.writer_id = ? AND te.status = 'doable'
-      AND o.status IN (3, 4)
+      WHERE o.writer_id = ? AND te.writer_id = ? AND te.status = 'assigned'
+      AND o.status IN (30, 31, 32, 33, 34)
     `;
 
     if (status) {
@@ -315,7 +390,7 @@ exports.updateTaskStatus = async (req, res) => {
     const writerId = req.user.user_id;
     const { newStatus, notes = '' } = req.body;
 
-    const allowedStatuses = [3, 4]; // In progress statuses
+    const allowedStatuses = [30, 31, 32, 33, 34]; // In progress statuses
     const allowedStatusValues = ['in_progress', 'research_completed', 'writing_started', 'rework_in_progress'];
 
     if (!allowedStatusValues.includes(newStatus)) {
@@ -325,7 +400,7 @@ exports.updateTaskStatus = async (req, res) => {
 
     // Verify ownership
     const [[order]] = await connection.query(
-      'SELECT * FROM orders WHERE order_id = ? AND writer_id = ? AND status IN (3, 4)',
+      'SELECT * FROM orders WHERE order_id = ? AND writer_id = ? AND status IN (30, 31, 32, 33, 34)',
       [taskId, writerId]
     );
 
@@ -493,9 +568,9 @@ exports.submitDraftForQC = async (req, res) => {
       [taskId, writerId, file.file_url]
     );
 
-    // Update order status to awaiting QC
+    // Update order status to awaiting QC (33 - Pending QC)
     await connection.query(
-      'UPDATE orders SET status = 4 WHERE order_id = ?',
+      'UPDATE orders SET status = 33 WHERE order_id = ?',
       [taskId]
     );
 

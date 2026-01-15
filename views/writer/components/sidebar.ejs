@@ -37,6 +37,10 @@
             <i class="fi fi-rr-box-check"></i> <span class="text-sm font-medium">Submissions</span>
         </a>
 
+        <a href="/writer/chat" id="nav-chat" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
+            <i class="fi fi-rr-messages"></i> <span class="text-sm font-medium">Chat</span>
+        </a>
+
         <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Account</p>
         <a href="/writer/profile" id="nav-profile" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all">
             <i class="fi fi-rr-user"></i> <span class="text-sm font-medium">My Profile</span>
@@ -83,6 +87,8 @@
             activeId = 'nav-delivery';
         } else if (path.includes('/profile')) {
             activeId = 'nav-profile';
+        } else if (path.includes('/chat')) {
+            activeId = 'nav-chat';
         }
         
         // Add active class to matched link
