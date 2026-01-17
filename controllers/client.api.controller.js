@@ -21,6 +21,7 @@
  */
 
 const db = require('../config/db');
+const ChatModel = require('../models/chat.model');
 const jwt = require('jsonwebtoken');
 const { createAuditLog, createOrderHistory, generateUniqueCode, getUserIfVerified } = require('../utils/audit');
 const { createNotification, sendEventNotification, getUnreadNotifications, markAsRead } = require('../utils/notification.service');
@@ -428,21 +429,9 @@ exports.createQuery = async (req, res) => {
     await connection.commit();
 
     // ============================================================================
-    // AUTO-GENERATE QUOTATION (ENTERPRISE FLOW)
+    // NOTE: Status stays at 26 (Pending Query)
+    // Admin/BDE will send quotation later - status changes to 27 at that point
     // ============================================================================
-    // Automatically create a quotation record and move to status 27
-    try {
-      const defaultPrice = 0.00; // Admin will update this later, but record exists
-      await db.query(
-        `INSERT INTO quotations (order_id, user_id, quoted_price_usd, notes, created_at)
-         VALUES (?, ?, ?, 'Auto-generated quotation. Pending final review.', NOW())`,
-        [orderId, userId, defaultPrice]
-      );
-      
-      await db.query(`UPDATE orders SET status = 27 WHERE order_id = ?`, [orderId]);
-    } catch (quoteErr) {
-      console.error('Auto-quotation failed:', quoteErr);
-    }
 
     // Audit log
     await createAuditLog({
@@ -451,7 +440,7 @@ exports.createQuery = async (req, res) => {
       event_type: 'QUERY_CREATED',
       resource_type: 'order',
       resource_id: orderId,
-      details: `Query created and auto-quotation generated: ${query_code}`,
+      details: `Query created: ${query_code}`,
       ip_address: req.ip,
       user_agent: req.get('User-Agent'),
       event_data: { query_code, paper_topic, service, subject, urgency }
@@ -615,7 +604,7 @@ exports.getQueryDetails = async (req, res) => {
     let quotation = null;
     if (query.status >= STATUS.QUOTATION_SENT) {
       const [[q]] = await db.query(
-        `SELECT quotation_id, quoted_price_usd, tax, discount, notes, created_at
+        `SELECT quotation_id, quoted_price, tax, discount, notes, created_at
          FROM quotations WHERE order_id = ? LIMIT 1`,
         [query.order_id]
       );
@@ -681,7 +670,7 @@ exports.viewQuotation = async (req, res) => {
       `SELECT 
         quotation_id,
         order_id,
-        quoted_price_usd,
+        quoted_price,
         tax,
         discount,
         notes,
@@ -704,7 +693,7 @@ exports.viewQuotation = async (req, res) => {
       success: true,
       data: {
         ...quotation,
-        total: parseFloat(quotation.quoted_price_usd) + parseFloat(quotation.tax || 0) - parseFloat(quotation.discount || 0),
+        total: parseFloat(quotation.quoted_price) + parseFloat(quotation.tax || 0) - parseFloat(quotation.discount || 0),
         is_accepted: order.acceptance === 1,
         can_accept: order.status === STATUS.QUOTATION_SENT && order.acceptance !== 1
       }
@@ -822,6 +811,110 @@ exports.acceptQuotation = async (req, res) => {
 };
 
 // =======================
+// QUOTATION: REQUEST REVISION
+// =======================
+exports.requestQuotationRevision = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { query_code } = req.params;
+    const { reason, requested_price } = req.body;
+
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        code: 'REASON_REQUIRED',
+        message: 'Please provide a detailed reason for revision request (at least 10 characters)'
+      });
+    }
+
+    // Get order
+    const [[order]] = await db.query(
+      `SELECT o.order_id, o.status, o.paper_topic, o.user_id, u.bde
+       FROM orders o
+       JOIN users u ON o.user_id = u.user_id
+       WHERE o.query_code = ? AND o.user_id = ?
+       LIMIT 1`,
+      [query_code, userId]
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        code: 'NOT_FOUND',
+        message: 'Order not found'
+      });
+    }
+
+    // Can only request revision if status is 27 (Quotation Sent)
+    if (order.status !== STATUS.QUOTATION_SENT) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_STATUS',
+        message: 'Cannot request revision at this stage'
+      });
+    }
+
+    // Create a chat message/note about revision request
+    await db.query(
+      `INSERT INTO order_messages (order_id, sender_id, sender_role, message, created_at)
+       VALUES (?, ?, 'client', ?, NOW())`,
+      [order.order_id, userId, `QUOTATION REVISION REQUEST:\n${reason}${requested_price ? `\nRequested Price: $${requested_price}` : ''}`]
+    );
+
+    // Notify Admin
+    const [admins] = await db.query(
+      `SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`
+    );
+
+    for (const admin of admins) {
+      await createNotification({
+        user_id: admin.user_id,
+        type: 'warning',
+        title: 'Quotation Revision Requested',
+        message: `Client requested quotation revision for "${order.paper_topic}" (${query_code})`,
+        link_url: `/admin/queries/${order.order_id}/view`
+      });
+    }
+
+    // Notify BDE if assigned
+    if (order.bde) {
+      await createNotification({
+        user_id: order.bde,
+        type: 'warning',
+        title: 'Quotation Revision Requested',
+        message: `Client requested quotation revision for query ${query_code}`,
+        link_url: `/bde/queries/${query_code}`
+      });
+    }
+
+    // Audit log
+    await createAuditLog({
+      user_id: userId,
+      role: 'client',
+      event_type: 'QUOTATION_REVISION_REQUESTED',
+      resource_type: 'order',
+      resource_id: order.order_id,
+      details: `Client requested quotation revision: ${reason}`,
+      ip_address: req.ip,
+      user_agent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'Revision request submitted. Admin/BDE will review and update the quotation.'
+    });
+
+  } catch (err) {
+    console.error('Request quotation revision error:', err);
+    res.status(500).json({
+      success: false,
+      code: 'REVISION_ERROR',
+      message: 'Failed to submit revision request'
+    });
+  }
+};
+
+// =======================
 // PAYMENT: UPLOAD RECEIPT
 // =======================
 exports.uploadPaymentReceipt = async (req, res) => {
@@ -845,11 +938,12 @@ exports.uploadPaymentReceipt = async (req, res) => {
       });
     }
 
-    // Get order
+    // Get order with user's currency
     const [[order]] = await db.query(
-      `SELECT o.order_id, o.query_code, o.status, o.acceptance, q.quoted_price_usd, q.tax, q.discount
+      `SELECT o.order_id, o.query_code, o.status, o.acceptance, q.quoted_price, q.tax, q.discount, u.currency_code
        FROM orders o
        LEFT JOIN quotations q ON o.order_id = q.order_id
+       LEFT JOIN users u ON o.user_id = u.user_id
        WHERE o.order_id = ? AND o.user_id = ?
        LIMIT 1`,
       [order_id, userId]
@@ -872,7 +966,7 @@ exports.uploadPaymentReceipt = async (req, res) => {
     }
 
     // Calculate total
-    const total = parseFloat(order.quoted_price_usd || 0) + 
+    const total = parseFloat(order.quoted_price || 0) + 
                   parseFloat(order.tax || 0) - 
                   parseFloat(order.discount || 0);
 
@@ -914,7 +1008,7 @@ exports.uploadPaymentReceipt = async (req, res) => {
     }, {
       query_code: order.query_code,
       amount: total,
-      currency: 'USD',
+      currency: order.currency_code,
       link_url: `/admin/payments/${paymentResult.insertId}`
     }, req.io, order.query_code);
 
@@ -1503,79 +1597,63 @@ exports.getChatHistory = async (req, res) => {
     }
 
     // Get or create chat metadata
-    let [[chat]] = await db.query(
-      `SELECT * FROM order_chats WHERE order_id = ? LIMIT 1`,
-      [order.order_id]
-    );
-
-    if (!chat) {
-      const [result] = await db.query(
-        `INSERT INTO order_chats (order_id, context_code, chat_name, status, created_at, updated_at)
-         VALUES (?, ?, 'Order Chat', 'active', NOW(), NOW())`,
-        [order.order_id, context_code]
-      );
-      [[chat]] = await db.query(`SELECT * FROM order_chats WHERE chat_id = ? LIMIT 1`, [result.insertId]);
-    }
-
-    // Ensure participants (client + bde)
-    const participants = [];
-    if (order.user_id) participants.push({ user_id: order.user_id, role: 'client' });
-    if (order.bde) participants.push({ user_id: order.bde, role: 'bde' });
-    const participantValues = participants.map(p => `(${chat.chat_id}, ${p.user_id}, '${p.role}', 0, NOW())`).join(',');
-    if (participantValues) {
-      await db.query(
-        `INSERT IGNORE INTO order_chat_participants (chat_id, user_id, role, is_muted, joined_at) VALUES ${participantValues}`
-      );
-    }
+    const chatTitle = `Order Chat - ${context_code}`;
+    const chatId = await ChatModel.createOrderChat(order.order_id, order.user_id, chatTitle);
+    
+    // Ensure participants
+    if (order.bde) await ChatModel.addParticipant(chatId, order.bde, 'bde');
 
     // Fetch messages from normalized table, hide writer messages from clients
     const [messagesRows] = await db.query(
-      `SELECT m.message_id, m.chat_id, m.order_id, m.sender_id, m.sender_role, m.message_type, m.content, m.attachments,
-              m.is_deleted, m.is_edited, m.edited_at, m.created_at,
-              CASE WHEN r.user_id IS NULL THEN 0 ELSE 1 END as is_read
-       FROM order_chat_messages m
-       LEFT JOIN order_chat_message_reads r ON m.message_id = r.message_id AND r.user_id = ?
-       WHERE m.chat_id = ? AND m.sender_role <> 'writer'
+      `SELECT m.message_id, m.chat_id, m.sender_id, m.message_type, m.content, m.attachments,
+              m.created_at, m.is_read,
+              u.role as sender_role
+       FROM general_chat_messages m
+       JOIN users u ON u.user_id = m.sender_id
+       WHERE m.chat_id = ? AND u.role <> 'writer'
        ORDER BY m.created_at ASC
        LIMIT ? OFFSET ?`,
-      [userId, chat.chat_id, parseInt(limit), parseInt(offset)]
+      [chatId, parseInt(limit), parseInt(offset)]
     );
 
     const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) as total FROM order_chat_messages WHERE chat_id = ? AND sender_role <> 'writer'`,
-      [chat.chat_id]
+      `SELECT COUNT(*) as total 
+       FROM general_chat_messages m
+       JOIN users u ON u.user_id = m.sender_id 
+       WHERE m.chat_id = ? AND u.role <> 'writer'`,
+      [chatId]
     );
 
     // Mark unread as read
-    const unreadIds = messagesRows.filter(m => m.is_read === 0 && m.sender_id !== userId).map(m => m.message_id);
-    if (unreadIds.length) {
-      const values = unreadIds.map(id => `(${id}, ${userId}, NOW())`).join(',');
-      await db.query(`INSERT IGNORE INTO order_chat_message_reads (message_id, user_id, read_at) VALUES ${values}`);
-    }
+    await ChatModel.markAsRead(chatId, userId);
 
-    const messages = messagesRows.map(m => ({
-      message_id: m.message_id,
-      chat_id: m.chat_id,
-      order_id: m.order_id,
-      sender_id: m.sender_id,
-      sender_role: m.sender_role,
-      message_type: m.message_type,
-      content: m.content,
-      attachments: m.attachments,
-      is_deleted: !!m.is_deleted,
-      is_edited: !!m.is_edited,
-      edited_at: m.edited_at,
-      is_read: !!m.is_read,
-      is_mine: m.sender_id === userId,
-      created_at: m.created_at
-    }));
+    const messages = messagesRows.map(m => {
+      let isRead = false;
+      try {
+          const r = typeof m.is_read === 'string' ? JSON.parse(m.is_read) : m.is_read;
+          if(Array.isArray(r)) isRead = r.includes(userId);
+      } catch(e){}
+
+      return {
+          message_id: m.message_id,
+          chat_id: m.chat_id,
+          sender_id: m.sender_id,
+          sender_role: m.sender_role,
+          message_type: m.message_type,
+          content: m.content,
+          attachments: m.attachments,
+          is_read: isRead,
+          is_mine: m.sender_id === userId,
+          created_at: m.created_at
+      };
+    });
 
     res.json({
       success: true,
       data: {
-        chat_id: chat.chat_id,
+        chat_id: chatId,
         context: context_code,
-        status: chat.status,
+        status: 'active',
         messages,
         pagination: {
           page: parseInt(page),
@@ -1637,30 +1715,13 @@ exports.sendChatMessage = async (req, res) => {
     }
 
     // Get chat metadata
-    let [[chat]] = await db.query(
-      `SELECT * FROM order_chats WHERE order_id = ? LIMIT 1`,
-      [order.order_id]
-    );
+    const chatTitle = `Order Chat - ${context_code}`;
+    const chatId = await ChatModel.createOrderChat(order.order_id, userId, chatTitle);
+    
+    // Ensure participants
+    if (order.bde) await ChatModel.addParticipant(chatId, order.bde, 'bde');
 
-    if (!chat) {
-      const [result] = await db.query(
-        `INSERT INTO order_chats (order_id, context_code, chat_name, status, created_at, updated_at)
-         VALUES (?, ?, 'Order Chat', 'active', NOW(), NOW())`,
-        [order.order_id, context_code]
-      );
-      [[chat]] = await db.query(`SELECT * FROM order_chats WHERE chat_id = ? LIMIT 1`, [result.insertId]);
-    }
-
-    // Ensure participants (client + bde)
-    const participants = [];
-    if (order.user_id) participants.push({ user_id: order.user_id, role: 'client' });
-    if (order.bde) participants.push({ user_id: order.bde, role: 'bde' });
-    const participantValues = participants.map(p => `(${chat.chat_id}, ${p.user_id}, '${p.role}', 0, NOW())`).join(',');
-    if (participantValues) {
-      await db.query(
-        `INSERT IGNORE INTO order_chat_participants (chat_id, user_id, role, is_muted, joined_at) VALUES ${participantValues}`
-      );
-    }
+    const chat = await ChatModel.getChatById(chatId);
 
     // Check chat status
     if (chat.status === 'closed') {
@@ -1680,17 +1741,17 @@ exports.sendChatMessage = async (req, res) => {
     }
 
     // Insert message
-    const [insertRes] = await db.query(
-      `INSERT INTO order_chat_messages (chat_id, order_id, sender_id, sender_role, message_type, content, attachments, is_edited, is_deleted, created_at)
-       VALUES (?, ?, ?, 'client', 'text', ?, NULL, 0, 0, NOW())`,
-      [chat.chat_id, order.order_id, userId, message.trim()]
+    const messageId = await ChatModel.sendMessage(chatId, userId, message.trim(), 'text', null);
+
+    const [[savedMsg]] = await db.query(
+      `SELECT m.*, u.full_name as sender_name 
+       FROM general_chat_messages m
+       LEFT JOIN users u ON u.user_id = m.sender_id
+       WHERE m.message_id = ?`, 
+       [messageId]
     );
 
-    const messageId = insertRes.insertId;
-    const [[savedMsg]] = await db.query(`SELECT * FROM order_chat_messages WHERE message_id = ? LIMIT 1`, [messageId]);
-
-    const [[senderUser]] = await db.query(`SELECT full_name FROM users WHERE user_id = ?`, [userId]);
-    const senderName = senderUser?.full_name || 'You';
+    const senderName = savedMsg.sender_name || 'You';
     const enrichedMessage = {
       ...savedMsg,
       sender_name: senderName,
@@ -1699,12 +1760,6 @@ exports.sendChatMessage = async (req, res) => {
       is_read: true
     };
     const emittedMessage = { ...enrichedMessage, is_mine: false, is_read: false };
-
-    // Mark sender read
-    await db.query(
-      `INSERT IGNORE INTO order_chat_message_reads (message_id, user_id, read_at) VALUES (?, ?, NOW())`,
-      [messageId, userId]
-    );
 
     // Emit real-time
     if (req.io) {

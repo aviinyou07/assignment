@@ -1,20 +1,9 @@
-/**
- * CLIENT API ROUTES
- * Complete backend implementation for Client role
- * 
- * All routes enforce:
- * - Authentication via JWT
- * - RBAC (client role only)
- * - Resource ownership validation
- * - Audit logging
- */
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 
-const { requireRole, validateResourceOwnership, idempotent } = require('../middleware/rbac.enhanced.middleware');
+const { authGuard, validateResourceOwnership, idempotent } = require('../middleware/auth.middleware');
 const clientController = require('../controllers/client.api.controller');
 
 // =======================
@@ -103,14 +92,14 @@ router.post(
 // Get client profile
 router.get(
   '/profile',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.getProfile
 );
 
 // Update profile (limited fields)
 router.patch(
   '/profile',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.updateProfile
 );
 
@@ -121,7 +110,7 @@ router.patch(
 // Create new query
 router.post(
   '/query',
-  requireRole(['client']),
+  authGuard(['client']),
   idempotent('query'),
   queryUpload.array('documents', 10),
   clientController.createQuery
@@ -130,14 +119,14 @@ router.post(
 // List client's queries
 router.get(
   '/query',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.listQueries
 );
 
 // Get query details
 router.get(
   '/query/:query_code',
-  requireRole(['client']),
+  authGuard(['client']),
   validateResourceOwnership('query', 'query_code'),
   clientController.getQueryDetails
 );
@@ -149,7 +138,7 @@ router.get(
 // View quotation for query
 router.get(
   '/quotation/:query_code',
-  requireRole(['client']),
+  authGuard(['client']),
   validateResourceOwnership('query', 'query_code'),
   clientController.viewQuotation
 );
@@ -157,10 +146,18 @@ router.get(
 // Accept quotation
 router.post(
   '/quotation/:query_code/accept',
-  requireRole(['client']),
+  authGuard(['client']),
   idempotent('quotation'),
   validateResourceOwnership('query', 'query_code'),
   clientController.acceptQuotation
+);
+
+// Request quotation revision
+router.post(
+  '/quotation/:query_code/revision',
+  authGuard(['client']),
+  validateResourceOwnership('query', 'query_code'),
+  clientController.requestQuotationRevision
 );
 
 // =======================
@@ -170,7 +167,7 @@ router.post(
 // Upload payment receipt
 router.post(
   '/payment/upload',
-  requireRole(['client']),
+  authGuard(['client']),
   idempotent('payment'),
   paymentUpload.single('receipt'),
   clientController.uploadPaymentReceipt
@@ -179,7 +176,7 @@ router.post(
 // Get payment status
 router.get(
   '/payment/:query_code/status',
-  requireRole(['client']),
+  authGuard(['client']),
   validateResourceOwnership('query', 'query_code'),
   clientController.getPaymentStatus
 );
@@ -191,21 +188,21 @@ router.get(
 // List client's orders
 router.get(
   '/order',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.listOrders
 );
 
 // Track order by work_code
 router.get(
   '/order/:work_code',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.trackOrder
 );
 
 // Get delivery files
 router.get(
   '/order/:work_code/delivery',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.getDeliveryFiles
 );
 
@@ -216,7 +213,7 @@ router.get(
 // Submit feedback
 router.post(
   '/order/:work_code/feedback',
-  requireRole(['client']),
+  authGuard(['client']),
   idempotent('feedback'),
   clientController.submitFeedback
 );
@@ -224,7 +221,7 @@ router.post(
 // Request revision
 router.post(
   '/order/:work_code/revision',
-  requireRole(['client']),
+  authGuard(['client']),
   idempotent('revision'),
   clientController.requestRevision
 );
@@ -236,14 +233,14 @@ router.post(
 // Get notifications
 router.get(
   '/notifications',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.getNotifications
 );
 
 // Mark notification as read
 router.patch(
   '/notifications/:notification_id/read',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.markNotificationRead
 );
 
@@ -254,14 +251,14 @@ router.patch(
 // Get chat history
 router.get(
   '/chat/:context_code',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.getChatHistory
 );
 
 // Send message
 router.post(
   '/chat/:context_code/message',
-  requireRole(['client']),
+  authGuard(['client']),
   clientController.sendChatMessage
 );
 

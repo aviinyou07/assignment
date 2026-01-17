@@ -1,54 +1,28 @@
 const express = require("express");
 const router = express.Router();
 
-const { authGuard } = require("../middleware/auth.admin.middleware");
+const { authGuard, fetchProfile } = require("../middleware/auth.middleware");
 const adminController = require("../controllers/admin.controller");
 const dashboardController = require("../controllers/admin.dashboard.controller");
-const queryController = require("../controllers/queries.controller");
-const paymentController = require("../controllers/payment.controller");
-const assignmentController = require("../controllers/assignment.controller");
-const assignmentsController = require("../controllers/assignments.controller");
-const taskController = require("../controllers/task.controller");
-const qcController = require("../controllers/qc.controller");
-const deliveryController = require("../controllers/delivery.controller");
+const queryController = require("../controllers/admin.queries.controller");
+const paymentController = require("../controllers/admin.payment.controller");
+const assignmentController = require("../controllers/admin.assignment.controller");
+const assignmentsController = require("../controllers/admin.assignments.controller");
+const taskController = require("../controllers/admin.task.controller");
+const qcController = require("../controllers/admin.qc.controller");
+const deliveryController = require("../controllers/admin.delivery.controller");
 const notificationsController = require("../controllers/notifications.controller");
-const auditController = require("../controllers/audit.controller");
-const db = require("../config/db");
-
-// Middleware to fetch Admin profile
-const fetchAdminProfile = async (req, res, next) => {
-  try {
-    const userId = req.user.user_id;
-    const [rows] = await db.query(
-      `SELECT 
-        user_id, full_name, email, mobile_number, whatsapp, 
-        university, country, currency_code, role, is_verified, created_at
-      FROM users
-      WHERE user_id = ? AND role = 'admin' AND is_active = 1`,
-      [userId]
-    );
-    
-    if (rows.length) {
-      const profile = rows[0];
-      const initials = profile.full_name
-        ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase()
-        : "AD";
-      
-      res.locals.profile = profile;
-      res.locals.initials = initials;
-    }
-    next();
-  } catch (err) {
-    console.error("Error fetching Admin profile:", err);
-    next();
-  }
-};
+const auditController = require("../controllers/admin.audit.controller");
 
 // Dashboard
 router.get(
   "/",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
+  (req, res, next) => {
+    console.log('[DEBUG] Admin dashboard route hit, user:', req.user);
+    next();
+  },
   dashboardController.getDashboard
 );
 
@@ -56,7 +30,7 @@ router.get(
 router.get(
   "/notifications",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   (req, res) => {
     res.render("admin/notifications", {
       title: "Notifications",
@@ -70,7 +44,7 @@ router.get(
 router.get(
   "/chat",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   (req, res) => {
     res.render("admin/chat", {
       title: "Chat",
@@ -84,14 +58,14 @@ router.get(
 router.get(
   "/users",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   adminController.listUsers
 );
 
 router.get(
   "/users/create",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   adminController.getCreateForm
 );
 
@@ -104,14 +78,14 @@ router.post(
 router.get(
   "/users/:userId/view",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   adminController.viewUser
 );
 
 router.get(
   "/users/:userId/edit",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   adminController.editUser
 );
 
@@ -136,14 +110,14 @@ router.post(
 router.get(
   "/queries",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   queryController.listQueries
 );
 
 router.get(
   "/queries/:queryId/view",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   queryController.viewQuery
 );
 
@@ -162,11 +136,11 @@ router.post(
 );
 
 
-// router.post(
-//   "/queries/:queryId/quotation",
-//   authGuard(["admin"]),
-//   queryController.generateQuotation
-// );
+router.post(
+  "/queries/:queryId/quotation",
+  authGuard(["admin"]),
+  queryController.generateQuotation
+);
 
 router.post(
   "/queries/:queryId/status",
@@ -180,6 +154,20 @@ router.post(
   queryController.sendMessageToClient
 );
 
+// Assign writer from interested list
+router.post(
+  "/query/:orderId/assign-writer",
+  authGuard(["admin"]),
+  queryController.adminAssignWriter
+);
+
+// Revoke writer assignment
+router.post(
+  "/query/:orderId/revoke-writer",
+  authGuard(["admin"]),
+  queryController.revokeWriterAssignment
+);
+
 router.post(
   "/queries/reassign-writer",
   authGuard(["admin"]),
@@ -190,7 +178,7 @@ router.post(
 router.get(
   "/payments",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   paymentController.listPayments
 );
 
@@ -222,7 +210,7 @@ router.post(
 router.get(
   "/tasks",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   taskController.listActiveTasks
 );
 
@@ -253,7 +241,7 @@ router.get(
 router.get(
   "/qc/pending",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   qcController.listPendingQC
 );
 
@@ -275,6 +263,19 @@ router.post(
   qcController.rejectSubmission
 );
 
+// New QC routes - Enhanced admin controls
+router.post(
+  "/qc/:orderId/forward-revision",
+  authGuard(["admin"]),
+  qcController.forwardRevisionRequest
+);
+
+router.post(
+  "/qc/:orderId/force-approve",
+  authGuard(["admin"]),
+  qcController.adminForceApprove
+);
+
 // Route removed - function references non-existent qc_history table
 // router.get("/qc/:submissionId/history", authGuard(["admin"]), qcController.getQCHistory);
 
@@ -288,7 +289,7 @@ router.get(
 router.get(
   "/assignments",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   assignmentsController.listAssignments
 );
 
@@ -296,6 +297,12 @@ router.get(
   "/assignments/available-writers",
   authGuard(["admin"]),
   assignmentController.getAvailableWriters
+);
+
+router.get(
+  "/assignments/:assignmentId/accepted-writers",
+  authGuard(["admin"]),
+  assignmentsController.getAcceptedWritersForAssignment
 );
 
 router.post(
@@ -307,26 +314,15 @@ router.post(
 router.get(
   "/assignments/:orderId",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   assignmentController.listAssignments
 );
 
 router.get(
   "/assignments/detail/:taskEvalId",
-  authGuard(["writer", "admin"]),
+  authGuard(["admin"]),
+  fetchProfile,
   assignmentController.getAssignmentDetail
-);
-
-router.post(
-  "/assignments/:taskEvalId/accept",
-  authGuard(["writer"]),
-  assignmentController.acceptAssignment
-);
-
-router.post(
-  "/assignments/:taskEvalId/reject",
-  authGuard(["writer"]),
-  assignmentController.rejectAssignment
 );
 
 router.post(
@@ -346,7 +342,7 @@ router.post(
 router.get(
   "/delivery/ready",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   deliveryController.listReadyForDelivery
 );
 
@@ -374,42 +370,8 @@ router.get(
   deliveryController.getDeliveryHistory
 );
 
-// ===== NOTIFICATIONS SYSTEM =====
-router.get(
-  "/notifications",
-  authGuard(["admin", "writer", "bde", "client"]),
-  notificationsController.getNotifications
-);
-
-router.get(
-  "/notifications/unread-count",
-  authGuard(["admin", "writer", "bde", "client"]),
-  notificationsController.getUnreadCount
-);
-
-router.get(
-  "/notifications/critical-alerts",
-  authGuard(["admin", "writer", "bde", "client"]),
-  notificationsController.getCriticalAlerts
-);
-
-router.post(
-  "/notifications/:notificationId/read",
-  authGuard(["admin", "writer", "bde", "client"]),
-  notificationsController.markAsRead
-);
-
-router.post(
-  "/notifications/mark-all-read",
-  authGuard(["admin", "writer", "bde", "client"]),
-  notificationsController.markAllAsRead
-);
-
-router.delete(
-  "/notifications/:notificationId",
-  authGuard(["admin", "writer", "bde", "client"]),
-  notificationsController.deleteNotification
-);
+// ===== ADMIN-ONLY NOTIFICATION ACTION =====
+// Note: Other notification routes are handled by /notifications/* route
 
 router.post(
   "/notifications/send",
@@ -421,7 +383,7 @@ router.post(
 router.get(
   "/audit/logs",
   authGuard(["admin"]),
-  fetchAdminProfile,
+  fetchProfile,
   auditController.getAuditLogs
 );
 
@@ -466,5 +428,21 @@ router.get(
   authGuard(["admin"]),
   auditController.getOrderAuditTrail
 );
+
+// ===== REAL-TIME DASHBOARD API =====
+router.get(
+  "/api/sidebar-counts",
+  authGuard(["admin"]),
+  dashboardController.getSidebarCounts
+);
+
+router.get(
+  "/api/dashboard/kpis",
+  authGuard(["admin"]),
+  dashboardController.getDashboardKPIs
+);
+
+// Search users for new chats
+// router.get("/api/users/search", authGuard(["admin"]), chatController.searchUsers);
 
 module.exports = router;

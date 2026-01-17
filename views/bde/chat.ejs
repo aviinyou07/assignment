@@ -1,45 +1,45 @@
+<!-- BDE CHAT HUB -->
 <section class="space-y-6">
-  <div class="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-7 text-white shadow-lg flex items-center justify-between">
-    <div>
-      <p class="text-sm uppercase tracking-[0.2em] font-bold text-white/70">Messaging Hub</p>
-      <h1 class="text-3xl font-black mt-1">Chats by role</h1>
-      <p class="text-indigo-100 text-sm mt-2">Switch between your client, admin, and BDE chats. BDEs can view and reply to all their conversations.</p>
-    </div>
-    <div class="hidden md:flex gap-3">
-      <button id="refresh-chats" class="px-4 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold rounded-xl text-sm transition flex items-center gap-2">
-        <i class="fi fi-rr-rotate-right text-sm"></i>
-        Refresh
-      </button>
-      <button onclick="openGlobalChat()" class="px-4 py-2 bg-white text-indigo-700 font-semibold rounded-xl text-sm shadow-md flex items-center gap-2">
-        <i class="fi fi-rr-messages"></i>
-        Open Inbox
-      </button>
-    </div>
-  </div>
-
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
-    <div class="border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 py-3 gap-4 flex-wrap">
-      <div class="flex gap-2">
-        <button data-filter="clients" class="chat-tab active px-4 py-2 rounded-lg font-semibold text-sm bg-indigo-50 text-indigo-700 border border-indigo-100">Clients</button>
-        <button data-filter="admin" class="chat-tab px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-50 border border-transparent">Admin</button>
-        <button data-filter="client-bde" class="chat-tab px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-50 border border-transparent">Client & BDE</button>
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-6 text-white shadow-lg">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-black">Messaging Hub</h1>
+        <p class="text-indigo-100 text-sm mt-1">Chat with clients and admin</p>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-          <input id="chat-search" type="text" placeholder="Search by name or code" class="pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <button id="refresh-chats-mobile" class="md:hidden px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold">
-          <i class="fi fi-rr-rotate-right"></i>
+      <div class="flex gap-3">
+        <button id="request-admin-btn" class="px-4 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold rounded-xl text-sm transition flex items-center gap-2">
+          <i class="fi fi-rr-user-plus"></i> Request Admin Chat
+        </button>
+        <button id="refresh-btn" class="px-4 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold rounded-xl text-sm transition flex items-center gap-2">
+          <i class="fi fi-rr-rotate-right"></i> Refresh
         </button>
       </div>
     </div>
+  </div>
 
-    <div class="p-4 sm:p-6">
-      <div id="chat-list" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  <!-- Main Panel -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <!-- Tabs -->
+    <div class="border-b border-slate-100 flex items-center justify-between px-6 py-4 gap-4 flex-wrap">
+      <div class="flex gap-2">
+        <button data-tab="clients" class="tab-btn active px-4 py-2 rounded-lg font-bold text-sm bg-indigo-500 text-white shadow">
+          <i class="fi fi-rr-user mr-1"></i>Clients
+        </button>
+        <button data-tab="admin" class="tab-btn px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-100 border border-slate-200">
+          <i class="fi fi-rr-shield mr-1"></i>Admin
+        </button>
+      </div>
+      
+      <input id="search-input" type="text" placeholder="Search..." class="px-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64">
+    </div>
+
+    <!-- Chat List -->
+    <div class="p-6">
+      <div id="bde-chat-list" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div class="col-span-full text-center py-10 text-slate-400">
           <i class="fi fi-rr-spinner-alt animate-spin text-2xl mb-2 block"></i>
-          Loading conversations...
+          Loading...
         </div>
       </div>
     </div>
@@ -48,164 +48,231 @@
 
 <script>
 (function() {
-  const state = {
-    conversations: [],
-    filter: 'clients',
-    search: ''
-  };
+  let chats = [];
+  let currentTab = 'clients';
+  let search = '';
 
-  document.addEventListener('DOMContentLoaded', () => {
-    bindTabs();
-    bindSearch();
-    bindRefresh();
-    loadConversations();
-  });
+  document.addEventListener('DOMContentLoaded', init);
 
-  function bindTabs() {
-    document.querySelectorAll('.chat-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.chat-tab').forEach(b => b.classList.remove('active', 'bg-indigo-50', 'text-indigo-700', 'border-indigo-100'));
-        btn.classList.add('active', 'bg-indigo-50', 'text-indigo-700', 'border-indigo-100');
-        state.filter = btn.dataset.filter;
-        renderList();
-      });
+  function init() {
+    bindEvents();
+    loadChats();
+  }
+
+  function bindEvents() {
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
-  }
 
-  function bindSearch() {
-    const search = document.getElementById('chat-search');
-    if (!search) return;
-    search.addEventListener('input', (e) => {
-      state.search = e.target.value.toLowerCase();
-      renderList();
+    // Search
+    document.getElementById('search-input').addEventListener('input', e => {
+      search = e.target.value.toLowerCase();
+      render();
     });
+
+    // Refresh
+    document.getElementById('refresh-btn').addEventListener('click', loadChats);
+
+    // Request Admin Chat
+    document.getElementById('request-admin-btn').addEventListener('click', requestAdminChat);
   }
 
-  function bindRefresh() {
-    const refreshers = [document.getElementById('refresh-chats'), document.getElementById('refresh-chats-mobile')];
-    refreshers.forEach(btn => btn && btn.addEventListener('click', loadConversations));
+  function switchTab(tab) {
+    currentTab = tab;
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active', 'bg-indigo-500', 'text-white', 'shadow');
+      btn.classList.add('text-slate-600', 'border-slate-200', 'hover:bg-slate-100');
+    });
+    
+    const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+    activeBtn.classList.remove('text-slate-600', 'border-slate-200', 'hover:bg-slate-100');
+    activeBtn.classList.add('active', 'bg-indigo-500', 'text-white', 'shadow');
+    
+    render();
   }
 
-  async function loadConversations() {
-    const container = document.getElementById('chat-list');
-    container.innerHTML = `
-      <div class="col-span-full text-center py-10 text-slate-400">
-        <i class="fi fi-rr-spinner-alt animate-spin text-2xl mb-2 block"></i>
-        Loading conversations...
-      </div>
-    `;
-
+  async function loadChats() {
+    console.log('[DEBUG] BDE loadChats called');
+    const container = document.getElementById('bde-chat-list');
+    container.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400"><i class="fi fi-rr-spinner-alt animate-spin text-2xl mb-2 block"></i>Loading...</div>`;
+    
     try {
       const res = await fetch('/chat/my-conversations', { credentials: 'include' });
+      console.log('[DEBUG] BDE loadChats status:', res.status);
       const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Failed');
-      state.conversations = data.conversations || [];
-      renderList();
+      console.log('[DEBUG] BDE loadChats data:', data);
+      
+      if (data.success) {
+        chats = data.data || [];
+        render();
+      } else {
+        console.error('[DEBUG] BDE loadChats failed:', data.message);
+        showError();
+      }
     } catch (err) {
-      container.innerHTML = `
-        <div class="col-span-full text-center py-10 text-red-400">
-          <i class="fi fi-rr-exclamation text-2xl mb-2 block"></i>
-          Unable to load conversations
-        </div>
-      `;
-      console.error('Chat load error:', err);
+      console.error('[DEBUG] BDE Error loading chats:', err);
+      showError();
     }
   }
 
-  function renderList() {
-    const container = document.getElementById('chat-list');
-    const filtered = state.conversations
-      .map(conv => ({ ...conv, bucket: categorize(conv) }))
-      .filter(conv => conv.bucket === state.filter)
-      .filter(conv => {
-        if (!state.search) return true;
-        const hay = `${conv.display_name || ''} ${conv.title || ''} ${conv.context_code || ''} ${conv.last_message || ''}`.toLowerCase();
-        return hay.includes(state.search);
+  async function requestAdminChat() {
+    console.log('[DEBUG] BDE requestAdminChat called');
+    try {
+      const res = await fetch('/chat/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestType: 'admin' }),
+        credentials: 'include'
       });
-
-    if (!filtered.length) {
-      container.innerHTML = `
-        <div class="col-span-full text-center py-10 text-slate-400">
-          <i class="fi fi-rr-comment text-3xl mb-2 block"></i>
-          No conversations in this tab
-        </div>
-      `;
-      return;
+      console.log('[DEBUG] BDE request response status:', res.status);
+      const data = await res.json();
+      console.log('[DEBUG] BDE request data:', data);
+      
+      if (data.success) {
+        showToast('Chat request sent to admin', 'success');
+      } else {
+        showToast(data.message || 'Failed to send request', 'error');
+      }
+    } catch (err) {
+      console.error('[DEBUG] BDE Error sending request:', err);
+      showToast('Error sending request', 'error');
     }
-
-    container.innerHTML = filtered.map(conv => renderCard(conv)).join('');
   }
 
-  function categorize(conv) {
-    // BDE one-on-one with client
-    if (conv.assigned_bde_id && conv.client_name && !conv.writer_name && (!conv.role_label || !conv.role_label.includes('Admin'))) return 'clients';
-    // BDE one-on-one with admin
-    if (conv.role_label && conv.role_label.includes('Admin')) return 'admin';
-    // Client & BDE group chat
-    if (conv.client_name && conv.assigned_bde_id && conv.participants && conv.participants.includes('BDE') && conv.participants.includes('Client')) return 'client-bde';
+  function categorize(chat) {
+    // BDE sees: clients (bde ↔ client) and admin (bde ↔ admin)
+    if (chat.has_admin === 1 && chat.has_client !== 1) return 'admin';
+    if (chat.has_client === 1) return 'clients';
     return 'clients';
   }
 
-  function renderCard(conv) {
-    const initials = (conv.display_name || conv.title || conv.client_name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    const lastTime = conv.last_message_at ? formatTimeAgo(conv.last_message_at) : 'No messages yet';
-    const unread = conv.unread_count && parseInt(conv.unread_count, 10) > 0;
-    const badge = conv.bucket === 'admin' ? 'bg-red-50 text-red-700' : conv.bucket === 'bde' ? 'bg-amber-50 text-amber-700' : conv.bucket === 'client-bde' ? 'bg-green-50 text-green-700' : 'bg-emerald-50 text-emerald-700';
+  function render() {
+    const container = document.getElementById('bde-chat-list');
+    
+    let filtered = chats
+      .filter(c => categorize(c) === currentTab)
+      .filter(c => {
+        if (!search) return true;
+        const hay = `${c.display_name || ''} ${c.title || ''} ${c.last_message || ''}`.toLowerCase();
+        return hay.includes(search);
+      });
+    
+    if (!filtered.length) {
+      container.innerHTML = emptyHtml();
+      return;
+    }
+    
+    container.innerHTML = filtered.map(renderCard).join('');
+  }
 
+  function renderCard(chat) {
+    const initials = (chat.display_name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const lastTime = chat.last_message_at ? formatTime(chat.last_message_at) : 'No messages';
+    
     return `
-      <div class="border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative">
-        ${unread ? `<span class="absolute top-3 right-3 bg-indigo-600 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">${conv.unread_count}</span>` : ''}
+      <div class="border border-slate-200 rounded-xl p-4 hover:shadow-md hover:border-indigo-200 transition relative">
+        ${chat.unread_count > 0 ? `<span class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">${chat.unread_count}</span>` : ''}
+        
         <div class="flex items-center gap-3 mb-3">
-          <div class="w-11 h-11 rounded-full ${conv.context_type === 'order' ? 'bg-indigo-100 text-indigo-700' : 'bg-violet-100 text-violet-700'} flex items-center justify-center font-black">${escapeHtml(initials)}</div>
-          <div class="min-w-0 flex-1">
-            <p class="font-bold text-slate-800 truncate">${escapeHtml(conv.display_name || conv.title || conv.context_code)}</p>
-            <p class="text-xs text-slate-500 truncate">${escapeHtml(conv.role_label || '')}</p>
+          <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm">
+            ${esc(initials)}
           </div>
-          <span class="text-[11px] px-2 py-1 rounded-full ${badge} font-semibold capitalize">${conv.bucket.replace('client-bde', 'Client & BDE')}</span>
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-slate-800 truncate">${esc(chat.display_name || chat.title || 'Chat')}</p>
+            <p class="text-xs text-slate-500">${esc(chat.role_label || '')}</p>
+          </div>
         </div>
-        <p class="text-sm text-slate-600 line-clamp-2 mb-3">${escapeHtml(conv.last_message || 'No messages yet')}</p>
-        <div class="flex items-center justify-between text-xs text-slate-500">
-          <span>${escapeHtml(conv.context_code || '')}</span>
-          <span>${escapeHtml(lastTime)}</span>
+        
+        <p class="text-sm text-slate-600 line-clamp-2 mb-3">${esc(chat.last_message || 'No messages yet')}</p>
+        
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-3">
+          <span>${lastTime}</span>
+          <span>${chat.message_count || 0} msgs</span>
         </div>
-        <button class="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-700 transition" onclick="openChatFromBDE('${conv.context_code}', '${escapeHtmlAttr(conv.display_name || conv.title || conv.context_code)}')">
-          View & reply
+        
+        <button class="w-full bg-indigo-600 text-white px-3 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-700 transition"
+          onclick="openChat('${chat.context_code}', '${escAttr(chat.display_name || chat.title)}')">
+          <i class="fi fi-rr-comment-dots mr-1"></i>View & Reply
         </button>
       </div>
     `;
   }
 
-  window.openChatFromBDE = function(contextCode, title) {
-    openGlobalChat();
-    setTimeout(() => {
-      if (typeof openConversation === 'function') {
-        openConversation(contextCode, title);
-      }
-    }, 350);
+  window.openChat = function(contextCode, title) {
+    if (typeof openGlobalChat === 'function') {
+      openGlobalChat();
+      setTimeout(() => {
+        if (typeof openConversation === 'function') {
+          openConversation(contextCode, title);
+        }
+      }, 300);
+    } else {
+      showToast('Chat panel not available', 'error');
+    }
   };
 
-  function escapeHtml(str) {
+  function emptyHtml() {
+    const msg = currentTab === 'admin' 
+      ? 'No admin chats yet. Request a chat with admin to get started.'
+      : 'No client chats yet.';
+    
+    return `
+      <div class="col-span-full text-center py-10 text-slate-400">
+        <i class="fi fi-rr-comment text-3xl mb-2 block"></i>
+        <p class="font-semibold">${msg}</p>
+        ${currentTab === 'admin' ? `
+          <button onclick="document.getElementById('request-admin-btn').click()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold">
+            Request Admin Chat
+          </button>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  function showError() {
+    document.getElementById('bde-chat-list').innerHTML = `
+      <div class="col-span-full text-center py-10 text-red-400">
+        <i class="fi fi-rr-exclamation text-3xl mb-2 block"></i>
+        <p class="font-semibold">Failed to load chats</p>
+        <button onclick="loadChats()" class="mt-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm">Retry</button>
+      </div>
+    `;
+  }
+
+  function esc(str) {
     const div = document.createElement('div');
     div.textContent = str || '';
     return div.innerHTML;
   }
 
-  function escapeHtmlAttr(str) {
+  function escAttr(str) {
     return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  function formatTimeAgo(dateStr) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now - date;
-    const minutes = Math.floor(diffMs / 60000);
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+  function formatTime(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'now';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
+  }
+
+  function showToast(msg, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg text-white text-sm font-semibold shadow-lg ${
+      type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    }`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   }
 })();
 </script>
+
+<style>
+#bde-chat-list { min-height: 200px; }
+</style>

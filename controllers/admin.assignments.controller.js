@@ -1,12 +1,6 @@
 const db = require('../config/db');
 const { logAction } = require('../utils/logger');
 
-/**
- * ASSIGNMENTS CONTROLLER
- * Handle writer assignments with proper user JOINs
- */
-
-// List all assignments with pagination
 exports.listAssignments = async (req, res) => {
   try {
     const { page = 0, status, dateFrom, dateTo } = req.query;
@@ -53,6 +47,14 @@ exports.listAssignments = async (req, res) => {
       params
     );
 
+    // Get status counts for dashboard stats
+    const [[{ pendingCount }]] = await db.query(
+      `SELECT COUNT(*) as pendingCount FROM task_evaluations WHERE status = 'pending'`
+    );
+    const [[{ acceptedCount }]] = await db.query(
+      `SELECT COUNT(*) as acceptedCount FROM task_evaluations WHERE status = 'doable'`
+    );
+
     const pages = Math.ceil(total / limit);
 
     res.render('admin/assignments/index', {
@@ -60,6 +62,8 @@ exports.listAssignments = async (req, res) => {
       page: parseInt(page) + 1,
       pages: pages,
       total: total,
+      pendingCount: pendingCount,
+      acceptedCount: acceptedCount,
       filters: { status: status || 'all' },
       records: assignments,
       currentPage: 'assignments'
@@ -102,6 +106,41 @@ exports.viewAssignment = async (req, res) => {
   } catch (error) {
     console.error('Error in viewAssignment:', error);
     res.status(500).render('errors/404', { title: 'Error', layout: false });
+  }
+};
+
+// Get accepted writers for an assignment (for reassignment)
+exports.getAcceptedWritersForAssignment = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    
+    // Get the order_id from the assignment
+    const [[assignment]] = await db.query(
+      `SELECT order_id, writer_id FROM task_evaluations WHERE id = ?`,
+      [assignmentId]
+    );
+
+    if (!assignment) {
+      return res.status(404).json({ success: false, error: 'Assignment not found' });
+    }
+
+    // Get other writers who accepted this order (from writer_query_interest)
+    // Exclude the currently assigned writer
+    const [writers] = await db.query(
+      `SELECT wqi.writer_id, u.full_name, u.email, wqi.status
+       FROM writer_query_interest wqi
+       JOIN users u ON wqi.writer_id = u.user_id
+       WHERE wqi.order_id = ? 
+         AND wqi.status IN ('interested', 'accepted') 
+         AND wqi.writer_id != ?
+       ORDER BY u.full_name ASC`,
+      [assignment.order_id, assignment.writer_id]
+    );
+
+    res.json({ success: true, writers });
+  } catch (error) {
+    console.error('Error in getAcceptedWritersForAssignment:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 

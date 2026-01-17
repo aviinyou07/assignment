@@ -1,75 +1,120 @@
-<!-- ADMIN SIDEBAR -->
-<aside class="w-64 bg-white border-r border-slate-200 shadow-sm flex flex-col">
+<!-- PREMIUM ADMIN SIDEBAR -->
+<aside class="w-72 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 flex flex-col shadow-2xl">
   
-  <!-- LOGO -->
-  <div class="p-6 border-b border-slate-100">
-    <h1 class="text-2xl font-black text-slate-900">
-      <span class="text-indigo-600">A</span>366 ADMIN
-    </h1>
+  <!-- LOGO SECTION -->
+  <div class="p-6 border-b border-slate-700/50">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+        <span class="text-white font-black text-lg">A</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-black text-white tracking-tight">Assignment<span class="text-indigo-400">366</span></h1>
+        <p class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Admin Portal</p>
+      </div>
+    </div>
   </div>
 
   <!-- NAVIGATION -->
-  <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-    <a href="/admin" class="<%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-      <i class="fi fi-rr-chart-histogram"></i> Dashboard
+  <nav class="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+    
+    <!-- Dashboard -->
+    <a href="/admin" class="<%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+      <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+        <i class="fi fi-rr-home text-sm"></i>
+      </div>
+      Dashboard
     </a>
 
-    <!-- QUERY MANAGEMENT -->
-    <div class="pt-2">
-      <p class="text-xs font-black text-slate-500 uppercase tracking-widest px-4 mb-2">OPERATIONS</p>
+    <!-- OPERATIONS SECTION -->
+    <div class="pt-4 pb-2">
+      <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-4 mb-3">Operations</p>
       
-      <a href="/admin/queries" class="<%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-inbox"></i> Queries
+      <a href="/admin/queries" class="<%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-interrogation text-sm"></i>
+        </div>
+        <span class="flex-1">Queries</span>
+        <span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold" id="sidebar-queries-count">0</span>
       </a>
 
-      <a href="/admin/chat" class="<%= typeof currentPage !== 'undefined' && currentPage === 'chat' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-messages"></i> Chat
+      <a href="/admin/payments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-credit-card text-sm"></i>
+        </div>
+        <span class="flex-1">Payments</span>
+        <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-bold" id="sidebar-payments-count">0</span>
       </a>
 
-      <a href="/admin/payments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-credit-card"></i> Payments
+      <a href="/admin/assignments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'assignments' ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'assignments' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-user-pen text-sm"></i>
+        </div>
+        <span class="flex-1">Assignments</span>
       </a>
 
-      <a href="/admin/tasks" class="<%= typeof currentPage !== 'undefined' && currentPage === 'tasks' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-briefcase"></i> Tasks
+      <a href="/admin/qc/pending" class="<%= typeof currentPage !== 'undefined' && currentPage === 'qc' ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'qc' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-badge-check text-sm"></i>
+        </div>
+        <span class="flex-1">Quality Control</span>
+        <span class="bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded-full text-[10px] font-bold" id="sidebar-qc-count">0</span>
       </a>
 
-      <a href="/admin/assignments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'assignments' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-users"></i> Assignments
+      <a href="/admin/delivery/ready" class="<%= typeof currentPage !== 'undefined' && currentPage === 'delivery' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'delivery' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-rocket-lunch text-sm"></i>
+        </div>
+        <span class="flex-1">Delivery</span>
       </a>
 
-      <a href="/admin/qc/pending" class="<%= typeof currentPage !== 'undefined' && currentPage === 'qc' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-check-double"></i> Quality Control
-      </a>
-
-      <a href="/admin/delivery/ready" class="<%= typeof currentPage !== 'undefined' && currentPage === 'delivery' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-paper-plane"></i> Delivery
+      <a href="/admin/tasks" class="<%= typeof currentPage !== 'undefined' && currentPage === 'tasks' ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'tasks' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-clipboard-list text-sm"></i>
+        </div>
+        <span class="flex-1">Tasks Monitor</span>
       </a>
     </div>
 
-    <!-- MANAGEMENT -->
-    <div class="pt-2">
-      <p class="text-xs font-black text-slate-500 uppercase tracking-widest px-4 mb-2">MANAGEMENT</p>
+    <!-- MANAGEMENT SECTION -->
+    <div class="pt-4 pb-2">
+      <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-4 mb-3">Management</p>
       
-      <a href="/admin/users" class="<%= typeof currentPage !== 'undefined' && currentPage === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-users"></i> Users
+      <a href="/admin/users" class="<%= typeof currentPage !== 'undefined' && currentPage === 'users' ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'users' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-users text-sm"></i>
+        </div>
+        Users
       </a>
 
-      <a href="/admin/audit/logs" class="<%= typeof currentPage !== 'undefined' && currentPage === 'audit' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-file-audit"></i> Audit Logs
+      <a href="/admin/audit/logs" class="<%= typeof currentPage !== 'undefined' && currentPage === 'audit' ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'audit' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-document text-sm"></i>
+        </div>
+        Audit Logs
       </a>
 
-      <a href="#" class="text-slate-600 hover:bg-slate-100 px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-        <i class="fi fi-rr-settings"></i> Settings
+      <a href="/admin/chat" class="<%= typeof currentPage !== 'undefined' && currentPage === 'chat' ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'chat' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-comments text-sm"></i>
+        </div>
+        <span class="flex-1">Chat Hub</span>
+      </a>
+
+      <a href="/admin/notifications" class="<%= typeof currentPage !== 'undefined' && currentPage === 'notifications' ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+        <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'notifications' ? 'bg-white/20' : 'bg-slate-800 group-hover:bg-slate-700' %> flex items-center justify-center transition-colors">
+          <i class="fi fi-rr-bell text-sm"></i>
+        </div>
+        Notifications
       </a>
     </div>
+
   </nav>
 
-  <!-- FOOTER -->
-  <div class="p-4 border-t border-slate-100 space-y-2">
-    <a href="/auth/logout" class="text-slate-600 hover:bg-red-50 hover:text-red-600 px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 w-full">
-      <i class="fi fi-rr-sign-out-alt"></i> Logout
-    </a>
-  </div>
-
 </aside>
+
+<style>
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
+</style>

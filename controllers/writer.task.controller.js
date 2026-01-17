@@ -1,7 +1,8 @@
 const db = require('../config/db');
 const fs = require('fs').promises;
 const path = require('path');
-const { validateTransition, STATUS } = require('../utils/state-machine');
+const { validateTransition, STATUS, STATUS_NAMES } = require('../utils/state-machine');
+const { processWorkflowEvent } = require('../utils/workflow.service');
 
 
 exports.getDashboardKPIs = async (req, res) => {
@@ -578,6 +579,12 @@ exports.submitDraftForQC = async (req, res) => {
     );
 
     await connection.commit();
+
+    // ============================================================================
+    // CRITICAL NOTIFICATION TO ADMIN (Per Spec: Submit for QC triggers CRITICAL)
+    // ============================================================================
+    const { notifyDraftSubmitted } = require('./notifications.controller');
+    await notifyDraftSubmitted(taskId, writerId, req.io);
 
     res.json({ success: true, message: 'Draft submitted for QC review' });
   } catch (error) {

@@ -1,51 +1,105 @@
 const express = require('express');
 const router = express.Router();
-const { requireRole } = require('../middleware/rbac.middleware');
+const { authGuard } = require('../middleware/auth.middleware');
 const chatController = require('../controllers/chat.controller');
 
 /**
- * CHAT ROUTES
- * All routes require authentication
- * 
- * Allowed chat relationships:
- * - Client ↔ BDE
- * - BDE ↔ Admin
- * - Writer ↔ Admin
+ * SHARED CHAT ROUTES
+ * Used by all roles for common chat operations
+ * Role-specific filtering happens in the controller
  */
 
-// Get all conversations for current user (MUST be before :context_id)
+// Get all chats for current user (filtered by role)
 router.get(
   '/my-conversations',
-  requireRole(['client', 'bde', 'writer', 'admin']),
-  chatController.getMyConversations
+  authGuard(['client', 'bde', 'writer', 'admin']),
+  chatController.getChats
 );
 
-// Get chat history for order context
+// Get messages for a specific chat
 router.get(
-  '/:context_id',
-  requireRole(['client', 'bde', 'writer', 'admin']),
-  chatController.getChatHistory
+  '/:chatId/messages',
+  authGuard(['client', 'bde', 'writer', 'admin']),
+  chatController.getMessages
 );
 
-// Send message in chat
+// Send message in a chat
 router.post(
-  '/:context_id/message',
-  requireRole(['client', 'bde', 'writer', 'admin']),
+  '/:chatId/message',
+  authGuard(['client', 'bde', 'writer', 'admin']),
   chatController.sendMessage
 );
 
-// Restrict chat (Admin only)
+// ===== ADMIN-ONLY GOVERNANCE =====
+
+// Restrict chat
 router.post(
-  '/:context_id/restrict',
-  requireRole(['admin']),
+  '/:chatId/restrict',
+  authGuard(['admin']),
   chatController.restrictChat
 );
 
-// Close chat (Admin only)
+// Close chat
 router.post(
-  '/:context_id/close',
-  requireRole(['admin']),
+  '/:chatId/close',
+  authGuard(['admin']),
   chatController.closeChat
+);
+
+// Delete chat
+router.post(
+  '/:chatId/delete',
+  authGuard(['admin']),
+  chatController.deleteChat
+);
+
+// Tag as important
+router.post(
+  '/:chatId/tag-important',
+  authGuard(['admin']),
+  chatController.toggleImportant
+);
+
+// Create new chat (Admin only)
+router.post(
+  '/',
+  authGuard(['admin']), 
+  chatController.createChat
+);
+
+// Search users (Admin only)
+router.get(
+  '/users/search',
+  authGuard(['admin']),
+  chatController.searchUsers
+);
+
+// Request chat (Non-admin)
+router.post(
+  '/request',
+  authGuard(['client', 'bde', 'writer']),
+  chatController.requestChat
+);
+
+// Get chat requests (Admin only)
+router.get(
+  '/requests',
+  authGuard(['admin']),
+  chatController.getRequests
+);
+
+// Approve chat request (Admin only)
+router.post(
+  '/requests/:requestId/approve',
+  authGuard(['admin']),
+  chatController.approveRequest
+);
+
+// Reject chat request (Admin only)
+router.post(
+  '/requests/:requestId/reject',
+  authGuard(['admin']),
+  chatController.rejectRequest
 );
 
 module.exports = router;

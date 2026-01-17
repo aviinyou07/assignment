@@ -40,7 +40,7 @@
                   </div>
                 </td>
                 <td class="px-6 py-4">
-                  <p class="text-lg font-black text-red-600">$<%= payment.total_price_usd.toFixed(2) %></p>
+                  <p class="text-lg font-black text-red-600"><%= payment.currency_code %> <%= (parseFloat(payment.total_price) || 0).toFixed(2) %></p>
                 </td>
                 <td class="px-6 py-4">
                   <span class="px-3 py-1 text-xs font-semibold rounded-full
@@ -63,7 +63,7 @@
                         <i class="fi fi-brands-whatsapp"></i>
                       </a>
                     <% } %>
-                    <button onclick="sendReminder('<%= payment.query_code %>')" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
+                    <button onclick="sendReminder('<%= payment.query_code %>')" id="reminder-btn-<%= payment.query_code %>" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
                       Send Reminder
                     </button>
                   </div>
@@ -102,6 +102,9 @@
 
 <script>
 async function sendReminder(queryCode) {
+  const button = document.getElementById(`reminder-btn-${queryCode}`);
+  const originalText = button.innerHTML;
+  
   const confirmed = await showConfirmModal(
     'Send Payment Reminder',
     'Send payment reminder to client?',
@@ -109,6 +112,11 @@ async function sendReminder(queryCode) {
   );
   
   if (confirmed) {
+    // Show loading state
+    button.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i>';
+    button.disabled = true;
+    button.classList.add('opacity-50', 'cursor-not-allowed');
+    
     try {
       const response = await fetch(`/bde/queries/${queryCode}/payment-reminder`, {
         method: 'POST',
@@ -118,11 +126,18 @@ async function sendReminder(queryCode) {
       
       if (data.success) {
         showToast(data.message, 'success');
+        // Optionally refresh the page or update the UI
+        setTimeout(() => location.reload(), 1500);
       } else {
         showToast(data.message || 'Failed to send reminder', 'error');
       }
     } catch (error) {
       showToast('Error sending reminder', 'error');
+    } finally {
+      // Restore button state
+      button.innerHTML = originalText;
+      button.disabled = false;
+      button.classList.remove('opacity-50', 'cursor-not-allowed');
     }
   }
 }

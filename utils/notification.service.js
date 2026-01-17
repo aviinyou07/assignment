@@ -6,10 +6,36 @@
  * - Real-time delivery
  * - Retry mechanism
  * - Notification templates
+ * - Multi-channel support (Push, In-app, WhatsApp)
+ * - Severity-based prioritization
+ * - Reminder intervals (30-120 mins)
  */
 
 const db = require('../config/db');
 const { createAuditLog } = require('./audit');
+
+// Notification severity levels
+const SEVERITY = {
+  SUCCESS: 'success',
+  INFO: 'info',
+  WARNING: 'warning',
+  CRITICAL: 'critical'
+};
+
+// Notification channels
+const CHANNELS = {
+  PUSH: 'push',
+  IN_APP: 'in_app',
+  WHATSAPP: 'whatsapp',
+  EMAIL: 'email'
+};
+
+// Reminder intervals (in minutes)
+const REMINDER_INTERVALS = {
+  CRITICAL: [30, 60, 90, 120],  // Repeat every 30 mins up to 2 hours
+  WARNING: [60, 120],            // Repeat every 60 mins up to 2 hours
+  INFO: []                       // No reminders
+};
 
 // Notification types
 const NOTIFICATION_TYPES = {
@@ -288,7 +314,7 @@ function parseTemplate(template, variables) {
 }
 
 /**
- * Create and send notification
+ * Create and send notification with multi-channel support
  * 
  * @param {object} params
  * @param {number} params.user_id - Target user ID
@@ -297,6 +323,8 @@ function parseTemplate(template, variables) {
  * @param {string} params.message - Notification message
  * @param {string} params.link_url - Optional link URL
  * @param {object} params.metadata - Optional metadata
+ * @param {string} params.severity - Severity level for prioritization
+ * @param {array} params.channels - Channels to send to ['push', 'in_app', 'whatsapp']
  * @param {object} io - Socket.IO instance for real-time delivery
  * @param {string} context_code - Optional context for channel emission
  * @returns {Promise<number>} notification_id
@@ -307,9 +335,14 @@ async function createNotification({
   title,
   message,
   link_url = null,
-  metadata = null
+  metadata = null,
+  severity = null,
+  channels = ['in_app']
 }, io = null, context_code = null) {
   try {
+    // Determine severity from type if not explicitly set
+    const effectiveSeverity = severity || type;
+    
     // Insert notification
     const [result] = await db.query(
       `INSERT INTO notifications 
@@ -327,12 +360,13 @@ async function createNotification({
       title,
       message,
       link_url,
+      severity: effectiveSeverity,
       is_read: false,
       created_at: new Date().toISOString()
     };
 
     // Real-time delivery if Socket.IO available
-    if (io) {
+    if (io && channels.includes('in_app')) {
       // Emit to user's personal channel
       io.to(`user:${user_id}`).emit('notification:new', notification);
 
@@ -342,11 +376,78 @@ async function createNotification({
       }
     }
 
+    // Schedule reminders for critical/warning notifications
+    if (effectiveSeverity === SEVERITY.CRITICAL || effectiveSeverity === SEVERITY.WARNING) {
+      await scheduleNotificationReminders(notification_id, user_id, effectiveSeverity);
+    }
+
+    // Queue WhatsApp notification if channel enabled
+    if (channels.includes('whatsapp')) {
+      await queueWhatsAppNotification(user_id, title, message, effectiveSeverity);
+    }
+
     return notification_id;
 
   } catch (error) {
     console.error('Error creating notification:', error);
     throw error;
+  }
+}
+
+/**
+ * Schedule reminder notifications for critical actions
+ * @param {number} notification_id - Original notification ID
+ * @param {number} user_id - User ID
+ * @param {string} severity - Notification severity
+ */
+async function scheduleNotificationReminders(notification_id, user_id, severity) {
+  try {
+    const intervals = REMINDER_INTERVALS[severity.toUpperCase()] || [];
+    
+    for (const minutes of intervals) {
+      await db.query(
+        `INSERT INTO deadline_reminders 
+         (order_id, user_id, reminder_type, is_sent, created_at)
+         VALUES (?, ?, ?, 0, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+        [String(notification_id), user_id, `reminder_${minutes}m`, minutes]
+      );
+    }
+  } catch (error) {
+    console.error('Error scheduling reminders:', error);
+    // Don't throw - reminders are non-critical
+  }
+}
+
+/**
+ * Queue WhatsApp notification for async sending
+ * @param {number} user_id - User ID
+ * @param {string} title - Notification title
+ * @param {string} message - Notification message
+ * @param {string} severity - Notification severity
+ */
+async function queueWhatsAppNotification(user_id, title, message, severity) {
+  try {
+    // Get user's WhatsApp number
+    const [[user]] = await db.query(
+      `SELECT whatsapp FROM users WHERE user_id = ? AND whatsapp IS NOT NULL`,
+      [user_id]
+    );
+
+    if (!user || !user.whatsapp) {
+      return; // No WhatsApp number, skip
+    }
+
+    // Log WhatsApp queue entry (actual sending handled by separate service)
+    await db.query(
+      `INSERT INTO audit_logs 
+       (user_id, event_type, action, details, created_at)
+       VALUES (?, 'WHATSAPP_QUEUED', 'queue_message', ?, NOW())`,
+      [user_id, JSON.stringify({ whatsapp: user.whatsapp, title, message, severity })]
+    );
+    
+    console.log(`[WhatsApp Queue] Notification for user ${user_id}: ${title}`);
+  } catch (error) {
+    console.error('Error queueing WhatsApp notification:', error);
   }
 }
 
@@ -627,6 +728,9 @@ async function getUnreadCount(user_id) {
 module.exports = {
   NOTIFICATION_TYPES,
   NOTIFICATION_TEMPLATES,
+  SEVERITY,
+  CHANNELS,
+  REMINDER_INTERVALS,
   createNotification,
   sendEventNotification,
   notifyAdmins,
@@ -637,5 +741,7 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  getUnreadCount
+  getUnreadCount,
+  scheduleNotificationReminders,
+  queueWhatsAppNotification
 };

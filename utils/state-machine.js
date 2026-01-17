@@ -17,24 +17,55 @@
  * 35 - Completed
  * 36 - Revision Required
  * 37 - Delivered
+ * 38 - Query Rejected
+ * 39 - Payment Rejected
+ * 40 - Research Completed (Writer internal)
+ * 41 - Writing Started (Writer internal)
+ * 42 - Draft Submitted (Writer internal)
+ * 43 - Awaiting Feedback (Writer internal)
+ * 44 - Rework in Progress (Writer internal)
+ * 45 - Cancelled
  */
 
 const db = require('../config/db');
 
 // Status mapping for reference
 const STATUS = {
+  // Query Phase
   PENDING_QUERY: 26,
   QUOTATION_SENT: 27,
   ACCEPTED: 28,
+  
+  // Payment Phase
   AWAITING_VERIFICATION: 29,
   PAYMENT_VERIFIED: 30,
+  
+  // Writer Assignment Phase
   WRITER_ASSIGNED: 31,
   IN_PROGRESS: 32,
+  
+  // QC Phase
   PENDING_QC: 33,
   APPROVED: 34,
+  
+  // Completion
   COMPLETED: 35,
   REVISION_REQUIRED: 36,
-  DELIVERED: 37
+  DELIVERED: 37,
+  
+  // Terminal/Error States
+  QUERY_REJECTED: 38,
+  PAYMENT_REJECTED: 39,
+  
+  // Writer Internal Statuses
+  RESEARCH_COMPLETED: 40,
+  WRITING_STARTED: 41,
+  DRAFT_SUBMITTED: 42,
+  AWAITING_FEEDBACK: 43,
+  REWORK_IN_PROGRESS: 44,
+  
+  // Cancellation
+  CANCELLED: 45
 };
 
 // Status name mapping
@@ -50,7 +81,31 @@ const STATUS_NAMES = {
   34: 'Approved',
   35: 'Completed',
   36: 'Revision Required',
-  37: 'Delivered'
+  37: 'Delivered',
+  38: 'Query Rejected',
+  39: 'Payment Rejected',
+  40: 'Research Completed',
+  41: 'Writing Started',
+  42: 'Draft Submitted',
+  43: 'Awaiting Feedback',
+  44: 'Rework in Progress',
+  45: 'Cancelled'
+};
+
+// Client-visible statuses only (limited view)
+const CLIENT_VISIBLE_STATUSES = {
+  26: 'Query Submitted',
+  27: 'Quotation Ready',
+  28: 'Quotation Accepted',
+  29: 'Payment Uploaded',
+  30: 'Work Started',
+  31: 'Work Started',
+  32: 'Work Started',
+  33: 'Draft Submitted',
+  34: 'Draft Submitted',
+  36: 'Revision Requested',
+  37: 'Final Delivered',
+  35: 'Completed'
 };
 
 // Valid transitions per role
@@ -67,27 +122,38 @@ const VALID_TRANSITIONS = {
     [STATUS.QUOTATION_SENT]: [STATUS.PENDING_QUERY]                // Revoke quotation (if needed)
   },
   
-  // Writer can update task progress
+  // Writer has detailed task progress statuses
   writer: {
     [STATUS.WRITER_ASSIGNED]: [STATUS.IN_PROGRESS],                // Start working
-    [STATUS.IN_PROGRESS]: [STATUS.PENDING_QC],                     // Submit for QC
-    [STATUS.REVISION_REQUIRED]: [STATUS.PENDING_QC]                // Resubmit after revision
+    [STATUS.IN_PROGRESS]: [STATUS.RESEARCH_COMPLETED, STATUS.PENDING_QC], // Mark research done or submit
+    [STATUS.RESEARCH_COMPLETED]: [STATUS.WRITING_STARTED],         // Start writing
+    [STATUS.WRITING_STARTED]: [STATUS.DRAFT_SUBMITTED],            // Submit draft
+    [STATUS.DRAFT_SUBMITTED]: [STATUS.PENDING_QC],                 // Submit for QC
+    [STATUS.REVISION_REQUIRED]: [STATUS.REWORK_IN_PROGRESS],       // Start rework
+    [STATUS.REWORK_IN_PROGRESS]: [STATUS.PENDING_QC]               // Resubmit after revision
   },
   
   // Admin has full control
   admin: {
-    [STATUS.PENDING_QUERY]: [STATUS.QUOTATION_SENT],
-    [STATUS.QUOTATION_SENT]: [STATUS.PENDING_QUERY, STATUS.ACCEPTED],
+    [STATUS.PENDING_QUERY]: [STATUS.QUOTATION_SENT, STATUS.QUERY_REJECTED],
+    [STATUS.QUOTATION_SENT]: [STATUS.PENDING_QUERY, STATUS.ACCEPTED, STATUS.QUERY_REJECTED],
     [STATUS.ACCEPTED]: [STATUS.AWAITING_VERIFICATION],
-    [STATUS.AWAITING_VERIFICATION]: [STATUS.PAYMENT_VERIFIED, STATUS.ACCEPTED],
+    [STATUS.AWAITING_VERIFICATION]: [STATUS.PAYMENT_VERIFIED, STATUS.PAYMENT_REJECTED, STATUS.ACCEPTED],
     [STATUS.PAYMENT_VERIFIED]: [STATUS.WRITER_ASSIGNED],
     [STATUS.WRITER_ASSIGNED]: [STATUS.IN_PROGRESS, STATUS.PAYMENT_VERIFIED],
-    [STATUS.IN_PROGRESS]: [STATUS.PENDING_QC, STATUS.WRITER_ASSIGNED],
+    [STATUS.IN_PROGRESS]: [STATUS.PENDING_QC, STATUS.WRITER_ASSIGNED, STATUS.RESEARCH_COMPLETED],
+    [STATUS.RESEARCH_COMPLETED]: [STATUS.WRITING_STARTED, STATUS.IN_PROGRESS],
+    [STATUS.WRITING_STARTED]: [STATUS.DRAFT_SUBMITTED, STATUS.RESEARCH_COMPLETED],
+    [STATUS.DRAFT_SUBMITTED]: [STATUS.PENDING_QC, STATUS.WRITING_STARTED],
     [STATUS.PENDING_QC]: [STATUS.APPROVED, STATUS.REVISION_REQUIRED],
     [STATUS.APPROVED]: [STATUS.DELIVERED, STATUS.REVISION_REQUIRED],
-    [STATUS.REVISION_REQUIRED]: [STATUS.PENDING_QC, STATUS.WRITER_ASSIGNED],
+    [STATUS.REVISION_REQUIRED]: [STATUS.REWORK_IN_PROGRESS, STATUS.WRITER_ASSIGNED],
+    [STATUS.REWORK_IN_PROGRESS]: [STATUS.PENDING_QC, STATUS.REVISION_REQUIRED],
     [STATUS.DELIVERED]: [STATUS.COMPLETED],
-    [STATUS.COMPLETED]: []  // Terminal state
+    [STATUS.COMPLETED]: [],  // Terminal state
+    [STATUS.PAYMENT_REJECTED]: [STATUS.AWAITING_VERIFICATION, STATUS.CANCELLED],
+    [STATUS.QUERY_REJECTED]: [STATUS.CANCELLED],
+    [STATUS.CANCELLED]: []   // Terminal state
   }
 };
 
@@ -243,6 +309,7 @@ function validateStatusTransitionMiddleware(req, res, next) {
 module.exports = {
   STATUS,
   STATUS_NAMES,
+  CLIENT_VISIBLE_STATUSES,
   validateTransition,
   getAllowedNextStates,
   isTerminalState,

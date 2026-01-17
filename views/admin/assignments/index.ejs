@@ -1,114 +1,204 @@
-<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+<!-- PREMIUM ASSIGNMENTS HUB -->
+<section class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/50 p-4 md:p-8">
   <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- HEADER -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-black text-slate-800">Writer Assignments</h1>
-        <p class="text-slate-500 mt-1">Manage writer assignments and task allocations</p>
-      </div>
-      <div class="flex items-center gap-4">
-        <div class="text-right">
-          <p class="text-sm text-slate-500">Total Assignments</p>
-          <p class="text-3xl font-black text-indigo-600"><%= total %></p>
+    <!-- PREMIUM HEADER -->
+    <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-violet-900 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
+      
+      <div class="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+              <i class="fi fi-rr-users-alt text-white text-xl"></i>
+            </div>
+            <h1 class="text-3xl font-black text-white">Writer Assignments</h1>
+          </div>
+          <p class="text-purple-200 text-sm">Track writer responses to assignments made from Queries page</p>
         </div>
-        <button onclick="showAssignModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2">
-          <i class="fi fi-rr-plus"></i> Assign Writer
-        </button>
+
+        <!-- STATS -->
+        <div class="flex items-center gap-4">
+          <div class="flex gap-4">
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/10">
+              <p class="text-purple-200 text-xs font-semibold uppercase mb-1">Total</p>
+              <p class="text-4xl font-black text-white"><%= total %></p>
+            </div>
+            <div class="bg-amber-500/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-amber-400/30">
+              <p class="text-amber-200 text-xs font-semibold uppercase mb-1">Pending</p>
+              <p class="text-4xl font-black text-amber-400"><%= typeof pendingCount !== 'undefined' ? pendingCount : 0 %></p>
+            </div>
+            <div class="bg-emerald-500/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-emerald-400/30">
+              <p class="text-emerald-200 text-xs font-semibold uppercase mb-1">Accepted</p>
+              <p class="text-4xl font-black text-emerald-400"><%= typeof acceptedCount !== 'undefined' ? acceptedCount : 0 %></p>
+            </div>
+          </div>
+          <a href="/admin/queries" class="bg-white text-purple-900 px-6 py-3.5 rounded-xl font-bold hover:bg-purple-50 transition-all flex items-center gap-2 shadow-lg">
+            <i class="fi fi-rr-document"></i> Manage Queries
+          </a>
+        </div>
       </div>
     </div>
 
-    <!-- FILTERS CARD -->
+    <!-- WORKFLOW INFO BANNER -->
+    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-2xl border border-indigo-100">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <i class="fi fi-rr-info text-indigo-600"></i>
+        </div>
+        <div>
+          <p class="font-bold text-indigo-800 text-sm">Assignment Workflow</p>
+          <p class="text-xs text-indigo-700 mt-1">
+            <strong>Step 1:</strong> Invite writers from <a href="/admin/queries" class="underline font-semibold">Queries page</a> → 
+            <strong>Step 2:</strong> Writers accept/reject invitations → 
+            <strong>Step 3:</strong> Assign writer from accepted list → 
+            <strong>Step 4:</strong> Track responses here (Doable/Not Doable)
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTERS & CONTROLS -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-      <h3 class="text-lg font-black text-slate-800 mb-4">Filters</h3>
-      
-      <form method="GET" action="/admin/assignments" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Status Filter -->
-          <div>
-            <label class="text-sm font-bold text-slate-700 mb-2 block">Status</label>
-            <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-              <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All Statuses</option>
-              <option value="pending" <%= filters.status === 'pending' ? 'selected' : '' %>>Pending</option>
-              <option value="doable" <%= filters.status === 'doable' ? 'selected' : '' %>>Accepted (Doable)</option>
-              <option value="not_doable" <%= filters.status === 'not_doable' ? 'selected' : '' %>>Rejected (Not Doable)</option>
-            </select>
-          </div>
+      <form method="GET" action="/admin/assignments" class="flex flex-wrap items-end gap-4">
+        <!-- Status Filter -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs font-bold text-slate-600 mb-2 block uppercase tracking-wider">Status</label>
+          <select name="status" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-medium bg-slate-50">
+            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>📋 All Assignments</option>
+            <option value="pending" <%= filters.status === 'pending' ? 'selected' : '' %>>⏳ Awaiting Response</option>
+            <option value="doable" <%= filters.status === 'doable' ? 'selected' : '' %>>✅ Accepted (Doable)</option>
+            <option value="not_doable" <%= filters.status === 'not_doable' ? 'selected' : '' %>>❌ Rejected (Not Doable)</option>
+          </select>
         </div>
 
+        <!-- Search -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs font-bold text-slate-600 mb-2 block uppercase tracking-wider">Search</label>
+          <input type="text" name="search" placeholder="Order code or writer name..." class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-slate-50">
+        </div>
+
+        <!-- Actions -->
         <div class="flex gap-2">
-          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all">
-            <i class="fi fi-rr-search mr-2"></i>Apply Filters
+          <button type="submit" class="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
+            <i class="fi fi-rr-filter"></i>Filter
           </button>
-          <a href="/admin/assignments" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-300 transition-all inline-block">
-            <i class="fi fi-rr-arrow-rotate-left mr-2"></i>Reset
+          <a href="/admin/assignments" class="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all flex items-center gap-2">
+            <i class="fi fi-rr-arrow-rotate-left"></i>Reset
           </a>
         </div>
       </form>
     </div>
 
-    <!-- ASSIGNMENTS TABLE -->
+    <!-- PREMIUM ASSIGNMENTS TABLE -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <span class="text-sm font-bold text-slate-700">Showing <%= records ? records.length : 0 %> assignments</span>
+        <button onclick="location.reload()" class="text-xs text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-1">
+          <i class="fi fi-rr-refresh"></i> Refresh
+        </button>
+      </div>
+
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">ID</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Order / Topic</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Writer</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Client</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Assigned</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Assignment</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Order</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Writer</th>
+              <th class="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Response</th>
+              <th class="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Timeline</th>
+              <th class="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200">
+          <tbody class="divide-y divide-slate-100">
             <% if (records && records.length > 0) { %>
-              <% records.forEach(record => { %>
-                <tr class="hover:bg-slate-50 transition-colors">
+              <% records.forEach((record, idx) => { %>
+                <tr class="hover:bg-purple-50/30 transition-all group">
+                  <!-- Assignment ID -->
                   <td class="px-6 py-4">
-                    <span class="font-bold text-indigo-600">#<%= record.id %></span>
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-purple-500/30">
+                        #<%= record.id %>
+                      </div>
+                      <div>
+                        <p class="text-xs text-slate-500">Created</p>
+                        <p class="text-sm font-semibold text-slate-700"><%= new Date(record.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></p>
+                      </div>
+                    </div>
                   </td>
+
+                  <!-- Order Info -->
                   <td class="px-6 py-4">
-                    <p class="font-bold text-slate-800"><%= record.query_code || 'N/A' %></p>
-                    <p class="text-xs text-slate-500 truncate max-w-[200px]"><%= record.topic || 'No topic' %></p>
+                    <p class="font-bold text-purple-600"><%= record.query_code || 'N/A' %></p>
+                    <p class="text-xs text-slate-500 truncate max-w-[180px] mt-0.5"><%= record.topic || 'No topic specified' %></p>
+                    <% if (record.client_name) { %>
+                      <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                        <i class="fi fi-rr-user text-[8px]"></i> <%= record.client_name %>
+                      </span>
+                    <% } %>
                   </td>
+
+                  <!-- Writer Info -->
                   <td class="px-6 py-4">
-                    <p class="font-semibold text-slate-800"><%= record.writer_name %></p>
-                    <p class="text-xs text-slate-500"><%= record.writer_email %></p>
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                        <%= record.writer_name ? record.writer_name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'WR' %>
+                      </div>
+                      <div>
+                        <p class="font-semibold text-slate-800 text-sm"><%= record.writer_name %></p>
+                        <p class="text-xs text-slate-500 truncate max-w-[120px]"><%= record.writer_email %></p>
+                      </div>
+                    </div>
                   </td>
-                  <td class="px-6 py-4">
-                    <p class="font-semibold text-slate-800"><%= record.client_name || 'N/A' %></p>
-                    <p class="text-xs text-slate-500"><%= record.client_email || '' %></p>
-                  </td>
-                  <td class="px-6 py-4">
-                    <% 
-                      const statusColors = {
-                        'pending': 'bg-yellow-100 text-yellow-700',
-                        'doable': 'bg-green-100 text-green-700',
-                        'not_doable': 'bg-red-100 text-red-700'
+
+                  <!-- Response Status -->
+                  <td class="px-6 py-4 text-center">
+                    <%
+                      const assignStatusConfig = {
+                        'pending': { bg: 'bg-amber-100', text: 'text-amber-700', icon: 'fi-rr-time-past', label: 'Awaiting' },
+                        'doable': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'fi-rr-check', label: 'Accepted' },
+                        'not_doable': { bg: 'bg-red-100', text: 'text-red-700', icon: 'fi-rr-cross', label: 'Rejected' }
                       };
-                      const statusLabels = {
-                        'pending': 'Pending',
-                        'doable': 'Accepted',
-                        'not_doable': 'Rejected'
-                      };
+                      const aStatus = assignStatusConfig[record.status] || assignStatusConfig['pending'];
                     %>
-                    <span class="<%= statusColors[record.status] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
-                      <%= statusLabels[record.status] || record.status %>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold <%= aStatus.bg %> <%= aStatus.text %>">
+                      <i class="fi <%= aStatus.icon %>"></i> <%= aStatus.label %>
                     </span>
+                    <% if (record.comment) { %>
+                      <div class="mt-1">
+                        <span class="text-[10px] text-slate-500 italic truncate block max-w-[150px]">"<%= record.comment.substring(0, 30) %>..."</span>
+                      </div>
+                    <% } %>
                   </td>
-                  <td class="px-6 py-4 text-sm text-slate-600">
-                    <%= new Date(record.created_at).toLocaleDateString() %>
+
+                  <!-- Timeline -->
+                  <td class="px-6 py-4 text-center">
+                    <% 
+                      const created = new Date(record.created_at);
+                      const now = new Date();
+                      const daysSince = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+                    %>
+                    <div class="inline-flex flex-col items-center">
+                      <span class="text-lg font-black <%= daysSince > 7 ? 'text-red-600' : daysSince > 3 ? 'text-amber-600' : 'text-slate-600' %>"><%= daysSince %></span>
+                      <span class="text-[10px] text-slate-500">days ago</span>
+                    </div>
                   </td>
+
+                  <!-- Actions -->
                   <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                      <button onclick="viewAssignmentDetail(<%= record.id %>)" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
-                        <i class="fi fi-rr-eye mr-1"></i>View
+                    <div class="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button onclick="viewAssignmentDetail(<%= record.id %>)" class="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 flex items-center justify-center transition-all" title="View Details">
+                        <i class="fi fi-rr-eye"></i>
                       </button>
                       <% if (record.status === 'pending' || record.status === 'not_doable') { %>
-                        <button onclick="reassignWriter(<%= record.id %>)" class="bg-amber-100 text-amber-600 hover:bg-amber-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
-                          <i class="fi fi-rr-refresh mr-1"></i>Reassign
+                        <button onclick="openReassignModal(<%= record.id %>, '<%= record.query_code %>')" class="w-9 h-9 rounded-lg bg-amber-100 text-amber-600 hover:bg-amber-200 flex items-center justify-center transition-all" title="Reassign Writer">
+                          <i class="fi fi-rr-refresh"></i>
+                        </button>
+                      <% } %>
+                      <% if (record.status === 'doable') { %>
+                        <button onclick="finalizeFromTable(<%= record.id %>)" class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 flex items-center justify-center transition-all" title="Finalize Assignment">
+                          <i class="fi fi-rr-badge-check"></i>
                         </button>
                       <% } %>
                     </div>
@@ -117,9 +207,15 @@
               <% }); %>
             <% } else { %>
               <tr>
-                <td colspan="7" class="px-6 py-12 text-center text-slate-400">
-                  <i class="fi fi-rr-inbox text-4xl block mb-2"></i>
-                  <p>No assignments found</p>
+                <td colspan="6" class="px-6 py-16 text-center">
+                  <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <i class="fi fi-rr-users-alt text-3xl text-slate-400"></i>
+                  </div>
+                  <p class="text-slate-600 font-semibold">No assignments found</p>
+                  <p class="text-slate-400 text-sm mt-1">Assignments are created when you assign writers from the Queries page.</p>
+                  <a href="/admin/queries" class="mt-4 inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-purple-700 transition-all">
+                    <i class="fi fi-rr-document"></i> Go to Queries
+                  </a>
                 </td>
               </tr>
             <% } %>
@@ -128,14 +224,14 @@
       </div>
     </div>
 
-    <!-- PAGINATION -->
+    <!-- PREMIUM PAGINATION -->
     <% if (pages > 1) { %>
-      <div class="flex justify-center gap-2">
+      <div class="flex justify-center items-center gap-1">
         <% for (let i = 1; i <= pages; i++) { %>
           <% if (i === page) { %>
-            <span class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm"><%= i %></span>
+            <span class="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-violet-600 text-white font-bold text-sm shadow-lg shadow-purple-500/30"><%= i %></span>
           <% } else { %>
-            <a href="/admin/assignments?page=<%= i - 1 %>&status=<%= filters.status %>" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm transition-all">
+            <a href="/admin/assignments?page=<%= i - 1 %>&status=<%= filters.status %>" class="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-600 font-semibold text-sm transition-all">
               <%= i %>
             </a>
           <% } %>
@@ -146,301 +242,108 @@
   </div>
 </section>
 
-<!-- Assignment Modal -->
-<div id="assignModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-  <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
-    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-      <h2 class="text-xl font-bold">Assign Writers to Order</h2>
-      <button onclick="closeAssignModal()" class="text-gray-500 hover:text-gray-700">✕</button>
+<!-- PREMIUM REASSIGN MODAL -->
+<div id="reassignModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+    <div class="px-6 py-4 border-b border-slate-100 bg-amber-50">
+      <h3 class="text-lg font-bold text-amber-800 flex items-center gap-2">
+        <i class="fi fi-rr-refresh"></i> Reassign Writer
+      </h3>
+      <p class="text-xs text-amber-600 mt-1">Order: <span id="reassignOrderCode" class="font-bold"></span></p>
     </div>
-
-    <form id="assignForm" class="p-6 space-y-4">
-      <!-- Order Selection -->
+    <div class="p-6 space-y-4">
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2">
+        <p class="text-xs text-amber-700"><i class="fi fi-rr-info mr-1"></i> This will send a new invitation to the selected writer from accepted writers on the query.</p>
+      </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Select Order</label>
-        <input type="text" id="orderId" class="w-full border rounded px-3 py-2" placeholder="Enter order ID or search..." required>
-        <div id="orderDropdown" class="mt-2 max-h-40 overflow-y-auto border rounded"></div>
+        <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Select From Accepted Writers</label>
+        <select id="newWriterSelect" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-sm bg-slate-50" required>
+          <option value="">-- Loading accepted writers... --</option>
+        </select>
       </div>
-
-      <!-- Writers Selection -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Select Writers</label>
-        <div id="writersList" class="space-y-2 max-h-48 overflow-y-auto border rounded p-3">
-          <!-- Writers will be loaded here -->
-          <p class="text-gray-500">Loading writers...</p>
-        </div>
+        <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Reason for Reassignment</label>
+        <textarea id="reassignReason" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-sm bg-slate-50 h-20" placeholder="Why is this being reassigned?"></textarea>
       </div>
-
-      <!-- Deadline -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Acceptance Deadline (Days)</label>
-        <input type="number" id="deadline" value="7" min="1" max="30" class="w-full border rounded px-3 py-2">
+        <label class="flex items-center gap-3 p-3 border border-amber-200 rounded-xl bg-amber-50 cursor-pointer">
+          <input type="checkbox" id="shareTaskHistory" class="w-5 h-5 rounded border-amber-300 text-amber-600 focus:ring-amber-500" checked>
+          <div>
+            <span class="text-sm font-semibold text-amber-800">Share previous task history</span>
+            <p class="text-xs text-amber-600">New writer will see previous submissions and feedback</p>
+          </div>
+        </label>
       </div>
-
-      <!-- Notes -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Assignment Notes</label>
-        <textarea id="notes" class="w-full border rounded px-3 py-2 h-24" placeholder="Any special instructions or notes..."></textarea>
-      </div>
-
-      <!-- Submit Button -->
-      <div class="flex justify-end space-x-3 pt-4 border-t">
-        <button type="button" onclick="closeAssignModal()" class="px-4 py-2 text-gray-700 border rounded hover:bg-gray-50">
-          Cancel
-        </button>
-        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-          Assign Writers
-        </button>
-      </div>
-    </form>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+      <button onclick="closeReassignModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-all">Cancel</button>
+      <button onclick="submitReassignment()" class="px-6 py-2 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg transition-all shadow-lg shadow-amber-500/30">
+        <i class="fi fi-rr-refresh mr-2"></i>Reassign
+      </button>
+    </div>
   </div>
 </div>
 
 <script>
-let selectedWriterIds = [];
+let currentReassignId = null;
+let currentOrderId = null;
 
-function showAssignModal() {
-  document.getElementById('assignModal').classList.remove('hidden');
-  loadAvailableWriters();
-}
-
-function closeAssignModal() {
-  document.getElementById('assignModal').classList.add('hidden');
-  selectedWriterIds = [];
-}
-
-async function loadAvailableWriters() {
+// Open reassign modal - loads accepted writers for this specific order
+async function openReassignModal(assignmentId, orderCode) {
+  currentReassignId = assignmentId;
+  document.getElementById('reassignOrderCode').textContent = orderCode || 'N/A';
+  
+  const select = document.getElementById('newWriterSelect');
+  select.innerHTML = '<option value="">-- Loading accepted writers... --</option>';
+  
+  document.getElementById('reassignModal').classList.remove('hidden');
+  
+  // Load accepted writers for this order (from writer_query_interest table)
   try {
-    const response = await fetch('/admin/assignments/available-writers');
+    const response = await fetch(`/admin/assignments/${assignmentId}/accepted-writers`);
     const data = await response.json();
     
-    const writersList = document.getElementById('writersList');
-    writersList.innerHTML = data.writers.map(writer => `
-      <label class="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded">
-        <input type="checkbox" value="${writer.user_id}" onchange="toggleWriter(${writer.user_id})" class="mr-3">
-        <div>
-          <div class="font-medium">${writer.full_name}</div>
-          <div class="text-sm text-gray-600">${writer.email}</div>
-        </div>
-      </label>
-    `).join('');
-  } catch (error) {
-    console.error('Error loading writers:', error);
-    document.getElementById('writersList').innerHTML = '<p class="text-red-500">Error loading writers</p>';
-  }
-}
-
-function toggleWriter(writerId) {
-  if (selectedWriterIds.includes(writerId)) {
-    selectedWriterIds = selectedWriterIds.filter(id => id !== writerId);
-  } else {
-    selectedWriterIds.push(writerId);
-  }
-}
-
-document.getElementById('assignForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  const orderId = document.getElementById('orderId').value;
-  const deadline = document.getElementById('deadline').value;
-  const notes = document.getElementById('notes').value;
-
-  if (!orderId || selectedWriterIds.length === 0) {
-    showToast('Please select an order and at least one writer', 'warning');
-    return;
-  }
-
-  try {
-    const response = await fetch('/admin/assignments/assign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId,
-        writerIds: selectedWriterIds,
-        deadline: parseInt(deadline),
-        notes
-      })
-    });
-
-    const data = await response.json();
-    if (data.success) {
-      showToast('Writers assigned successfully!', 'success');
-      closeAssignModal();
-      setTimeout(() => location.reload(), 1000);
+    if (data.success && data.writers && data.writers.length > 0) {
+      select.innerHTML = '<option value="">-- Select Accepted Writer --</option>';
+      data.writers.forEach(w => {
+        select.innerHTML += `<option value="${w.writer_id}">${w.full_name} (${w.email})</option>`;
+      });
     } else {
-      showToast('Error: ' + data.error, 'error');
+      select.innerHTML = '<option value="">-- No other accepted writers available --</option>';
+      showToast('No other writers have accepted this query. Please invite more writers from Queries page.', 'warning');
     }
-  } catch (error) {
-    console.error('Error assigning writers:', error);
-    showToast('An error occurred while assigning writers', 'error');
-  }
-});
-
-async function viewAssignmentDetail(assignmentId) {
-  try {
-    const response = await fetch(`/admin/assignments/detail/${assignmentId}`);
-    const data = await response.json();
-    
-    if (data.success) {
-      // Show assignment detail in a modal
-        showAssignmentDetailModal(data.assignment, data.submissions, data.evaluations);
-    } else {
-      showToast('Failed to load assignment details: ' + (data.error || 'Unknown error'), 'error');
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    showToast('Error loading details', 'error');
-  }
-}
-
-function showAssignmentDetailModal(assignment, submissions, evaluations = []) {
-  const submissionsHtml = submissions && submissions.length > 0 
-    ? submissions.map(s => `
-        <div class="border-b py-2">
-          <p class="text-sm"><strong>Submission #${s.submission_id}</strong></p>
-          <p class="text-xs text-gray-600">Status: ${s.status} | Date: ${new Date(s.created_at).toLocaleDateString()}</p>
-          ${s.file_url ? `<a href="${s.file_url}" target="_blank" class="text-blue-600 text-xs">View File</a>` : ''}
-        </div>
-      `).join('')
-    : '<p class="text-gray-500">No submissions yet</p>';
-
-  const modalHtml = `
-    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
-          <h2 class="text-xl font-bold">Assignment #${assignment.id}</h2>
-          <button onclick="closeDetailModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
-        </div>
-          <div class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-xs text-gray-500 uppercase font-bold">Order</p>
-              <p class="font-semibold">${assignment.query_code || 'N/A'}</p>
-              <p class="text-sm text-gray-600">${assignment.paper_topic || ''}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase font-bold">Writer</p>
-              <p class="font-semibold">${assignment.full_name}</p>
-              <p class="text-sm text-gray-600">${assignment.email}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase font-bold">Status</p>
-              <span class="px-2 py-1 rounded text-xs font-bold ${
-                assignment.status === 'doable' ? 'bg-green-100 text-green-700' :
-                assignment.status === 'not_doable' ? 'bg-red-100 text-red-700' :
-                'bg-yellow-100 text-yellow-700'
-              }">${assignment.status}</span>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase font-bold">Assigned</p>
-              <p class="text-sm">${new Date(assignment.created_at).toLocaleDateString()}</p>
-            </div>
-          </div>
-          ${assignment.comment ? `
-            <div>
-              <p class="text-xs text-gray-500 uppercase font-bold">Comment</p>
-              <p class="text-sm bg-gray-50 p-2 rounded">${assignment.comment}</p>
-            </div>
-          ` : ''}
-          <div>
-            <p class="text-xs text-gray-500 uppercase font-bold mb-2">Submissions</p>
-            ${submissionsHtml}
-          </div>
-          <div>
-            <p class="text-xs text-gray-500 uppercase font-bold mb-2">Finalize Assignment</p>
-            <p class="text-sm text-gray-600 mb-2">Select the final writer from accepted writers (status = doable):</p>
-            <div class="space-y-2">
-              <select id="finalWriterSelect" class="w-full border rounded px-3 py-2">
-                <option value="">-- Select Final Writer --</option>
-                ${evaluations.filter(e => e.status === 'doable').map(e => `<option value="${e.writer_id}" data-evalid="${e.id}">${e.full_name} (${e.email})</option>`).join('')}
-              </select>
-            </div>
-            <div class="pt-3 flex gap-2">
-              <button onclick="finalizeAssignment(${assignment.id})" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">Finalize</button>
-              <span id="finalizeStatus" class="text-sm text-gray-600"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-function closeDetailModal() {
-  const modal = document.getElementById('detailModal');
-  if (modal) modal.remove();
-}
-
-async function reassignWriter(assignmentId) {
-  // First, load available writers
-  let writers = [];
-  try {
-    const response = await fetch('/admin/assignments/available-writers');
-    const data = await response.json();
-    writers = data.writers || [];
   } catch (e) {
-    showToast('Failed to load writers', 'error');
-    return;
+    console.error('Failed to load writers:', e);
+    select.innerHTML = '<option value="">-- Error loading writers --</option>';
+    showToast('Failed to load accepted writers', 'error');
   }
-
-  if (writers.length === 0) {
-    showToast('No available writers found', 'warning');
-    return;
-  }
-
-  // Show reassignment modal
-  const modalHtml = `
-    <div id="reassignModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div class="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-        <div class="bg-amber-500 text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 class="text-xl font-bold">Reassign Writer</h2>
-          <button onclick="closeReassignModal()" class="text-white hover:text-gray-200 text-2xl">&times;</button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Select New Writer</label>
-            <select id="newWriterSelect" class="w-full border rounded px-3 py-2" required>
-              <option value="">-- Select Writer --</option>
-              ${writers.map(w => `<option value="${w.user_id}">${w.full_name} (${w.email})</option>`).join('')}
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Reassignment</label>
-            <textarea id="reassignReason" class="w-full border rounded px-3 py-2 h-20" placeholder="Why is this assignment being reassigned?"></textarea>
-          </div>
-          <div class="flex justify-end gap-2 pt-4 border-t">
-            <button onclick="closeReassignModal()" class="px-4 py-2 text-gray-700 border rounded hover:bg-gray-50">Cancel</button>
-            <button onclick="submitReassignment(${assignmentId})" class="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600">Reassign</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 function closeReassignModal() {
-  const modal = document.getElementById('reassignModal');
-  if (modal) modal.remove();
+  document.getElementById('reassignModal').classList.add('hidden');
+  currentReassignId = null;
+  currentOrderId = null;
 }
 
-async function submitReassignment(assignmentId) {
+async function submitReassignment() {
   const newWriterId = document.getElementById('newWriterSelect').value;
   const reason = document.getElementById('reassignReason').value;
+  const shareHistory = document.getElementById('shareTaskHistory').checked;
 
   if (!newWriterId) {
-    showToast('Please select a new writer', 'warning');
+    showToast('Please select a writer from those who accepted this query', 'warning');
     return;
   }
 
   try {
-    const response = await fetch(`/admin/assignments/${assignmentId}/reassign`, {
+    const response = await fetch(`/admin/assignments/${currentReassignId}/reassign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newWriterId: parseInt(newWriterId), reason })
+      body: JSON.stringify({ 
+        newWriterId: parseInt(newWriterId), 
+        reason,
+        shareHistory 
+      })
     });
     
     const data = await response.json();
@@ -457,9 +360,116 @@ async function submitReassignment(assignmentId) {
   }
 }
 
-async function viewAssignments(workCode) {
-  // Load and display assignments for this work code
-  window.location.href = '/admin/assignments/' + workCode;
+async function viewAssignmentDetail(assignmentId) {
+  try {
+    const response = await fetch(`/admin/assignments/detail/${assignmentId}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      showAssignmentDetailModal(data.assignment, data.submissions, data.evaluations);
+    } else {
+      showToast('Failed to load assignment details: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    showToast('Error loading details', 'error');
+  }
+}
+
+function showAssignmentDetailModal(assignment, submissions, evaluations = []) {
+  const submissionsHtml = submissions && submissions.length > 0 
+    ? submissions.map(s => `
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+          <div class="flex justify-between items-start mb-2">
+            <span class="font-bold text-indigo-600">Submission #${s.submission_id}</span>
+            <span class="text-xs px-2 py-1 rounded-full ${s.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${s.status}</span>
+          </div>
+          <p class="text-xs text-slate-500">${new Date(s.created_at).toLocaleDateString()}</p>
+          ${s.file_url ? `<a href="${s.file_url}" target="_blank" class="text-purple-600 text-xs font-semibold hover:underline mt-2 inline-flex items-center gap-1"><i class="fi fi-rr-download"></i> Download</a>` : ''}
+        </div>
+      `).join('')
+    : '<div class="text-center py-4 text-slate-400"><i class="fi fi-rr-inbox block text-2xl mb-2"></i>No submissions yet</div>';
+
+  const modalHtml = `
+    <div id="detailModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex justify-between items-center">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white font-bold">#${assignment.id}</div>
+            <div>
+              <h2 class="text-lg font-bold text-white">Assignment Details</h2>
+              <p class="text-indigo-200 text-xs">${assignment.query_code || 'Order Details'}</p>
+            </div>
+          </div>
+          <button onclick="closeDetailModal()" class="w-8 h-8 rounded-lg bg-white/10 text-white hover:bg-white/20 flex items-center justify-center">
+            <i class="fi fi-rr-cross-small"></i>
+          </button>
+        </div>
+        
+        <div class="p-6 space-y-6">
+          <!-- Info Grid -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Order</p>
+              <p class="font-bold text-purple-600">${assignment.query_code || 'N/A'}</p>
+              <p class="text-xs text-slate-600 mt-1 truncate">${assignment.paper_topic || ''}</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Writer</p>
+              <p class="font-semibold text-slate-800">${assignment.full_name}</p>
+              <p class="text-xs text-slate-500">${assignment.email}</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Status</p>
+              <span class="px-3 py-1 rounded-full text-xs font-bold ${
+                assignment.status === 'doable' ? 'bg-emerald-100 text-emerald-700' :
+                assignment.status === 'not_doable' ? 'bg-red-100 text-red-700' :
+                'bg-amber-100 text-amber-700'
+              }">${assignment.status === 'doable' ? 'Accepted' : assignment.status === 'not_doable' ? 'Rejected' : 'Pending'}</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Assigned</p>
+              <p class="text-sm font-semibold text-slate-700">${new Date(assignment.created_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+          
+          ${assignment.comment ? `
+            <div class="border-t border-slate-100 pt-4">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">Writer's Comment</p>
+              <p class="text-sm bg-slate-50 p-4 rounded-xl border border-slate-100">${assignment.comment}</p>
+            </div>
+          ` : ''}
+          
+          <div class="border-t border-slate-100 pt-4">
+            <p class="text-[10px] text-slate-500 uppercase font-bold mb-3">Submissions</p>
+            <div class="space-y-3">${submissionsHtml}</div>
+          </div>
+          
+          ${evaluations.filter(e => e.status === 'doable').length > 0 ? `
+            <div class="border-t border-slate-100 pt-4">
+              <p class="text-[10px] text-slate-500 uppercase font-bold mb-2">Finalize Assignment</p>
+              <p class="text-sm text-slate-600 mb-3">Select the final writer from accepted responses:</p>
+              <select id="finalWriterSelect" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 text-sm bg-slate-50 mb-3">
+                <option value="">-- Select Final Writer --</option>
+                ${evaluations.filter(e => e.status === 'doable').map(e => `<option value="${e.writer_id}" data-evalid="${e.id}">${e.full_name} (${e.email})</option>`).join('')}
+              </select>
+              <button onclick="finalizeAssignment(${assignment.id})" class="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2">
+                <i class="fi fi-rr-badge-check"></i> Finalize Writer
+              </button>
+              <p id="finalizeStatus" class="text-center text-sm text-slate-500 mt-2"></p>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeDetailModal() {
+  const modal = document.getElementById('detailModal');
+  if (modal) modal.remove();
 }
 
 async function finalizeAssignment(assignmentId) {
@@ -485,8 +495,8 @@ async function finalizeAssignment(assignmentId) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast(data.message || 'Writer finalized', 'success');
-      if (statusSpan) statusSpan.textContent = 'Done';
+      showToast(data.message || 'Writer finalized successfully!', 'success');
+      if (statusSpan) statusSpan.textContent = 'Done ✓';
       setTimeout(() => location.reload(), 900);
     } else {
       showToast('Error: ' + (data.error || 'Failed to finalize'), 'error');
@@ -497,5 +507,14 @@ async function finalizeAssignment(assignmentId) {
     showToast('An error occurred while finalizing', 'error');
     if (statusSpan) statusSpan.textContent = '';
   }
+}
+
+// Finalize from table (quick action)
+async function finalizeFromTable(assignmentId) {
+  viewAssignmentDetail(assignmentId);
+}
+
+async function viewAssignments(workCode) {
+  window.location.href = '/admin/assignments/' + workCode;
 }
 </script>

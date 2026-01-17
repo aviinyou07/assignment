@@ -1,132 +1,238 @@
-<section class="min-h-screen bg-slate-50 p-4 md:p-8">
+<!-- PREMIUM QC INTERFACE -->
+<section class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/50 p-4 md:p-8">
   <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- HEADER -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-black text-slate-800">Quality Control</h1>
-        <p class="text-slate-500 mt-1">Review and approve writer submissions</p>
-      </div>
-      <div class="text-right">
-        <p class="text-sm text-slate-500">Pending Review</p>
-        <p class="text-3xl font-black text-indigo-600"><%= total %></p>
+    <!-- PREMIUM HEADER -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-900 to-violet-900 rounded-3xl p-8 shadow-xl relative overflow-hidden">
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
+      
+      <div class="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+              <i class="fi fi-rr-shield-check text-white text-xl"></i>
+            </div>
+            <h1 class="text-3xl font-black text-white">Quality Control Hub</h1>
+          </div>
+          <p class="text-indigo-200 text-sm">Review, score, and manage writer submissions</p>
+        </div>
+
+        <!-- STATS CARDS -->
+        <div class="flex gap-4">
+          <div class="bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/10">
+            <p class="text-indigo-200 text-xs font-semibold uppercase mb-1">Pending Review</p>
+            <p class="text-4xl font-black text-white"><%= total %></p>
+          </div>
+          <div class="bg-amber-500/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-amber-400/30">
+            <p class="text-amber-200 text-xs font-semibold uppercase mb-1">Urgent (<24h)</p>
+            <p class="text-4xl font-black text-amber-400"><%= typeof urgentCount !== 'undefined' ? urgentCount : 0 %></p>
+          </div>
+          <div class="bg-emerald-500/20 backdrop-blur-sm rounded-2xl px-6 py-4 border border-emerald-400/30">
+            <p class="text-emerald-200 text-xs font-semibold uppercase mb-1">Today Approved</p>
+            <p class="text-4xl font-black text-emerald-400"><%= typeof todayApproved !== 'undefined' ? todayApproved : 0 %></p>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- FILTERS CARD -->
+    <!-- FILTERS & CONTROLS -->
     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-      <h3 class="text-lg font-black text-slate-800 mb-4">Filters</h3>
-      
-      <form method="GET" action="/admin/qc/pending" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Status Filter -->
-          <div>
-            <label class="text-sm font-bold text-slate-700 mb-2 block">Status</label>
-            <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-              <option value="pending_qc" <%= filters.status === 'pending_qc' ? 'selected' : '' %>>Pending QC</option>
-              <option value="approved" <%= filters.status === 'approved' ? 'selected' : '' %>>Approved</option>
-              <option value="revision_required" <%= filters.status === 'revision_required' ? 'selected' : '' %>>Revision Required</option>
-              <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
-            </select>
-          </div>
+      <form method="GET" action="/admin/qc/pending" class="flex flex-wrap items-end gap-4">
+        <!-- Status Filter -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs font-bold text-slate-600 mb-2 block uppercase tracking-wider">Status</label>
+          <select name="status" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium bg-slate-50">
+            <option value="pending_qc" <%= filters.status === 'pending_qc' ? 'selected' : '' %>>⏳ Pending QC</option>
+            <option value="approved" <%= filters.status === 'approved' ? 'selected' : '' %>>✅ Approved</option>
+            <option value="revision_required" <%= filters.status === 'revision_required' ? 'selected' : '' %>>🔄 Revision Required</option>
+            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>📋 All Submissions</option>
+          </select>
         </div>
 
+        <!-- Score Range Filter -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs font-bold text-slate-600 mb-2 block uppercase tracking-wider">Quality Score</label>
+          <select name="scoreRange" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium bg-slate-50">
+            <option value="all">All Scores</option>
+            <option value="excellent">🟢 Excellent (90%+)</option>
+            <option value="good">🟡 Good (70-89%)</option>
+            <option value="needsWork">🔴 Needs Work (<70%)</option>
+          </select>
+        </div>
+
+        <!-- Actions -->
         <div class="flex gap-2">
-          <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all">
-            <i class="fi fi-rr-search mr-2"></i>Apply Filters
+          <button type="submit" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2">
+            <i class="fi fi-rr-filter"></i>Filter
           </button>
-          <a href="/admin/qc/pending" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold text-sm hover:bg-slate-300 transition-all inline-block">
-            <i class="fi fi-rr-arrow-rotate-left mr-2"></i>Reset
+          <a href="/admin/qc/pending" class="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all flex items-center gap-2">
+            <i class="fi fi-rr-arrow-rotate-left"></i>Reset
           </a>
         </div>
       </form>
     </div>
 
-    <!-- QC TABLE -->
+    <!-- PREMIUM QC TABLE -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- Table Header -->
+      <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-bold text-slate-700">Showing <%= records ? records.length : 0 %> submissions</span>
+          <span class="text-xs text-slate-400">•</span>
+          <button onclick="refreshTable()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1">
+            <i class="fi fi-rr-refresh"></i> Refresh
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="bulkApproveSelected()" id="bulk-approve-btn" class="hidden bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-all">
+            <i class="fi fi-rr-check-double mr-1"></i>Bulk Approve
+          </button>
+        </div>
+      </div>
+
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Submission</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Writer</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Order / Topic</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Scores</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Status</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Submitted</th>
-              <th class="px-6 py-4 text-left text-xs font-black text-slate-700 uppercase tracking-wider">Actions</th>
+              <th class="px-6 py-4 text-left">
+                <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" onchange="toggleSelectAll()">
+              </th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Submission</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Writer</th>
+              <th class="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Order Info</th>
+              <th class="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Quality Scores</th>
+              <th class="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200">
+          <tbody class="divide-y divide-slate-100">
             <% if (records && records.length > 0) { %>
-              <% records.forEach(record => { %>
-                <tr class="hover:bg-slate-50 transition-colors">
+              <% records.forEach((record, idx) => { %>
+                <tr class="hover:bg-indigo-50/30 transition-all group" data-submission-id="<%= record.submission_id %>">
+                  <!-- Checkbox -->
                   <td class="px-6 py-4">
-                    <span class="font-bold text-indigo-600">#<%= record.submission_id %></span>
+                    <input type="checkbox" class="submission-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="<%= record.submission_id %>" onchange="updateBulkActions()">
                   </td>
+
+                  <!-- Submission ID -->
                   <td class="px-6 py-4">
-                    <p class="font-semibold text-slate-800"><%= record.writer_name %></p>
-                    <p class="text-xs text-slate-500"><%= record.writer_email %></p>
-                  </td>
-                  <td class="px-6 py-4">
-                    <p class="font-bold text-slate-800"><%= record.query_code || 'N/A' %></p>
-                    <p class="text-xs text-slate-500 truncate max-w-[200px]"><%= record.topic || 'No topic' %></p>
-                  </td>
-                  <td class="px-6 py-4">
-                    <div class="space-y-1 text-xs">
-                      <div class="flex items-center gap-2">
-                        <span class="text-slate-500">Grammarly:</span>
-                        <span class="font-bold <%= record.grammarly_score >= 90 ? 'text-green-600' : record.grammarly_score >= 70 ? 'text-amber-600' : 'text-red-600' %>">
-                          <%= record.grammarly_score || 'N/A' %>%
-                        </span>
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-indigo-500/30">
+                        #<%= record.submission_id %>
                       </div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-slate-500">AI:</span>
-                        <span class="font-bold <%= record.ai_score <= 10 ? 'text-green-600' : record.ai_score <= 30 ? 'text-amber-600' : 'text-red-600' %>">
-                          <%= record.ai_score || 'N/A' %>%
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-slate-500">Plagiarism:</span>
-                        <span class="font-bold <%= record.plagiarism_score <= 10 ? 'text-green-600' : record.plagiarism_score <= 20 ? 'text-amber-600' : 'text-red-600' %>">
-                          <%= record.plagiarism_score || 'N/A' %>%
-                        </span>
+                      <div>
+                        <p class="text-xs text-slate-500">Submitted</p>
+                        <p class="text-sm font-semibold text-slate-700"><%= new Date(record.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></p>
                       </div>
                     </div>
                   </td>
+
+                  <!-- Writer Info -->
                   <td class="px-6 py-4">
-                    <% 
-                      const statusColors = {
-                        'pending_qc': 'bg-yellow-100 text-yellow-700',
-                        'approved': 'bg-green-100 text-green-700',
-                        'revision_required': 'bg-red-100 text-red-700',
-                        'completed': 'bg-blue-100 text-blue-700'
-                      };
-                      const statusLabels = {
-                        'pending_qc': 'Pending QC',
-                        'approved': 'Approved',
-                        'revision_required': 'Revision Required',
-                        'completed': 'Completed'
-                      };
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs">
+                        <%= record.writer_name ? record.writer_name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'WR' %>
+                      </div>
+                      <div>
+                        <p class="font-semibold text-slate-800 text-sm"><%= record.writer_name %></p>
+                        <p class="text-xs text-slate-500 truncate max-w-[120px]"><%= record.writer_email %></p>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Order Info -->
+                  <td class="px-6 py-4">
+                    <p class="font-bold text-indigo-600 text-sm"><%= record.query_code || 'N/A' %></p>
+                    <p class="text-xs text-slate-500 truncate max-w-[180px] mt-0.5"><%= record.topic || 'No topic specified' %></p>
+                    <% if (record.deadline_at) { 
+                      const deadline = new Date(record.deadline_at);
+                      const now = new Date();
+                      const hoursLeft = (deadline - now) / (1000 * 60 * 60);
                     %>
-                    <span class="<%= statusColors[record.status] || 'bg-slate-100 text-slate-700' %> px-3 py-1 rounded-full text-xs font-bold">
-                      <%= statusLabels[record.status] || record.status %>
+                      <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold <%= hoursLeft < 24 ? 'bg-red-100 text-red-700' : hoursLeft < 48 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600' %>">
+                        <i class="fi fi-rr-clock"></i> Due: <%= deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>
+                      </span>
+                    <% } %>
+                  </td>
+
+                  <!-- Quality Scores - Visual -->
+                  <td class="px-6 py-4">
+                    <div class="flex items-center justify-center gap-3">
+                      <!-- Grammarly -->
+                      <div class="text-center group/score relative">
+                        <div class="w-12 h-12 rounded-xl <%= record.grammarly_score >= 90 ? 'bg-emerald-100' : record.grammarly_score >= 70 ? 'bg-amber-100' : 'bg-red-100' %> flex items-center justify-center">
+                          <span class="text-sm font-black <%= record.grammarly_score >= 90 ? 'text-emerald-600' : record.grammarly_score >= 70 ? 'text-amber-600' : 'text-red-600' %>">
+                            <%= record.grammarly_score || '--' %>
+                          </span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1 font-medium">Grammar</p>
+                        <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/score:opacity-100 transition-opacity whitespace-nowrap">
+                          Grammarly Score: <%= record.grammarly_score || 'N/A' %>%
+                        </div>
+                      </div>
+
+                      <!-- AI -->
+                      <div class="text-center group/score relative">
+                        <div class="w-12 h-12 rounded-xl <%= record.ai_score <= 10 ? 'bg-emerald-100' : record.ai_score <= 30 ? 'bg-amber-100' : 'bg-red-100' %> flex items-center justify-center">
+                          <span class="text-sm font-black <%= record.ai_score <= 10 ? 'text-emerald-600' : record.ai_score <= 30 ? 'text-amber-600' : 'text-red-600' %>">
+                            <%= record.ai_score || '--' %>
+                          </span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1 font-medium">AI</p>
+                        <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/score:opacity-100 transition-opacity whitespace-nowrap">
+                          AI Detection: <%= record.ai_score || 'N/A' %>% (Lower is better)
+                        </div>
+                      </div>
+
+                      <!-- Plagiarism -->
+                      <div class="text-center group/score relative">
+                        <div class="w-12 h-12 rounded-xl <%= record.plagiarism_score <= 10 ? 'bg-emerald-100' : record.plagiarism_score <= 20 ? 'bg-amber-100' : 'bg-red-100' %> flex items-center justify-center">
+                          <span class="text-sm font-black <%= record.plagiarism_score <= 10 ? 'text-emerald-600' : record.plagiarism_score <= 20 ? 'text-amber-600' : 'text-red-600' %>">
+                            <%= record.plagiarism_score || '--' %>
+                          </span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1 font-medium">Plag</p>
+                        <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/score:opacity-100 transition-opacity whitespace-nowrap">
+                          Plagiarism: <%= record.plagiarism_score || 'N/A' %>% (Lower is better)
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Status -->
+                  <td class="px-6 py-4 text-center">
+                    <% 
+                      const statusConfig = {
+                        'pending_qc': { bg: 'bg-amber-100', text: 'text-amber-700', icon: 'fi-rr-time-past', label: 'Pending QC' },
+                        'approved': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'fi-rr-check', label: 'Approved' },
+                        'revision_required': { bg: 'bg-red-100', text: 'text-red-700', icon: 'fi-rr-arrow-rotate-left', label: 'Revision' },
+                        'completed': { bg: 'bg-blue-100', text: 'text-blue-700', icon: 'fi-rr-badge-check', label: 'Completed' }
+                      };
+                      const status = statusConfig[record.status] || { bg: 'bg-slate-100', text: 'text-slate-700', icon: 'fi-rr-info', label: record.status };
+                    %>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold <%= status.bg %> <%= status.text %>">
+                      <i class="fi <%= status.icon %>"></i> <%= status.label %>
                     </span>
                   </td>
-                  <td class="px-6 py-4 text-sm text-slate-600">
-                    <%= new Date(record.created_at).toLocaleDateString() %>
-                  </td>
+
+                  <!-- Actions -->
                   <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                      <button onclick="viewQCDetail(<%= record.submission_id %>)" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
-                        <i class="fi fi-rr-eye mr-1"></i>Review
+                    <div class="flex items-center justify-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button onclick="viewQCDetail(<%= record.submission_id %>)" class="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 hover:bg-indigo-200 flex items-center justify-center transition-all" title="Review Details">
+                        <i class="fi fi-rr-eye"></i>
                       </button>
                       <% if (record.status === 'pending_qc') { %>
-                        <button onclick="approveSubmission(<%= record.submission_id %>)" class="bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
-                          <i class="fi fi-rr-check mr-1"></i>Approve
+                        <button onclick="quickApprove(<%= record.submission_id %>)" class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-200 flex items-center justify-center transition-all" title="Quick Approve">
+                          <i class="fi fi-rr-check"></i>
                         </button>
-                        <button onclick="rejectSubmission(<%= record.submission_id %>)" class="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-xs font-bold transition-all">
-                          <i class="fi fi-rr-cross mr-1"></i>Reject
+                        <button onclick="openRejectModal(<%= record.submission_id %>)" class="w-9 h-9 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center transition-all" title="Request Revision">
+                          <i class="fi fi-rr-undo"></i>
+                        </button>
+                      <% } %>
+                      <!-- Admin Force Approve (for revision_required status) -->
+                      <% if (record.status === 'revision_required') { %>
+                        <button onclick="adminForceApprove(<%= record.submission_id %>)" class="w-9 h-9 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 flex items-center justify-center transition-all" title="Force Approve (Admin Override)">
+                          <i class="fi fi-rr-shield-check"></i>
                         </button>
                       <% } %>
                     </div>
@@ -135,9 +241,12 @@
               <% }); %>
             <% } else { %>
               <tr>
-                <td colspan="7" class="px-6 py-12 text-center text-slate-400">
-                  <i class="fi fi-rr-inbox text-4xl block mb-2"></i>
-                  <p>No submissions pending QC review</p>
+                <td colspan="7" class="px-6 py-16 text-center">
+                  <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <i class="fi fi-rr-inbox text-3xl text-slate-400"></i>
+                  </div>
+                  <p class="text-slate-600 font-semibold">No submissions pending QC review</p>
+                  <p class="text-slate-400 text-sm mt-1">All caught up! Check back later for new submissions.</p>
                 </td>
               </tr>
             <% } %>
@@ -146,17 +255,31 @@
       </div>
     </div>
 
-    <!-- PAGINATION -->
+    <!-- PREMIUM PAGINATION -->
     <% if (pages > 1) { %>
-      <div class="flex justify-center gap-2">
+      <div class="flex justify-center items-center gap-1">
+        <% if (page > 1) { %>
+          <a href="/admin/qc/pending?page=<%= page - 2 %>&status=<%= filters.status %>" class="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
+            <i class="fi fi-rr-angle-left"></i>
+          </a>
+        <% } %>
+        
         <% for (let i = 1; i <= pages; i++) { %>
           <% if (i === page) { %>
-            <span class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm"><%= i %></span>
-          <% } else { %>
-            <a href="/admin/qc/pending?page=<%= i - 1 %>&status=<%= filters.status %>" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold text-sm transition-all">
+            <span class="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/30"><%= i %></span>
+          <% } else if (Math.abs(i - page) <= 2 || i === 1 || i === pages) { %>
+            <a href="/admin/qc/pending?page=<%= i - 1 %>&status=<%= filters.status %>" class="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 font-semibold text-sm transition-all">
               <%= i %>
             </a>
+          <% } else if (Math.abs(i - page) === 3) { %>
+            <span class="text-slate-400">...</span>
           <% } %>
+        <% } %>
+        
+        <% if (page < pages) { %>
+          <a href="/admin/qc/pending?page=<%= page %>&status=<%= filters.status %>" class="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
+            <i class="fi fi-rr-angle-right"></i>
+          </a>
         <% } %>
       </div>
     <% } %>
@@ -164,23 +287,126 @@
   </div>
 </section>
 
-<!-- QC Detail Modal -->
-<div id="qcModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-      <h2 class="text-xl font-bold text-slate-800">QC Review</h2>
-      <button onclick="closeQCModal()" class="text-slate-500 hover:text-slate-700 text-2xl">&times;</button>
+<!-- PREMIUM QC DETAIL MODAL -->
+<div id="qcModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-auto shadow-2xl">
+    <!-- Modal Header -->
+    <div class="sticky top-0 bg-gradient-to-r from-slate-900 to-indigo-900 px-6 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+          <i class="fi fi-rr-shield-check text-white"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white">QC Review</h2>
+          <p class="text-indigo-200 text-xs">Submission Details & Actions</p>
+        </div>
+      </div>
+      <button onclick="closeQCModal()" class="w-8 h-8 rounded-lg bg-white/10 text-white hover:bg-white/20 flex items-center justify-center transition-all">
+        <i class="fi fi-rr-cross-small"></i>
+      </button>
     </div>
     <div id="qcModalContent" class="p-6">
-      <p class="text-slate-500">Loading...</p>
+      <div class="flex items-center justify-center py-12">
+        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+          <i class="fi fi-rr-spinner-alt animate-spin text-indigo-600"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REJECT/REVISION MODAL -->
+<div id="rejectModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+        <i class="fi fi-rr-arrow-rotate-left text-amber-500"></i> Request Revision
+      </h3>
+    </div>
+    <div class="p-6">
+      <p class="text-sm text-slate-600 mb-4">Please provide detailed feedback for the writer explaining what needs to be improved:</p>
+      <textarea id="rejectFeedback" class="w-full border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="4" placeholder="E.g., Please reduce AI detection score, improve grammar in section 2..."></textarea>
+      
+      <div class="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
+        <p class="text-xs text-amber-700 flex items-center gap-2">
+          <i class="fi fi-rr-info"></i> Writer will be notified immediately and deadline extended automatically.
+        </p>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+      <button onclick="closeRejectModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-all">Cancel</button>
+      <button onclick="submitRejection()" class="px-6 py-2 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg transition-all shadow-lg shadow-amber-500/30">
+        <i class="fi fi-rr-paper-plane mr-2"></i>Send for Revision
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN FORCE APPROVE MODAL -->
+<div id="forceApproveModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+    <div class="px-6 py-4 border-b border-slate-100 bg-purple-50">
+      <h3 class="text-lg font-bold text-purple-800 flex items-center gap-2">
+        <i class="fi fi-rr-shield-check"></i> Admin Override - Force Approve
+      </h3>
+    </div>
+    <div class="p-6">
+      <div class="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+        <i class="fi fi-rr-exclamation text-amber-500 text-xl"></i>
+        <p class="text-sm text-amber-800">This action bypasses normal QC review. Use only when absolutely necessary.</p>
+      </div>
+      
+      <p class="text-sm text-slate-600 mb-4">Please provide justification for force approving this submission:</p>
+      <textarea id="forceApproveReason" class="w-full border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" rows="3" placeholder="E.g., Client deadline critical, minor issues acceptable..."></textarea>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+      <button onclick="closeForceApproveModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-all">Cancel</button>
+      <button onclick="submitForceApprove()" class="px-6 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-all shadow-lg shadow-purple-600/30">
+        <i class="fi fi-rr-shield-check mr-2"></i>Force Approve
+      </button>
     </div>
   </div>
 </div>
 
 <script>
+let currentSubmissionId = null;
+
+// Refresh table
+function refreshTable() {
+  location.reload();
+}
+
+// Select all checkboxes
+function toggleSelectAll() {
+  const selectAll = document.getElementById('selectAll');
+  document.querySelectorAll('.submission-checkbox').forEach(cb => {
+    cb.checked = selectAll.checked;
+  });
+  updateBulkActions();
+}
+
+// Update bulk action button visibility
+function updateBulkActions() {
+  const checkedBoxes = document.querySelectorAll('.submission-checkbox:checked');
+  const bulkBtn = document.getElementById('bulk-approve-btn');
+  if (checkedBoxes.length > 0) {
+    bulkBtn.classList.remove('hidden');
+    bulkBtn.textContent = `Bulk Approve (${checkedBoxes.length})`;
+  } else {
+    bulkBtn.classList.add('hidden');
+  }
+}
+
+// View QC Detail in Modal
 async function viewQCDetail(submissionId) {
   document.getElementById('qcModal').classList.remove('hidden');
-  document.getElementById('qcModalContent').innerHTML = '<p class="text-slate-500">Loading...</p>';
+  document.getElementById('qcModalContent').innerHTML = `
+    <div class="flex items-center justify-center py-12">
+      <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+        <i class="fi fi-rr-spinner-alt animate-spin text-indigo-600"></i>
+      </div>
+    </div>
+  `;
   
   try {
     const response = await fetch(`/admin/qc/${submissionId}/detail`);
@@ -190,62 +416,73 @@ async function viewQCDetail(submissionId) {
       const s = data.submission;
       document.getElementById('qcModalContent').innerHTML = `
         <div class="space-y-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-xs text-slate-500 font-bold uppercase">Writer</p>
-              <p class="text-slate-800 font-semibold">${s.writer_name}</p>
+          <!-- Info Grid -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Writer</p>
+              <p class="text-slate-800 font-semibold text-sm">${s.writer_name}</p>
             </div>
-            <div>
-              <p class="text-xs text-slate-500 font-bold uppercase">Order</p>
-              <p class="text-slate-800 font-semibold">${s.query_code || 'N/A'}</p>
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Order Code</p>
+              <p class="text-indigo-600 font-bold text-sm">${s.query_code || 'N/A'}</p>
             </div>
-            <div>
-              <p class="text-xs text-slate-500 font-bold uppercase">Topic</p>
-              <p class="text-slate-800">${s.paper_topic || 'N/A'}</p>
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Topic</p>
+              <p class="text-slate-800 text-sm truncate">${s.paper_topic || 'N/A'}</p>
             </div>
-            <div>
-              <p class="text-xs text-slate-500 font-bold uppercase">Deadline</p>
-              <p class="text-slate-800">${new Date(s.deadline_at).toLocaleDateString()}</p>
+            <div class="bg-slate-50 rounded-xl p-4">
+              <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Deadline</p>
+              <p class="text-slate-800 font-semibold text-sm">${s.deadline_at ? new Date(s.deadline_at).toLocaleDateString() : 'N/A'}</p>
             </div>
           </div>
           
-          <div class="border-t pt-4">
-            <p class="text-xs text-slate-500 font-bold uppercase mb-2">Scores</p>
+          <!-- Quality Scores -->
+          <div class="border-t border-slate-100 pt-6">
+            <h4 class="text-xs font-bold text-slate-600 uppercase mb-4">Quality Scores</h4>
             <div class="grid grid-cols-3 gap-4">
-              <div class="bg-slate-50 p-3 rounded-lg text-center">
-                <p class="text-2xl font-black ${s.grammarly_score >= 90 ? 'text-green-600' : 'text-amber-600'}">${s.grammarly_score || 'N/A'}%</p>
-                <p class="text-xs text-slate-500">Grammarly</p>
+              <div class="relative">
+                <div class="bg-gradient-to-br ${s.grammarly_score >= 90 ? 'from-emerald-50 to-emerald-100 border-emerald-200' : s.grammarly_score >= 70 ? 'from-amber-50 to-amber-100 border-amber-200' : 'from-red-50 to-red-100 border-red-200'} p-6 rounded-2xl text-center border">
+                  <p class="text-4xl font-black ${s.grammarly_score >= 90 ? 'text-emerald-600' : s.grammarly_score >= 70 ? 'text-amber-600' : 'text-red-600'}">${s.grammarly_score || 'N/A'}%</p>
+                  <p class="text-xs text-slate-600 font-semibold mt-2">Grammarly Score</p>
+                  <p class="text-[10px] text-slate-400 mt-1">${s.grammarly_score >= 90 ? 'Excellent' : s.grammarly_score >= 70 ? 'Good' : 'Needs Work'}</p>
+                </div>
               </div>
-              <div class="bg-slate-50 p-3 rounded-lg text-center">
-                <p class="text-2xl font-black ${s.ai_score <= 10 ? 'text-green-600' : 'text-red-600'}">${s.ai_score || 'N/A'}%</p>
-                <p class="text-xs text-slate-500">AI Detection</p>
+              <div class="relative">
+                <div class="bg-gradient-to-br ${s.ai_score <= 10 ? 'from-emerald-50 to-emerald-100 border-emerald-200' : s.ai_score <= 30 ? 'from-amber-50 to-amber-100 border-amber-200' : 'from-red-50 to-red-100 border-red-200'} p-6 rounded-2xl text-center border">
+                  <p class="text-4xl font-black ${s.ai_score <= 10 ? 'text-emerald-600' : s.ai_score <= 30 ? 'text-amber-600' : 'text-red-600'}">${s.ai_score || 'N/A'}%</p>
+                  <p class="text-xs text-slate-600 font-semibold mt-2">AI Detection</p>
+                  <p class="text-[10px] text-slate-400 mt-1">${s.ai_score <= 10 ? 'Human Written' : s.ai_score <= 30 ? 'Some AI' : 'High AI'}</p>
+                </div>
               </div>
-              <div class="bg-slate-50 p-3 rounded-lg text-center">
-                <p class="text-2xl font-black ${s.plagiarism_score <= 10 ? 'text-green-600' : 'text-red-600'}">${s.plagiarism_score || 'N/A'}%</p>
-                <p class="text-xs text-slate-500">Plagiarism</p>
+              <div class="relative">
+                <div class="bg-gradient-to-br ${s.plagiarism_score <= 10 ? 'from-emerald-50 to-emerald-100 border-emerald-200' : s.plagiarism_score <= 20 ? 'from-amber-50 to-amber-100 border-amber-200' : 'from-red-50 to-red-100 border-red-200'} p-6 rounded-2xl text-center border">
+                  <p class="text-4xl font-black ${s.plagiarism_score <= 10 ? 'text-emerald-600' : s.plagiarism_score <= 20 ? 'text-amber-600' : 'text-red-600'}">${s.plagiarism_score || 'N/A'}%</p>
+                  <p class="text-xs text-slate-600 font-semibold mt-2">Plagiarism</p>
+                  <p class="text-[10px] text-slate-400 mt-1">${s.plagiarism_score <= 10 ? 'Original' : s.plagiarism_score <= 20 ? 'Some Matches' : 'High Similarity'}</p>
+                </div>
               </div>
             </div>
           </div>
           
           ${s.file_url ? `
-          <div class="border-t pt-4">
-            <a href="/uploads/${s.file_url}" target="_blank" class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700">
-              <i class="fi fi-rr-download"></i> Download File
+          <div class="border-t border-slate-100 pt-6">
+            <a href="/uploads/${s.file_url}" target="_blank" class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+              <i class="fi fi-rr-download"></i> Download Submission File
             </a>
           </div>
           ` : ''}
           
-          <div class="border-t pt-4">
-            <p class="text-xs text-slate-500 font-bold uppercase mb-2">Feedback / Notes</p>
-            <textarea id="qcFeedback" class="w-full border rounded-lg p-3 text-sm" rows="3" placeholder="Enter feedback for the writer...">${s.feedback || ''}</textarea>
+          <div class="border-t border-slate-100 pt-6">
+            <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Feedback / Notes</label>
+            <textarea id="qcFeedback" class="w-full border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500" rows="3" placeholder="Add feedback for the writer...">${s.feedback || ''}</textarea>
           </div>
           
-          <div class="flex gap-3">
-            <button onclick="approveSubmission(${s.submission_id})" class="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg font-bold hover:bg-green-700">
-              <i class="fi fi-rr-check mr-2"></i> Approve
+          <div class="flex gap-3 pt-2">
+            <button onclick="approveSubmission(${s.submission_id})" class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-6 py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2">
+              <i class="fi fi-rr-check"></i> Approve & Send for Delivery
             </button>
-            <button onclick="rejectSubmission(${s.submission_id})" class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg font-bold hover:bg-red-700">
-              <i class="fi fi-rr-cross mr-2"></i> Request Revision
+            <button onclick="openRejectModal(${s.submission_id})" class="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-6 py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all flex items-center justify-center gap-2">
+              <i class="fi fi-rr-arrow-rotate-left"></i> Request Revision
             </button>
           </div>
         </div>
@@ -253,7 +490,12 @@ async function viewQCDetail(submissionId) {
     }
   } catch (error) {
     console.error('Error loading QC detail:', error);
-    document.getElementById('qcModalContent').innerHTML = '<p class="text-red-500">Error loading details</p>';
+    document.getElementById('qcModalContent').innerHTML = `
+      <div class="text-center py-8">
+        <i class="fi fi-rr-exclamation text-red-500 text-3xl block mb-2"></i>
+        <p class="text-red-600 font-semibold">Error loading submission details</p>
+      </div>
+    `;
   }
 }
 
@@ -261,16 +503,21 @@ function closeQCModal() {
   document.getElementById('qcModal').classList.add('hidden');
 }
 
-async function approveSubmission(submissionId) {
-  const feedback = document.getElementById('qcFeedback')?.value || 'Approved';
-  
+// Quick approve without modal
+async function quickApprove(submissionId) {
   const confirmed = await showConfirmModal(
-    'Approve Submission',
+    'Quick Approve',
     'Are you sure you want to approve this submission? It will be sent for delivery.',
     'success'
   );
   
   if (!confirmed) return;
+  approveSubmission(submissionId);
+}
+
+// Approve Submission
+async function approveSubmission(submissionId) {
+  const feedback = document.getElementById('qcFeedback')?.value || 'Approved - Quality standards met.';
   
   try {
     const response = await fetch(`/admin/qc/${submissionId}/approve`, {
@@ -281,7 +528,7 @@ async function approveSubmission(submissionId) {
     
     const data = await response.json();
     if (data.success) {
-      showToast('Submission approved successfully!', 'success');
+      showToast('Submission approved! Sent for delivery.', 'success');
       setTimeout(() => location.reload(), 1000);
     } else {
       showToast('Error: ' + data.error, 'error');
@@ -292,24 +539,30 @@ async function approveSubmission(submissionId) {
   }
 }
 
-async function rejectSubmission(submissionId) {
-  let feedback = document.getElementById('qcFeedback')?.value;
+// Open reject modal
+function openRejectModal(submissionId) {
+  currentSubmissionId = submissionId;
+  document.getElementById('rejectFeedback').value = '';
+  document.getElementById('rejectModal').classList.remove('hidden');
+  closeQCModal();
+}
+
+function closeRejectModal() {
+  document.getElementById('rejectModal').classList.add('hidden');
+  currentSubmissionId = null;
+}
+
+// Submit rejection
+async function submitRejection() {
+  const feedback = document.getElementById('rejectFeedback').value.trim();
   
   if (!feedback) {
-    feedback = await showInputModal(
-      'Revision Required',
-      'Please provide detailed feedback for the writer explaining what needs to be revised:',
-      'Enter feedback here...'
-    );
-  }
-  
-  if (!feedback) {
-    showToast('Feedback is required for rejection', 'warning');
+    showToast('Please provide feedback for the writer', 'warning');
     return;
   }
   
   try {
-    const response = await fetch(`/admin/qc/${submissionId}/reject`, {
+    const response = await fetch(`/admin/qc/${currentSubmissionId}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ feedback })
@@ -317,7 +570,8 @@ async function rejectSubmission(submissionId) {
     
     const data = await response.json();
     if (data.success) {
-      showToast('Submission rejected. Writer has been notified.', 'success');
+      showToast('Revision requested. Writer notified.', 'success');
+      closeRejectModal();
       setTimeout(() => location.reload(), 1000);
     } else {
       showToast('Error: ' + data.error, 'error');
@@ -326,5 +580,85 @@ async function rejectSubmission(submissionId) {
     console.error('Error rejecting submission:', error);
     showToast('An error occurred', 'error');
   }
+}
+
+// Admin Force Approve
+function adminForceApprove(submissionId) {
+  currentSubmissionId = submissionId;
+  document.getElementById('forceApproveReason').value = '';
+  document.getElementById('forceApproveModal').classList.remove('hidden');
+}
+
+function closeForceApproveModal() {
+  document.getElementById('forceApproveModal').classList.add('hidden');
+  currentSubmissionId = null;
+}
+
+async function submitForceApprove() {
+  const reason = document.getElementById('forceApproveReason').value.trim();
+  
+  if (!reason) {
+    showToast('Please provide justification for force approval', 'warning');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/admin/qc/${currentSubmissionId}/force-approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, override: true })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      showToast('Submission force approved by admin override.', 'success');
+      closeForceApproveModal();
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error force approving:', error);
+    showToast('An error occurred', 'error');
+  }
+}
+
+// Bulk approve
+async function bulkApproveSelected() {
+  const checkedIds = Array.from(document.querySelectorAll('.submission-checkbox:checked')).map(cb => cb.value);
+  
+  if (checkedIds.length === 0) return;
+  
+  const confirmed = await showConfirmModal(
+    'Bulk Approve',
+    `Are you sure you want to approve ${checkedIds.length} submission(s)?`,
+    'success'
+  );
+  
+  if (!confirmed) return;
+  
+  // Process each submission
+  let successCount = 0;
+  for (const id of checkedIds) {
+    try {
+      const response = await fetch(`/admin/qc/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback: 'Bulk approved' })
+      });
+      const data = await response.json();
+      if (data.success) successCount++;
+    } catch (e) {
+      console.error('Error approving', id, e);
+    }
+  }
+  
+  showToast(`${successCount}/${checkedIds.length} submissions approved`, 'success');
+  setTimeout(() => location.reload(), 1000);
+}
+
+// Legacy function for backward compatibility
+async function rejectSubmission(submissionId) {
+  openRejectModal(submissionId);
 }
 </script>

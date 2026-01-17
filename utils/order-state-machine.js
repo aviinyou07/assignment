@@ -9,34 +9,86 @@ const { createAuditLog, createOrderHistory } = require('./audit');
 
 // Status constants (from master_status table)
 const STATUS = {
+  // Query Phase
   PENDING_QUERY: 26,
   QUOTATION_SENT: 27,
   ACCEPTED: 28,
-  AWAITING_VERIFICATION: 29,
+  
+  // Payment Phase
+  AWAITING_50_PERCENT: 46,
+  PARTIAL_PAYMENT_VERIFIED: 47,
+  AWAITING_FINAL_PAYMENT: 48,
   PAYMENT_VERIFIED: 30,
+  
+  // Execution Phase
   WRITER_ASSIGNED: 31,
   IN_PROGRESS: 32,
   PENDING_QC: 33,
+  
+  // Delivery Phase
   APPROVED: 34,
+  READY_FOR_DELIVERY: 49,
   COMPLETED: 35,
   REVISION_REQUIRED: 36,
-  DELIVERED: 37
+  DELIVERED: 37,
+  
+  // Terminal/Error States (Admin Only)
+  QUERY_REJECTED: 38,
+  PAYMENT_REJECTED: 39,
+  WRITER_REJECTED_TASK: 40,
+  CANCELLED: 45
 };
+
+// Terminal states that cannot be modified (except by admin override)
+const TERMINAL_STATES = [
+  STATUS.COMPLETED,
+  STATUS.QUERY_REJECTED,
+  STATUS.CANCELLED
+];
 
 // Status name mapping
 const STATUS_NAMES = {
   26: 'Pending Query',
   27: 'Quotation Sent',
   28: 'Accepted',
-  29: 'Awaiting Verification',
-  30: 'Payment Verified',
+  29: 'Awaiting 50% Payment',
+  30: '50% Payment Verified',
   31: 'Writer Assigned',
   32: 'In Progress',
   33: 'Pending QC',
   34: 'Approved',
   35: 'Completed',
   36: 'Revision Required',
-  37: 'Delivered'
+  37: 'Delivered',
+  38: 'Query Rejected',
+  39: 'Payment Rejected',
+  40: 'Writer Rejected Task',
+  41: 'Cancelled',
+  42: 'Awaiting Final Payment',
+  43: 'Payment Verified',
+  44: 'Research Completed',
+  45: 'Writing Started',
+  46: 'Awaiting 50% Payment',
+  47: '50% Payment Verified',
+  48: 'Awaiting Final Payment',
+  49: 'Ready for Delivery'
+};
+
+// Notification triggers for status changes
+const NOTIFICATION_TRIGGERS = {
+  [STATUS.QUOTATION_SENT]: { targets: ['client'], type: 'info', severity: 'success', title: 'Quotation Ready' },
+  [STATUS.ACCEPTED]: { targets: ['admin', 'bde'], type: 'info', severity: 'success', title: 'Quotation Accepted' },
+  [STATUS.AWAITING_50_PERCENT]: { targets: ['client'], type: 'warning', severity: 'warning', title: '💰 50% Payment Required' },
+  [STATUS.PARTIAL_PAYMENT_VERIFIED]: { targets: ['client', 'admin'], type: 'success', severity: 'success', title: '50% Payment Verified' },
+  [STATUS.AWAITING_FINAL_PAYMENT]: { targets: ['client'], type: 'warning', severity: 'warning', title: '💰 Final Payment Required' },
+  [STATUS.PAYMENT_VERIFIED]: { targets: ['client', 'admin'], type: 'success', severity: 'success', title: 'Payment Verified' },
+  [STATUS.PAYMENT_REJECTED]: { targets: ['client'], type: 'critical', severity: 'critical', title: '⚠️ Payment Verification Failed' },
+  [STATUS.WRITER_ASSIGNED]: { targets: ['writer', 'admin'], type: 'info', severity: 'warning', title: 'Task Assigned' },
+  [STATUS.PENDING_QC]: { targets: ['admin'], type: 'warning', severity: 'warning', title: '📋 Submission Pending QC Review' },
+  [STATUS.APPROVED]: { targets: ['writer', 'client'], type: 'success', severity: 'success', title: 'QC Approved' },
+  [STATUS.REVISION_REQUIRED]: { targets: ['writer'], type: 'critical', severity: 'critical', title: '🔴 Revision Required' },
+  [STATUS.DELIVERED]: { targets: ['client'], type: 'success', severity: 'success', title: '📦 Order Delivered' },
+  [STATUS.COMPLETED]: { targets: ['client', 'writer'], type: 'success', severity: 'success', title: '✅ Order Completed' }
 };
 
 // Reverse mapping for name to ID
@@ -48,7 +100,10 @@ const STATUS_IDS = Object.fromEntries(
 const VALID_TRANSITIONS = {
   client: {
     [STATUS.QUOTATION_SENT]: [STATUS.ACCEPTED],
-    [STATUS.ACCEPTED]: [STATUS.AWAITING_VERIFICATION]
+    [STATUS.ACCEPTED]: [STATUS.AWAITING_50_PERCENT],
+    [STATUS.AWAITING_50_PERCENT]: [STATUS.PARTIAL_PAYMENT_VERIFIED],
+    [STATUS.APPROVED]: [STATUS.AWAITING_FINAL_PAYMENT],
+    [STATUS.AWAITING_FINAL_PAYMENT]: [STATUS.PAYMENT_VERIFIED]
   },
   
   bde: {
@@ -61,19 +116,25 @@ const VALID_TRANSITIONS = {
     [STATUS.REVISION_REQUIRED]: [STATUS.PENDING_QC]
   },
   
+  // ADMIN has ABSOLUTE CONTROL - can override all transitions
   admin: {
-    [STATUS.PENDING_QUERY]: [STATUS.QUOTATION_SENT],
-    [STATUS.QUOTATION_SENT]: [STATUS.PENDING_QUERY, STATUS.ACCEPTED],
-    [STATUS.ACCEPTED]: [STATUS.AWAITING_VERIFICATION, STATUS.QUOTATION_SENT],
-    [STATUS.AWAITING_VERIFICATION]: [STATUS.PAYMENT_VERIFIED, STATUS.ACCEPTED],
-    [STATUS.PAYMENT_VERIFIED]: [STATUS.WRITER_ASSIGNED],
-    [STATUS.WRITER_ASSIGNED]: [STATUS.IN_PROGRESS, STATUS.PAYMENT_VERIFIED],
+    [STATUS.PENDING_QUERY]: [STATUS.QUOTATION_SENT, STATUS.QUERY_REJECTED],
+    [STATUS.QUOTATION_SENT]: [STATUS.PENDING_QUERY, STATUS.ACCEPTED, STATUS.QUERY_REJECTED],
+    [STATUS.ACCEPTED]: [STATUS.AWAITING_50_PERCENT, STATUS.QUOTATION_SENT, STATUS.QUERY_REJECTED],
+    [STATUS.AWAITING_50_PERCENT]: [STATUS.PARTIAL_PAYMENT_VERIFIED, STATUS.PAYMENT_REJECTED, STATUS.ACCEPTED],
+    [STATUS.PARTIAL_PAYMENT_VERIFIED]: [STATUS.WRITER_ASSIGNED],
+    [STATUS.WRITER_ASSIGNED]: [STATUS.IN_PROGRESS, STATUS.PARTIAL_PAYMENT_VERIFIED, STATUS.WRITER_REJECTED_TASK],
     [STATUS.IN_PROGRESS]: [STATUS.PENDING_QC, STATUS.WRITER_ASSIGNED],
     [STATUS.PENDING_QC]: [STATUS.APPROVED, STATUS.REVISION_REQUIRED],
-    [STATUS.APPROVED]: [STATUS.DELIVERED, STATUS.REVISION_REQUIRED],
+    [STATUS.APPROVED]: [STATUS.AWAITING_FINAL_PAYMENT, STATUS.REVISION_REQUIRED],
+    [STATUS.AWAITING_FINAL_PAYMENT]: [STATUS.PAYMENT_VERIFIED, STATUS.PAYMENT_REJECTED, STATUS.APPROVED],
+    [STATUS.PAYMENT_VERIFIED]: [STATUS.DELIVERED],
     [STATUS.REVISION_REQUIRED]: [STATUS.PENDING_QC, STATUS.WRITER_ASSIGNED],
-    [STATUS.DELIVERED]: [STATUS.COMPLETED],
-    [STATUS.COMPLETED]: [] // Terminal state - no transitions allowed
+    [STATUS.DELIVERED]: [STATUS.COMPLETED, STATUS.REVISION_REQUIRED],
+    // Recovery paths from error states (Admin only)
+    [STATUS.PAYMENT_REJECTED]: [STATUS.AWAITING_50_PERCENT, STATUS.AWAITING_FINAL_PAYMENT, STATUS.CANCELLED],
+    [STATUS.WRITER_REJECTED_TASK]: [STATUS.WRITER_ASSIGNED, STATUS.CANCELLED],
+    [STATUS.COMPLETED]: [] // Terminal state - requires admin override
   }
 };
 
@@ -81,7 +142,10 @@ const VALID_TRANSITIONS = {
 const STATUS_ACTIONS = {
   // Client actions
   ACCEPT_QUOTATION: { role: 'client', from: STATUS.QUOTATION_SENT, to: STATUS.ACCEPTED },
-  UPLOAD_PAYMENT: { role: 'client', from: STATUS.ACCEPTED, to: STATUS.AWAITING_VERIFICATION },
+  REQUEST_50_PAYMENT: { role: 'client', from: STATUS.ACCEPTED, to: STATUS.AWAITING_50_PERCENT },
+  UPLOAD_50_PAYMENT: { role: 'client', from: STATUS.AWAITING_50_PERCENT, to: STATUS.PARTIAL_PAYMENT_VERIFIED },
+  REQUEST_FINAL_PAYMENT: { role: 'client', from: STATUS.APPROVED, to: STATUS.AWAITING_FINAL_PAYMENT },
+  UPLOAD_FINAL_PAYMENT: { role: 'client', from: STATUS.AWAITING_FINAL_PAYMENT, to: STATUS.PAYMENT_VERIFIED },
   
   // BDE actions
   GENERATE_QUOTATION: { role: 'bde', from: STATUS.PENDING_QUERY, to: STATUS.QUOTATION_SENT },
@@ -92,12 +156,14 @@ const STATUS_ACTIONS = {
   RESUBMIT_REVISION: { role: 'writer', from: STATUS.REVISION_REQUIRED, to: STATUS.PENDING_QC },
   
   // Admin actions
-  VERIFY_PAYMENT: { role: 'admin', from: STATUS.AWAITING_VERIFICATION, to: STATUS.PAYMENT_VERIFIED },
-  REJECT_PAYMENT: { role: 'admin', from: STATUS.AWAITING_VERIFICATION, to: STATUS.ACCEPTED },
-  ASSIGN_WRITER: { role: 'admin', from: STATUS.PAYMENT_VERIFIED, to: STATUS.WRITER_ASSIGNED },
+  VERIFY_50_PAYMENT: { role: 'admin', from: STATUS.AWAITING_50_PERCENT, to: STATUS.PARTIAL_PAYMENT_VERIFIED },
+  VERIFY_FINAL_PAYMENT: { role: 'admin', from: STATUS.AWAITING_FINAL_PAYMENT, to: STATUS.PAYMENT_VERIFIED },
+  REJECT_50_PAYMENT: { role: 'admin', from: STATUS.AWAITING_50_PERCENT, to: STATUS.AWAITING_50_PERCENT },
+  REJECT_FINAL_PAYMENT: { role: 'admin', from: STATUS.AWAITING_FINAL_PAYMENT, to: STATUS.AWAITING_FINAL_PAYMENT },
+  ASSIGN_WRITER: { role: 'admin', from: STATUS.PARTIAL_PAYMENT_VERIFIED, to: STATUS.WRITER_ASSIGNED },
   APPROVE_QC: { role: 'admin', from: STATUS.PENDING_QC, to: STATUS.APPROVED },
   REJECT_QC: { role: 'admin', from: STATUS.PENDING_QC, to: STATUS.REVISION_REQUIRED },
-  DELIVER: { role: 'admin', from: STATUS.APPROVED, to: STATUS.DELIVERED },
+  DELIVER: { role: 'admin', from: STATUS.PAYMENT_VERIFIED, to: STATUS.DELIVERED },
   COMPLETE: { role: 'admin', from: STATUS.DELIVERED, to: STATUS.COMPLETED }
 };
 
@@ -107,17 +173,28 @@ const STATUS_ACTIONS = {
  * @param {string} role - User role (client, bde, writer, admin)
  * @param {number} currentStatus - Current status ID
  * @param {number} newStatus - Desired new status ID
- * @returns {object} { valid: boolean, message: string }
+ * @param {boolean} isAdminOverride - Admin special override flag for terminal states
+ * @returns {object} { valid: boolean, message: string, isOverride: boolean }
  */
-function validateTransition(role, currentStatus, newStatus) {
+function validateTransition(role, currentStatus, newStatus, isAdminOverride = false) {
   const normalizedRole = role.toLowerCase();
   
   // Terminal state check
-  if (currentStatus === STATUS.COMPLETED) {
+  if (TERMINAL_STATES.includes(currentStatus)) {
+    // Admin can override terminal states with special flag
+    if (normalizedRole === 'admin' && isAdminOverride) {
+      return {
+        valid: true,
+        code: 'ADMIN_OVERRIDE',
+        message: 'Admin override: Reopening terminal state order',
+        isOverride: true
+      };
+    }
+    
     return {
       valid: false,
       code: 'TERMINAL_STATE',
-      message: 'Order is completed and cannot be modified'
+      message: `Order is in terminal state: ${STATUS_NAMES[currentStatus]}. Cannot be modified.`
     };
   }
   
@@ -347,7 +424,32 @@ async function updateOrderStatus(order_id, newStatus, user, metadata = {}) {
  * @returns {boolean}
  */
 function isTerminalState(status) {
-  return status === STATUS.COMPLETED;
+  return TERMINAL_STATES.includes(status);
+}
+
+/**
+ * Get lifecycle phase for a status
+ * 
+ * @param {number} status - Status ID
+ * @returns {string} 'QUERY' | 'PAYMENT' | 'EXECUTION' | 'DELIVERY' | 'TERMINAL'
+ */
+function getLifecyclePhase(status) {
+  if ([STATUS.PENDING_QUERY, STATUS.QUOTATION_SENT, STATUS.ACCEPTED, STATUS.QUERY_REJECTED].includes(status)) {
+    return 'QUERY';
+  }
+  if ([STATUS.AWAITING_VERIFICATION, STATUS.PAYMENT_VERIFIED, STATUS.PAYMENT_REJECTED].includes(status)) {
+    return 'PAYMENT';
+  }
+  if ([STATUS.WRITER_ASSIGNED, STATUS.IN_PROGRESS, STATUS.PENDING_QC, STATUS.WRITER_REJECTED_TASK].includes(status)) {
+    return 'EXECUTION';
+  }
+  if ([STATUS.APPROVED, STATUS.REVISION_REQUIRED, STATUS.DELIVERED, STATUS.COMPLETED].includes(status)) {
+    return 'DELIVERY';
+  }
+  if (TERMINAL_STATES.includes(status)) {
+    return 'TERMINAL';
+  }
+  return 'UNKNOWN';
 }
 
 /**
@@ -479,6 +581,8 @@ module.exports = {
   STATUS_NAMES,
   STATUS_ACTIONS,
   VALID_TRANSITIONS,
+  TERMINAL_STATES,
+  NOTIFICATION_TRIGGERS,
   validateTransition,
   getAllowedNextStates,
   executeAction,
@@ -487,6 +591,7 @@ module.exports = {
   isPrePayment,
   isPostPayment,
   getOrderPhase,
+  getLifecyclePhase,
   canModify,
   getStatusByName,
   getStatusName,

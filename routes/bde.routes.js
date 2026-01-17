@@ -3,8 +3,8 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 
-const { authGuardBDE, fetchBDEProfile, verifyBDEAccess } = require("../middleware/auth.bde.middleware");
-const bdeController = require("../controllers/bde.dashboard.controller");
+const { authGuard, fetchProfile, verifyBDEAccess } = require("../middleware/auth.middleware");
+const bdeController = require("../controllers/bde.main.controller");
 
 /**
  * Multer configuration for quotation file uploads
@@ -42,16 +42,16 @@ const upload = multer({
 // Dashboard with KPI metrics
 router.get(
   "/",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   bdeController.getDashboard
 );
 
 // Notifications page
 router.get(
   "/notifications",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   (req, res) => {
     res.render("bde/notifications", {
       title: "Notifications",
@@ -64,8 +64,8 @@ router.get(
 // Chat Hub
 router.get(
   "/chat",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   (req, res) => {
     res.render("bde/chat", {
       title: "Chat",
@@ -82,16 +82,16 @@ router.get(
 // List all assigned clients
 router.get(
   "/clients",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   bdeController.listClients
 );
 
 // View single client
 router.get(
   "/clients/:clientId",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   bdeController.viewClient
 );
 
@@ -102,16 +102,16 @@ router.get(
 // List all queries
 router.get(
   "/queries",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   bdeController.listQueries
 );
 
 // View single query
 router.get(
   "/queries/:queryCode",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   verifyBDEAccess,
   bdeController.viewQuery
 );
@@ -119,7 +119,7 @@ router.get(
 // Update query status
 router.post(
   "/queries/:queryCode/status",
-  authGuardBDE(["bde"]),
+  authGuard(["bde"]),
   verifyBDEAccess,
   bdeController.updateQueryStatus
 );
@@ -131,7 +131,7 @@ router.post(
 // Generate quotation (POST /queries/:queryCode/quotation)
 router.post(
   "/queries/:queryCode/quotation",
-  authGuardBDE(["bde"]),
+  authGuard(["bde"]),
   verifyBDEAccess,
   upload.single("quotationFile"),
   bdeController.generateQuotation
@@ -144,16 +144,16 @@ router.post(
 // List confirmed orders (payment verified)
 router.get(
   "/orders",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   bdeController.listConfirmedOrders
 );
 
 // View confirmed order details
 router.get(
   "/orders/:workCode",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   verifyBDEAccess,
   bdeController.viewConfirmedOrder
 );
@@ -165,21 +165,21 @@ router.get(
 // Get chat messages for query
 router.get(
   "/chat/query/:queryCode",
-  authGuardBDE(["bde"]),
+  authGuard(["bde"]),
   bdeController.getChat
 );
 
 // Get chat messages for work code
 router.get(
   "/chat/order/:workCode",
-  authGuardBDE(["bde"]),
+  authGuard(["bde"]),
   bdeController.getChat
 );
 
 // Send message to user
 router.post(
   "/queries/:queryCode/message",
-  authGuardBDE(["bde"]),
+  authGuard(["bde"]),
   verifyBDEAccess,
   bdeController.sendChatMessage
 );
@@ -191,17 +191,36 @@ router.post(
 // List pending payments
 router.get(
   "/payments",
-  authGuardBDE(["bde"]),
-  fetchBDEProfile,
+  authGuard(["bde"]),
+  fetchProfile,
   bdeController.listPendingPayments
 );
 
 // Send payment reminder
 router.post(
   "/queries/:queryCode/payment-reminder",
-  authGuardBDE(["bde"]),
+  authGuard(["bde"]),
   verifyBDEAccess,
   bdeController.sendPaymentReminder
+);
+
+/**
+ * REAL-TIME API ENDPOINTS
+ */
+const bdeSimpleController = require("../controllers/bde.api.controller");
+
+// Get dashboard KPIs for real-time updates
+router.get(
+  "/api/dashboard/kpis",
+  authGuard(["bde"]),
+  bdeSimpleController.getDashboardKPIs
+);
+
+// Get sidebar counts for badge updates
+router.get(
+  "/api/sidebar-counts",
+  authGuard(["bde"]),
+  bdeSimpleController.getSidebarCounts
 );
 
 module.exports = router;

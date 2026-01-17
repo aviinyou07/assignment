@@ -1,448 +1,339 @@
 const db = require('../config/db');
-const {
-  createAuditLog,
-  createNotification,
-  generateUniqueCode,
-  recordWalletTransaction,
-  createOrderHistory
-} = require('../utils/audit');
-const notificationsController = require('./notifications.controller');
-const { emitChatSystemMessage } = require('../utils/realtime');
+const { sendMail } = require('../utils/mailer');
+const fs = require('fs');
+const path = require('path');
+const { logAction } = require('../utils/logger');
 
 /**
- * ADMIN PAYMENT VERIFICATION CONTROLLER
- * 
- * CRITICAL FLOW:
- * 1. Admin verifies payment receipt
- * 2. Generate work_code
- * 3. Convert query to confirmed order
- * 4. Trigger writer assignment
- * 5. Deduct from client wallet (if applicable)
- * 6. Create audit trail
- * 7. Send notifications
- * 
- * Only Admin can perform these operations
+ * PAYMENT VERIFICATION CONTROLLER
+ * Only admin can verify payments - critical flow
  */
 
-/**
- * LIST UNVERIFIED PAYMENTS
- * Admin views all payments pending verification
- */
-exports.listUnverifiedPayments = async (req, res) => {
+// List all payments with pagination
+exports.listPayments = async (req, res) => {
   try {
-    const { page = 0, limit = 20, status = 'pending' } = req.query;
-    const offset = parseInt(page) * parseInt(limit);
+    const { page = 0, status, dateFrom, dateTo } = req.query;
+    const limit = 20;
+    const offset = page * limit;
 
     let whereClause = '1=1';
     let params = [];
 
-    // Filter for unverified payments (orders WITHOUT work_code)
-    if (status === 'pending') {
-      whereClause += ` AND NOT EXISTS (
-        SELECT 1 FROM orders o WHERE o.order_id = p.order_id AND o.work_code IS NOT NULL
-      )`;
-    } else if (status === 'verified') {
-      whereClause += ` AND EXISTS (
-        SELECT 1 FROM orders o WHERE o.order_id = p.order_id AND o.work_code IS NOT NULL
-      )`;
+    if (status && status !== 'all') {
+      whereClause += ' AND p.payment_method = ?';
+      params.push(status);
     }
 
-    // =======================
-    // FETCH PAYMENTS
-    // =======================
+    if (dateFrom) {
+      whereClause += ' AND DATE(p.created_at) >= DATE(?)';
+      params.push(dateFrom);
+    }
+
+    if (dateTo) {
+      whereClause += ' AND DATE(p.created_at) <= DATE(?)';
+      params.push(dateTo);
+    }
+
+    // Fetch payments
     const [payments] = await db.query(
       `SELECT 
-        p.payment_id,
-        p.order_id,
-        p.user_id,
-        u.full_name,
-        u.email,
-        o.query_code,
-        o.paper_topic,
-        o.total_price_usd,
-        p.amount,
-        p.payment_method,
-        p.payment_doc,
-        p.created_at,
-        CASE 
-          WHEN o.work_code IS NOT NULL THEN 'verified'
-          ELSE 'pending'
-        END as status
+        p.payment_id, p.order_id, p.user_id, u.full_name, u.email,
+        o.query_code, o.paper_topic as topic, o.total_price,
+        p.amount, p.payment_method, p.payment_doc as receipt_filename, p.created_at as uploaded_at
       FROM payments p
       JOIN users u ON p.user_id = u.user_id
       LEFT JOIN orders o ON p.order_id = o.order_id
       WHERE ${whereClause}
       ORDER BY p.created_at DESC
       LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+      [...params, limit, offset]
     );
 
-    // =======================
-    // GET TOTAL COUNT
-    // =======================
+    // Get total count
     const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) as total FROM payments p
-       LEFT JOIN orders o ON p.order_id = o.order_id
-       WHERE ${whereClause}`,
+      `SELECT COUNT(*) as total FROM payments p WHERE ${whereClause}`,
       params
     );
 
-    const totalPages = Math.ceil(total / parseInt(limit));
+    const totalPages = Math.ceil(total / limit);
 
-    return res.json({
-      success: true,
-      data: {
-        payments,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: totalPages
-        }
-      }
+    res.render('admin/payments/index', {
+      title: 'Payment Verification',
+      payments,
+      page: parseInt(page) + 1,
+      pages: totalPages,
+      total,
+      filters: { status: status || 'all' },
+      layout: 'layouts/admin'
     });
-
-  } catch (err) {
-    console.error('Error listing payments:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch payments'
-    });
+  } catch (error) {
+    console.error('Error listing payments:', error);
+    res.status(500).render('errors/404', { title: 'Error', layout: false });
   }
 };
 
-/**
- * VERIFY PAYMENT & GENERATE WORK_CODE
- * CRITICAL OPERATION - ONLY ADMIN
- * 
- * Steps:
- * 1. Validate payment and order exist
- * 2. Check payment matches order amount
- * 3. Generate work_code
- * 4. Update order with work_code (confirms the order)
- * 5. Update payment status
- * 6. Deduct from client wallet (if configured)
- * 7. Create audit log
- * 8. Send notifications
- * 9. Trigger writer assignment (Admin can assign writer next)
- */
-exports.verifyPayment = async (req, res) => {
-  const connection = await db.getConnection();
-
+// View payment receipt
+exports.viewPayment = async (req, res) => {
   try {
-    const adminId = req.user.user_id;
-    const { payment_id, notes, approve = true } = req.body;
+    const { paymentId } = req.params;
 
-    if (!payment_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment ID is required'
-      });
-    }
-
-    if (!approve) {
-      return res.status(400).json({
-        success: false,
-        message: 'Use rejectPayment endpoint for rejections'
-      });
-    }
-
-    await connection.beginTransaction();
-
-    // =======================
-    // FETCH PAYMENT WITH ORDER
-    // =======================
-    const [[payment]] = await connection.query(
-      `SELECT p.*, o.order_id, o.total_price_usd, o.user_id, o.work_code
-       FROM payments p
-       LEFT JOIN orders o ON p.order_id = o.order_id
-       WHERE p.payment_id = ?
-       LIMIT 1`,
-      [payment_id]
-    );
-
-    if (!payment) {
-      await connection.rollback();
-      return res.status(404).json({
-        success: false,
-        message: 'Payment not found'
-      });
-    }
-
-    // =======================
-    // PREVENT DOUBLE VERIFICATION
-    // =======================
-    if (payment.work_code) {
-      await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'Payment already verified'
-      });
-    }
-
-    // =======================
-    // VALIDATE AMOUNT
-    // =======================
-    const expectedAmount = parseFloat(payment.total_price_usd) || parseFloat(payment.amount);
-    const paidAmount = parseFloat(payment.amount);
-
-    if (paidAmount < expectedAmount * 0.95) {
-      // Allow 5% tolerance
-      await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: `Payment amount mismatch. Expected: ${expectedAmount}, Received: ${paidAmount}`
-      });
-    }
-
-    // =======================
-    // GENERATE WORK_CODE
-    // =======================
-    const work_code = generateUniqueCode('WORK', 12);
-
-    // =======================
-    // UPDATE ORDER WITH WORK_CODE AND STATUS (30 - Payment Verified)
-    // =======================
-    await connection.query(
-      `UPDATE orders SET work_code = ?, status = 30 WHERE order_id = ?`,
-      [work_code, payment.order_id]
-    );
-
-    // =======================
-    // OPTIONAL: DEDUCT FROM WALLET
-    // =======================
-    const [[walletConfig]] = await connection.query(
-      `SELECT id FROM payments WHERE payment_method = 'wallet' AND order_id = ? LIMIT 1`,
-      [payment.order_id]
-    );
-
-    if (walletConfig) {
-      const [[wallet]] = await connection.query(
-        `SELECT balance FROM wallets WHERE user_id = ? LIMIT 1`,
-        [payment.user_id]
-      );
-
-      if (wallet && wallet.balance >= paidAmount) {
-        await connection.query(
-          `UPDATE wallets SET balance = balance - ? WHERE user_id = ?`,
-          [paidAmount, payment.user_id]
-        );
-
-        await connection.query(
-          `INSERT INTO wallet_transactions (user_id, amount, type, reason, reference_id, created_at)
-           VALUES (?, ?, 'debit', 'Order payment', ?, NOW())`,
-          [payment.user_id, paidAmount, payment.order_id]
-        );
-      }
-    }
-
-    // =======================
-    // CREATE ORDER HISTORY
-    // =======================
-    await createOrderHistory({
-      order_id: payment.order_id,
-      modified_by: adminId,
-      modified_by_name: 'Admin',
-      modified_by_role: 'Admin',
-      action_type: 'PAYMENT_VERIFIED',
-      description: `Payment verified and work_code generated: ${work_code}. ${notes || ''}`
-    });
-
-    await connection.commit();
-
-    // =======================
-    // AUDIT LOG
-    // =======================
-    await createAuditLog({
-      user_id: adminId,
-      role: 'admin',
-      event_type: 'PAYMENT_VERIFIED',
-      resource_type: 'payment',
-      resource_id: payment_id,
-      details: `Admin verified payment for order ${payment.order_id}. Work code: ${work_code}`,
-      ip_address: req.ip,
-      user_agent: req.get('User-Agent'),
-      event_data: {
-        payment_id,
-        order_id: payment.order_id,
-        amount: paidAmount,
-        work_code
-      }
-    });
-
-    // =======================
-    // SEND NOTIFICATIONS WITH REALTIME
-    // =======================
-    
-    // Get BDE ID from user record
-    const [[userRecord]] = await db.query(
-      `SELECT bde FROM users WHERE user_id = ? LIMIT 1`,
-      [payment.user_id]
-    );
-    
-    const bdeId = userRecord?.bde;
-
-    // Notify client
-    await notificationsController.createNotificationWithRealtime(
-      req.io,
-      {
-        user_id: payment.user_id,
-        type: 'success',
-        title: 'Payment Verified',
-        message: `Your payment has been verified. Work code: ${work_code}. Assignment in progress...`,
-        link_url: `/client/orders/${payment.order_id}`,
-        context_code: work_code,
-        triggered_by: {
-          user_id: adminId,
-          role: 'admin',
-          ip_address: req.ip,
-          user_agent: req.get('User-Agent')
-        }
-      }
-    );
-
-    // Notify BDE if assigned
-    if (bdeId) {
-      await notificationsController.createNotificationWithRealtime(
-        req.io,
-        {
-          user_id: bdeId,
-          type: 'success',
-          title: 'Payment Verified',
-          message: `Payment for order ${payment.order_id} has been verified. Work code: ${work_code}. Order is now in progress.`,
-          link_url: `/bde/orders/${payment.order_id}`,
-          context_code: work_code,
-          triggered_by: {
-            user_id: adminId,
-            role: 'admin',
-            ip_address: req.ip,
-            user_agent: req.get('User-Agent')
-          }
-        }
-      );
-    }
-
-    // Add system message to chat
-    await emitChatSystemMessage(
-      req.io,
-      payment.order_id,
-      work_code,
-      `Payment verified by Admin. Work code generated: ${work_code}. Assignment work begins now.`
-    );
-
-    return res.json({
-      success: true,
-      message: 'Payment verified successfully',
-      data: {
-        payment_id,
-        order_id: payment.order_id,
-        work_code,
-        status: 'verified'
-      }
-    });
-
-  } catch (err) {
-    await connection.rollback();
-    console.error('Error verifying payment:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to verify payment',
-      error: err.message
-    });
-  } finally {
-    connection.release();
-  }
-};
-
-/**
- * REJECT PAYMENT
- * Admin can reject payment if verification fails
- * Sends notification to client to resubmit
- */
-exports.rejectPayment = async (req, res) => {
-  try {
-    const adminId = req.user.user_id;
-    const { payment_id, rejection_reason } = req.body;
-
-    if (!payment_id || !rejection_reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment ID and rejection reason are required'
-      });
-    }
-
-    // =======================
-    // FETCH PAYMENT
-    // =======================
     const [[payment]] = await db.query(
-      `SELECT p.*, o.order_id, o.user_id
-       FROM payments p
-       LEFT JOIN orders o ON p.order_id = o.order_id
-       WHERE p.payment_id = ?
-       LIMIT 1`,
-      [payment_id]
+      `SELECT 
+        p.payment_id, p.order_id, p.user_id, u.full_name, u.email, u.mobile_number,
+        o.order_id as order_full, o.query_code, o.paper_topic as topic, o.total_price, o.status as order_status,
+        p.amount, p.payment_method, p.payment_doc as receipt_filename,
+        p.created_at as uploaded_at
+      FROM payments p
+      JOIN users u ON p.user_id = u.user_id
+      LEFT JOIN orders o ON p.order_id = o.order_id
+      WHERE p.payment_id = ?`,
+      [paymentId]
     );
 
     if (!payment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment not found'
-      });
+      return res.status(404).json({ success: false, error: 'Payment not found' });
     }
 
-    // =======================
-    // DELETE UNVERIFIED PAYMENT
-    // =======================
-    await db.query(
-      `DELETE FROM payments WHERE payment_id = ? AND NOT EXISTS (
-        SELECT 1 FROM orders WHERE order_id = payment.order_id AND work_code IS NOT NULL
-      )`,
-      [payment_id]
-    );
-
-    // =======================
-    // AUDIT LOG
-    // =======================
-    await createAuditLog({
-      user_id: adminId,
-      role: 'admin',
-      event_type: 'PAYMENT_REJECTED',
-      resource_type: 'payment',
-      resource_id: payment_id,
-      details: `Admin rejected payment for order ${payment.order_id}. Reason: ${rejection_reason}`,
-      ip_address: req.ip,
-      user_agent: req.get('User-Agent'),
-      event_data: { payment_id, rejection_reason }
-    });
-
-    // =======================
-    // SEND NOTIFICATION
-    // =======================
-    await createNotification({
-      user_id: payment.user_id,
-      type: 'warning',
-      title: 'Payment Rejected',
-      message: `Your payment was rejected: ${rejection_reason}. Please resubmit with correct receipt.`,
-      link_url: `/client/orders/${payment.order_id}/payment`
-    });
-
-    return res.json({
-      success: true,
-      message: 'Payment rejected successfully',
-      data: {
-        payment_id,
-        order_id: payment.order_id,
-        status: 'rejected'
-      }
-    });
-
-  } catch (err) {
-    console.error('Error rejecting payment:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to reject payment'
-    });
+    res.json({ success: true, payment });
+  } catch (error) {
+    console.error('Error viewing payment:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-module.exports = exports;
+// Download receipt file
+exports.downloadReceipt = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const [[payment]] = await db.query(
+      `SELECT payment_doc as receipt_filename FROM payments WHERE payment_id = ?`,
+      [paymentId]
+    );
+
+    if (!payment || !payment.receipt_filename) {
+      return res.status(404).json({ success: false, error: 'Receipt not found' });
+    }
+
+    const filePath = path.join(__dirname, '..', 'uploads', payment.receipt_filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+
+    res.download(filePath, payment.receipt_filename);
+  } catch (error) {
+    console.error('Error downloading receipt:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Verify payment (CRITICAL - Admin only)
+exports.verifyPayment = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { verificationStatus, notes } = req.body;
+
+    if (!paymentId || !verificationStatus) {
+      return res.status(400).json({ success: false, error: 'Payment ID and verification status required' });
+    }
+
+    // Get payment details
+    const [[payment]] = await db.query(
+      `SELECT 
+        p.payment_id, p.order_id, p.user_id, p.amount, p.payment_method, p.payment_type,
+        u.full_name, u.email, o.order_id as order_exists, o.total_price, o.status as order_status
+      FROM payments p
+      JOIN users u ON p.user_id = u.user_id
+      LEFT JOIN orders o ON p.order_id = o.order_id
+      WHERE p.payment_id = ?`,
+      [paymentId]
+    );
+
+    if (!payment) {
+      return res.status(404).json({ success: false, error: 'Payment not found' });
+    }
+
+    if (verificationStatus === 'verified') {
+      const { updateOrderStatus } = require('../utils/workflow.service');
+      const { STATUS } = require('../utils/order-state-machine');
+
+      let newStatus;
+      let eventName;
+      let workCode = null;
+
+      // Determine next status based on payment type
+      if (payment.payment_type === '50_percent') {
+        newStatus = STATUS.PARTIAL_PAYMENT_VERIFIED;
+        eventName = 'PAYMENT_50_VERIFIED';
+      } else if (payment.payment_type === 'final') {
+        newStatus = STATUS.PAYMENT_VERIFIED;
+        eventName = 'PAYMENT_VERIFIED';
+        // Generate work_code for final payment
+        workCode = `WC${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+        
+        // Update order with work code
+        if (payment.order_exists) {
+          await db.query(
+            `UPDATE orders SET work_code = ? WHERE order_id = ?`,
+            [workCode, payment.order_id]
+          );
+        }
+      } else {
+        // Legacy full payment
+        newStatus = STATUS.PAYMENT_VERIFIED;
+        eventName = 'PAYMENT_VERIFIED';
+        workCode = `WC${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+        
+        if (payment.order_exists) {
+          await db.query(
+            `UPDATE orders SET work_code = ? WHERE order_id = ?`,
+            [workCode, payment.order_id]
+          );
+        }
+      }
+
+      // Update order status
+      const statusResult = await updateOrderStatus(
+        payment.order_id,
+        newStatus,
+        'admin',
+        {
+          userId: req.user.user_id,
+          userName: req.user.full_name,
+          io: req.io,
+          reason: `Payment verified: ${payment.payment_type || 'full'} payment of $${payment.amount}`
+        }
+      );
+
+      if (!statusResult.success) {
+        return res.status(400).json({ success: false, error: statusResult.error });
+      }
+
+      // Log action
+      await logAction({
+        userId: req.user.user_id,
+        action: 'payment_verified',
+        details: `${payment.payment_type || 'Full'} payment verified. Amount: $${payment.amount}${workCode ? `. Work Code: ${workCode}` : ''}`,
+        resource_type: 'order',
+        resource_id: payment.order_id || 0,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      // Send payment confirmation email to client
+      const paymentLabel = payment.payment_type === '50_percent' ? '50%' : 
+                          payment.payment_type === 'final' ? 'final' : 'full';
+      
+      sendMail({
+        to: payment.email,
+        subject: `Payment Verified - ${paymentLabel.charAt(0).toUpperCase() + paymentLabel.slice(1)} Payment Confirmed`,
+        html: `
+          <h2>Payment Verified</h2>
+          <p>Hello ${payment.full_name},</p>
+          <p>Your ${paymentLabel} payment of $${payment.amount} has been verified successfully.</p>
+          ${workCode ? `<p>Your work code: <strong>${workCode}</strong></p>` : ''}
+          ${payment.payment_type === '50_percent' ? '<p>Work will begin shortly. You will be notified when ready for final payment.</p>' : ''}
+          ${payment.payment_type === 'final' ? '<p>Your content is now ready for download!</p>' : ''}
+          <p>Thank you for your order!</p>
+        `
+      }).catch(err => console.error('Email error:', err));
+
+      res.json({
+        success: true,
+        message: `${paymentLabel} payment verified successfully`,
+        workCode,
+        newStatus: statusResult.newStatus
+      });
+    } else if (verificationStatus === 'rejected') {
+      // Log action
+      await logAction({
+        userId: req.user.user_id,
+        action: 'payment_rejected',
+        details: `Payment rejected. Reason: ${notes || 'N/A'}`,
+        resource_type: 'order',
+        resource_id: payment.order_id || 0,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+
+      // Send rejection email to client
+      sendMail({
+        to: payment.email,
+        subject: 'Payment Verification Failed - Please Resubmit',
+        html: `
+          <h2>Payment Verification Failed</h2>
+          <p>Hello ${payment.full_name},</p>
+          <p>Unfortunately, your payment could not be verified.</p>
+          <p>Reason: ${notes || 'Receipt does not meet verification criteria'}</p>
+          <p>Please correct the issue and resubmit your payment receipt.</p>
+        `
+      }).catch(err => console.error('Email error:', err));
+
+      res.json({
+        success: true,
+        message: 'Payment rejected. Client has been notified'
+      });
+    }
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Mark payment as completed
+exports.updatePaymentStage = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    if (!paymentId) {
+      return res.status(400).json({ success: false, error: 'Payment ID required' });
+    }
+
+    // Get payment details
+    const [[payment]] = await db.query(
+      `SELECT p.payment_id, p.order_id, p.user_id, u.email, u.full_name
+       FROM payments p
+       JOIN users u ON p.user_id = u.user_id
+       WHERE p.payment_id = ?`,
+      [paymentId]
+    );
+
+    if (!payment) {
+      return res.status(404).json({ success: false, error: 'Payment not found' });
+    }
+
+    // Log action
+    await logAction({
+        userId: req.user.user_id,
+        action: 'payment_completed',
+        details: `Payment completed and processed`,
+        resource_type: 'order',
+        resource_id: payment.order_id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+    });
+
+
+    // Send notification email
+    sendMail({
+      to: payment.email,
+      subject: 'Payment Completed',
+      html: `
+        <h2>Payment Completed</h2>
+        <p>Hello ${payment.full_name},</p>
+        <p>Your payment has been received and fully processed.</p>
+        <p>Thank you for your order!</p>
+      `
+    }).catch(err => console.error('Email error:', err));
+
+    res.json({
+      success: true,
+      message: 'Payment completed successfully'
+    });
+  } catch (error) {
+    console.error('Error updating payment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

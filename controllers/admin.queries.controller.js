@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { logAction } = require('../utils/logger');
 const { emitToUser } = require('../utils/socket');
+const { createNotification } = require('../utils/notification.service');
 
 /**
  * Admin generates quotation for a query
@@ -8,47 +9,100 @@ const { emitToUser } = require('../utils/socket');
 exports.generateQuotation = async (req, res) => {
   try {
     const { queryId } = req.params;
-    const { basePrice, discount, finalPrice, notes } = req.body;
+    const { basePrice, urgencyCharge, discount, finalPrice, notes } = req.body;
     const adminId = req.user.user_id;
 
-    // Verify order exists
+    // Calculate final price if not provided
+    const calculatedBasePrice = parseFloat(basePrice) || 0;
+    const calculatedUrgencyCharge = parseFloat(urgencyCharge) || 0;
+    const calculatedDiscount = parseFloat(discount) || 0;
+    const calculatedFinalPrice = finalPrice 
+      ? parseFloat(finalPrice) 
+      : (calculatedBasePrice + calculatedUrgencyCharge - calculatedDiscount);
+
+    // Verify order exists and is in status 26 (Pending Query)
     const [[order]] = await db.query(
-      `SELECT * FROM orders WHERE order_id = ?`,
+      `SELECT o.*, u.full_name as client_name, u.email as client_email, u.bde 
+       FROM orders o 
+       JOIN users u ON o.user_id = u.user_id
+       WHERE o.order_id = ?`,
       [queryId]
     );
+    
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Save quotation to database
-    await db.query(
-      `INSERT INTO quotations (order_id, user_id, quoted_price_usd, discount, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
-      [order.order_id, adminId, finalPrice, discount, notes]
+    // Check if quotation already exists
+    const [[existingQuote]] = await db.query(
+      `SELECT quotation_id FROM quotations WHERE order_id = ?`,
+      [queryId]
     );
+
+    if (existingQuote) {
+      // Update existing quotation
+      await db.query(
+        `UPDATE quotations 
+         SET quoted_price = ?, discount = ?, notes = ?, updated_at = NOW()
+         WHERE order_id = ?`,
+        [calculatedFinalPrice, calculatedDiscount, notes || '', queryId]
+      );
+    } else {
+      // Create new quotation
+      await db.query(
+        `INSERT INTO quotations (order_id, user_id, quoted_price, discount, notes, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [order.order_id, adminId, calculatedFinalPrice, calculatedDiscount, notes || '']
+      );
+    }
 
     // Update orders table with pricing
     await db.query(
-      `UPDATE orders SET basic_price_usd = ?, discount_usd = ?, total_price_usd = ? WHERE order_id = ?`,
-      [basePrice, discount, finalPrice, order.order_id]
+      `UPDATE orders 
+       SET basic_price = ?, discount = ?, total_price = ?, status = 27 
+       WHERE order_id = ?`,
+      [calculatedBasePrice + calculatedUrgencyCharge, calculatedDiscount, calculatedFinalPrice, order.order_id]
     );
 
-    // Update order status to "Quotation Sent" (27)
-    await db.query(
-      `UPDATE orders SET status = 27 WHERE order_id = ?`,
-      [order.order_id]
-    );
+    // Send notification to client
+    try {
+      await createNotification({
+        user_id: order.user_id,
+        type: 'info',
+        title: 'Quotation Received',
+        message: `A quotation of $${calculatedFinalPrice.toFixed(2)} has been sent for your query "${order.paper_topic}". Please review and respond.`,
+        link_url: `/client/queries/${order.order_id}`
+      });
+      
+      // Real-time emit
+      emitToUser(order.user_id, 'notification:new', {
+        type: 'quotation_received',
+        orderId: order.order_id,
+        queryCode: order.query_code,
+        price: calculatedFinalPrice,
+        message: `Quotation of $${calculatedFinalPrice.toFixed(2)} received`
+      });
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
 
-    // Notify client
-    const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
-    for (const admin of admins) {
-      emitToUser(admin.user_id, 'notification:new', {
+    // Notify BDE if assigned
+    if (order.bde) {
+      emitToUser(order.bde, 'notification:new', {
         type: 'quotation_sent',
         orderId: order.order_id,
-        price: finalPrice
+        price: calculatedFinalPrice
       });
     }
-    res.json({ success: true, message: 'Quotation sent successfully.' });
+
+    res.json({ 
+      success: true, 
+      message: 'Quotation sent successfully.',
+      data: {
+        orderId: order.order_id,
+        finalPrice: calculatedFinalPrice
+      }
+    });
   } catch (err) {
     console.error('Error in generateQuotation:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -213,12 +267,13 @@ exports.viewQuery = async (req, res) => {
     const whereClause = isNumericId ? 'o.order_id = ?' : '(o.query_code = ? OR o.work_code = ?)';
     const lookupParams = isNumericId ? [queryId] : [queryId, queryId];
 
-    // Get query details with user info
+    // Get query details with user info including currency
     const [[query]] = await db.query(
       `SELECT 
         o.order_id, o.query_code, o.user_id, u.full_name, u.email, u.mobile_number, u.university,
+        u.currency_code, u.country,
         o.paper_topic as topic, o.description, o.urgency, o.deadline_at as deadline, 
-        o.status, o.created_at, o.basic_price_usd, o.total_price_usd, o.file_path, o.writer_id
+        o.status, o.created_at, o.basic_price, o.discount, o.total_price, o.file_path, o.writer_id
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.user_id
       WHERE ${whereClause}
@@ -230,19 +285,19 @@ exports.viewQuery = async (req, res) => {
       return res.status(404).render('errors/404', { title: 'Query Not Found', layout: false });
     }
 
-    // Get interested writers (for assignment)
+    // Get interested writers (for assignment) - includes writers who accepted the invitation
     const [interestedWriters] = await db.query(
-      `SELECT wqi.writer_id, wu.full_name, wqi.status, wu.email, wu.is_active
+      `SELECT wqi.writer_id, wu.full_name, wqi.status, wu.email, wu.is_active, wqi.comment
        FROM writer_query_interest wqi
        JOIN users wu ON wu.user_id = wqi.writer_id
-       WHERE wqi.order_id = ? AND (wqi.status = 'interested' OR wqi.status = 'assigned')
+       WHERE wqi.order_id = ? AND (wqi.status = 'interested' OR wqi.status = 'assigned' OR wqi.status = 'accepted')
        ORDER BY wqi.created_at ASC`,
       [query.order_id]
     );
 
-    // Get accepted writers
+    // Get accepted writers (legacy - keeping for compatibility but 'interested' is used now)
     const [acceptedWriters] = await db.query(
-      `SELECT wqi.writer_id, wu.full_name, wqi.status, wu.email, wu.is_active
+      `SELECT wqi.writer_id, wu.full_name, wqi.status, wu.email, wu.is_active, wqi.comment
        FROM writer_query_interest wqi
        JOIN users wu ON wu.user_id = wqi.writer_id
        WHERE wqi.order_id = ? AND wqi.status = 'accepted'
@@ -257,6 +312,16 @@ exports.viewQuery = async (req, res) => {
        JOIN users wu ON wu.user_id = wqi.writer_id
        WHERE wqi.order_id = ? AND wqi.status = 'rejected'
        ORDER BY wqi.created_at ASC`,
+      [query.order_id]
+    );
+
+    // Get revoked writers (for history)
+    const [revokedWriters] = await db.query(
+      `SELECT wqi.writer_id, wu.full_name, wqi.status, wu.email, wu.is_active, wqi.updated_at as revoked_at
+       FROM writer_query_interest wqi
+       JOIN users wu ON wu.user_id = wqi.writer_id
+       WHERE wqi.order_id = ? AND wqi.status = 'revoked'
+       ORDER BY wqi.updated_at DESC`,
       [query.order_id]
     );
 
@@ -300,6 +365,7 @@ exports.viewQuery = async (req, res) => {
       interestedWriters: interestedWriters || [],
       acceptedWriters: acceptedWriters || [],
       rejectedWriters: rejectedWriters || [],
+      revokedWriters: revokedWriters || [],
       invitedWriters: invitedWriters || [],
       availableWriters: availableWriters || [],
       assignedWriter: assignedWriter || null,
@@ -315,7 +381,6 @@ exports.viewQuery = async (req, res) => {
 /**
  * Admin invites writers to a query
  */
-const { createNotification } = require('../utils/notification.service');
 exports.inviteWriters = async (req, res) => {
   try {
     const { queryId } = req.params;
@@ -384,21 +449,33 @@ exports.inviteWriters = async (req, res) => {
     
     // Fetch order details for notification
     const [orderRows] = await db.query(
-      'SELECT paper_topic, deadline_at FROM orders WHERE order_id = ?',
+      'SELECT query_code, paper_topic, deadline_at FROM orders WHERE order_id = ?',
       [parseInt(queryId)]
     );
     const orderData = orderRows[0] || {};
     
-    // Send notifications
-    for (const writerId of writerIds) {
+    // Send notifications to invited writers
+    for (const writerId of invitedWriters) {
       try {
-        await createNotification({
-          user_id: parseInt(writerId),
+        // Create persistent notification in database
+        await db.query(
+          `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+          [
+            parseInt(writerId),
+            'info',
+            'New Query Invitation',
+            `You have been invited to review query ${orderData.query_code || queryId}: ${orderData.paper_topic || 'N/A'}. Deadline: ${orderData.deadline_at ? new Date(orderData.deadline_at).toLocaleDateString() : 'N/A'}`,
+            `/writer/queries`
+          ]
+        );
+        
+        // Send real-time notification
+        emitToUser(parseInt(writerId), 'notification:new', {
           type: 'info',
-          title: 'You have been invited to a new query',
-          message: orderData ? `Topic: ${orderData.paper_topic}, Deadline: ${orderData.deadline_at}` : 'You have a new query invitation.',
-          link_url: `/writer/queries/${queryId}`
-        }, req.app.get('io'));
+          title: 'New Query Invitation',
+          message: `You have been invited to review query ${orderData.query_code || queryId}: ${orderData.paper_topic || 'N/A'}`,
+          link_url: `/writer/queries`
+        });
       } catch (notifErr) {
         console.error('Notification error for writer', writerId, ':', notifErr);
       }
@@ -458,13 +535,31 @@ exports.writerShowInterest = async (req, res) => {
       );
     }
 
-    // Notify admin
+    // Get writer and order details for notification
+    const [[writerInfo]] = await db.query(`SELECT full_name FROM users WHERE user_id = ?`, [writerId]);
+    const [[orderInfo]] = await db.query(`SELECT query_code, paper_topic FROM orders WHERE order_id = ?`, [orderId]);
+    
+    // Create persistent notification for admins
     const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
     for (const admin of admins) {
+      // Save notification to database
+      await db.query(
+        `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+        [
+          admin.user_id,
+          'success',
+          'Writer Accepted Invitation',
+          `${writerInfo?.full_name || 'A writer'} has accepted the invitation for query ${orderInfo?.query_code || orderId}: ${orderInfo?.paper_topic || 'N/A'}`,
+          `/admin/queries/${orderId}`
+        ]
+      );
+      
+      // Emit real-time notification
       emitToUser(admin.user_id, 'notification:new', {
-        type: 'writer_interest',
-        orderId,
-        writerId
+        type: 'success',
+        title: 'Writer Accepted Invitation',
+        message: `${writerInfo?.full_name || 'A writer'} has accepted the invitation for query ${orderInfo?.query_code || orderId}`,
+        link_url: `/admin/queries/${orderId}`
       });
     }
     res.json({ success: true, message: 'Interest registered.' });
@@ -501,14 +596,31 @@ exports.writerDeclineInvitation = async (req, res) => {
       [reason || '', invite.id]
     );
 
-    // Notify admin
+    // Get writer and order details for notification
+    const [[writerInfo]] = await db.query(`SELECT full_name FROM users WHERE user_id = ?`, [writerId]);
+    const [[orderInfo]] = await db.query(`SELECT query_code, paper_topic FROM orders WHERE order_id = ?`, [orderId]);
+    
+    // Create persistent notification for admins
     const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
     for (const admin of admins) {
+      // Save notification to database
+      await db.query(
+        `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+        [
+          admin.user_id,
+          'warning',
+          'Writer Declined Invitation',
+          `${writerInfo?.full_name || 'A writer'} has declined the invitation for query ${orderInfo?.query_code || orderId}. Reason: ${reason || 'No reason provided'}`,
+          `/admin/queries/${orderId}`
+        ]
+      );
+      
+      // Emit real-time notification
       emitToUser(admin.user_id, 'notification:new', {
-        type: 'writer_declined',
-        orderId,
-        writerId,
-        reason
+        type: 'warning',
+        title: 'Writer Declined Invitation',
+        message: `${writerInfo?.full_name || 'A writer'} has declined the invitation for query ${orderInfo?.query_code || orderId}`,
+        link_url: `/admin/queries/${orderId}`
       });
     }
     
@@ -521,19 +633,19 @@ exports.writerDeclineInvitation = async (req, res) => {
 
 
 /**
- * Admin assigns a writer from interested list
+ * Admin assigns a writer from interested/accepted list
  */
 exports.adminAssignWriter = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { writerId } = req.body;
-    // Only allow assignment from interested list
+    // Only allow assignment from interested or accepted list
     const [[interest]] = await db.query(
-      `SELECT id FROM writer_query_interest WHERE order_id = ? AND writer_id = ? AND status = 'interested'`,
+      `SELECT id FROM writer_query_interest WHERE order_id = ? AND writer_id = ? AND status IN ('interested', 'accepted')`,
       [orderId, writerId]
     );
     if (!interest) {
-      return res.status(400).json({ success: false, message: 'Writer has not shown interest in this query.' });
+      return res.status(400).json({ success: false, message: 'Writer has not accepted the invitation for this query.' });
     }
     
     // Start a transaction
@@ -546,23 +658,140 @@ exports.adminAssignWriter = async (req, res) => {
     );
     // Update order
     await db.query(
-      `UPDATE orders SET writer_id = ? WHERE order_id = ?`,
+      `UPDATE orders SET writer_id = ?, status = 31 WHERE order_id = ?`,
       [writerId, orderId]
     );
 
     // Commit transaction
     await db.query('COMMIT');
 
-    // Notify writer
+    // Get writer and order details for notifications
+    const [[writerInfo]] = await db.query(`SELECT full_name, email FROM users WHERE user_id = ?`, [writerId]);
+    const [[orderInfo]] = await db.query(`SELECT query_code, order_code, paper_topic, deadline_at FROM orders WHERE order_id = ?`, [orderId]);
+
+    // Create persistent notification for writer
+    await db.query(
+      `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+      [
+        writerId,
+        'success',
+        'New Assignment - You Have Been Selected!',
+        `You have been assigned to work on: ${orderInfo?.paper_topic || 'N/A'}. Work Code: ${orderInfo?.order_code || orderInfo?.query_code || orderId}. Deadline: ${orderInfo?.deadline_at ? new Date(orderInfo.deadline_at).toLocaleDateString() : 'N/A'}`,
+        `/writer/tasks`
+      ]
+    );
+    
+    // Emit real-time notification to writer
     emitToUser(writerId, 'notification:new', {
-      type: 'writer_assigned',
-      orderId
+      type: 'success',
+      title: 'New Assignment - You Have Been Selected!',
+      message: `You have been assigned to work on: ${orderInfo?.paper_topic || 'N/A'}`,
+      link_url: `/writer/tasks`
     });
-    res.json({ success: true, message: 'Writer assigned.' });
+
+    // Notify all admins about the assignment
+    const [admins] = await db.query(`SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`);
+    for (const admin of admins) {
+      await db.query(
+        `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+        [
+          admin.user_id,
+          'info',
+          'Writer Assigned Successfully',
+          `${writerInfo?.full_name || 'Writer'} has been assigned to ${orderInfo?.order_code || orderInfo?.query_code || orderId}: ${orderInfo?.paper_topic || 'N/A'}`,
+          `/admin/queries/${orderId}`
+        ]
+      );
+    }
+    
+    res.json({ success: true, message: 'Writer assigned successfully.' });
   } catch (err) {
     // Rollback transaction on error
     await db.query('ROLLBACK');
     console.error('Error in adminAssignWriter:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * Admin revokes writer assignment - allows reassignment
+ */
+exports.revokeWriterAssignment = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const adminId = req.user.user_id;
+
+    // Get current assigned writer
+    const [[order]] = await db.query(
+      `SELECT writer_id, query_code, paper_topic FROM orders WHERE order_id = ?`,
+      [orderId]
+    );
+
+    if (!order || !order.writer_id) {
+      return res.status(400).json({ success: false, message: 'No writer is currently assigned to this query.' });
+    }
+
+    const previousWriterId = order.writer_id;
+
+    // Start transaction
+    await db.query('START TRANSACTION');
+
+    // Update writer_query_interest status to 'revoked'
+    await db.query(
+      `UPDATE writer_query_interest SET status = 'revoked', updated_at = NOW() WHERE order_id = ? AND writer_id = ? AND status = 'assigned'`,
+      [orderId, previousWriterId]
+    );
+
+    // Clear writer from order and reset status to awaiting assignment (status 30)
+    await db.query(
+      `UPDATE orders SET writer_id = NULL, status = 30 WHERE order_id = ?`,
+      [orderId]
+    );
+
+    // Commit transaction
+    await db.query('COMMIT');
+
+    // Get writer info for notification
+    const [[writerInfo]] = await db.query(`SELECT full_name FROM users WHERE user_id = ?`, [previousWriterId]);
+
+    // Notify the writer about revocation
+    await db.query(
+      `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+      [
+        previousWriterId,
+        'warning',
+        'Assignment Revoked',
+        `Your assignment for "${order.paper_topic || 'N/A'}" (${order.query_code || orderId}) has been revoked by admin. The task will be reassigned to another writer.`,
+        `/writer/tasks`
+      ]
+    );
+
+    // Emit real-time notification
+    emitToUser(previousWriterId, 'notification:new', {
+      type: 'warning',
+      title: 'Assignment Revoked',
+      message: `Your assignment for "${order.paper_topic || 'N/A'}" has been revoked.`
+    });
+
+    // Log the action
+    await logAction({
+      userId: adminId,
+      action: 'revoke_writer_assignment',
+      details: `Revoked writer ${writerInfo?.full_name || previousWriterId} from query ${order.query_code || orderId}`,
+      resource_type: 'order',
+      resource_id: orderId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    res.json({ 
+      success: true, 
+      message: `Writer assignment revoked successfully. You can now invite and assign a new writer.`,
+      revokedWriterId: previousWriterId
+    });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error('Error in revokeWriterAssignment:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 };

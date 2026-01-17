@@ -101,6 +101,87 @@ function generateUniqueCode(prefix = '', length = 8) {
 }
 
 /**
+ * Generate Query Code per spec: YYYY + FN + LN + MM + OrderNo
+ * Example: 2025SS1001 (2025 + S(first) + S(last) + 10(Oct) + 01(order))
+ * 
+ * @param {string} fullName - User's full name
+ * @param {Date} date - Date of creation (defaults to now)
+ * @returns {Promise<string>} Generated query code
+ */
+async function generateQueryCode(fullName, date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  
+  // Extract initials from full name
+  const nameParts = (fullName || 'XX').trim().split(/\s+/);
+  const firstName = nameParts[0] || 'X';
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'X';
+  const initials = (firstName[0] + lastName[0]).toUpperCase();
+  
+  // Get order count for this user this month
+  const [[countResult]] = await db.query(
+    `SELECT COUNT(*) as count FROM orders 
+     WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?`,
+    [year, date.getMonth() + 1]
+  );
+  
+  const orderNo = String((countResult?.count || 0) + 1).padStart(2, '0');
+  
+  return `${year}${initials}${month}${orderNo}`;
+}
+
+/**
+ * Generate Work Code per spec: FN + LN + YYYY + MM + OrderNo
+ * Example: SS20250901 (S(first) + S(last) + 2025 + 09(Sep) + 01(order))
+ * 
+ * @param {string} fullName - User's full name
+ * @param {Date} date - Date of creation (defaults to now)
+ * @returns {Promise<string>} Generated work code
+ */
+async function generateWorkCode(fullName, date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  
+  // Extract initials from full name
+  const nameParts = (fullName || 'XX').trim().split(/\s+/);
+  const firstName = nameParts[0] || 'X';
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : 'X';
+  const initials = (firstName[0] + lastName[0]).toUpperCase();
+  
+  // Get work code count for this month
+  const [[countResult]] = await db.query(
+    `SELECT COUNT(*) as count FROM orders 
+     WHERE work_code IS NOT NULL 
+     AND YEAR(created_at) = ? AND MONTH(created_at) = ?`,
+    [year, date.getMonth() + 1]
+  );
+  
+  const orderNo = String((countResult?.count || 0) + 1).padStart(2, '0');
+  
+  return `${initials}${year}${month}${orderNo}`;
+}
+
+/**
+ * Generate WhatsApp URL with prefilled message for query
+ * 
+ * @param {string} whatsappNumber - User's WhatsApp number
+ * @param {string} queryCode - Generated query code
+ * @param {string} paperTopic - Topic of the query
+ * @returns {string} WhatsApp URL
+ */
+function generateWhatsAppUrl(whatsappNumber, queryCode, paperTopic) {
+  const cleanNumber = (whatsappNumber || '').replace(/[^\d]/g, '');
+  const message = encodeURIComponent(
+    `Hi! I've submitted a new query.\n\n` +
+    `Query Code: ${queryCode}\n` +
+    `Topic: ${paperTopic}\n\n` +
+    `Please review and send me a quotation. Thank you!`
+  );
+  
+  return `https://wa.me/${cleanNumber}?text=${message}`;
+}
+
+/**
  * Verify user exists and is verified (active)
  * 
  * @param {number} user_id
@@ -260,6 +341,9 @@ module.exports = {
   createAuditLog,
   createNotification,
   generateUniqueCode,
+  generateQueryCode,
+  generateWorkCode,
+  generateWhatsAppUrl,
   getUserIfVerified,
   getWalletBalance,
   recordWalletTransaction,

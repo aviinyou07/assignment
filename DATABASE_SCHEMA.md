@@ -1,6 +1,6 @@
 # Database Schema - db_assignment_366
 
-Generated: 1/15/2026, 11:58:54 AM
+Generated: 1/16/2026, 1:48:03 PM
 
 ================================================================================
 
@@ -18,6 +18,27 @@ Generated: 1/15/2026, 11:58:54 AM
   9. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
   10. action (varchar(100))
   11. details (text)
+
+
+## TABLE: chat_requests
+--------------------------------------------------------------------------------
+  1. request_id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
+  2. from_user_id (int) [INDEX, NOT NULL]
+  3. from_role (varchar(20))
+  4. to_user_id (int) [INDEX, NOT NULL]
+  5. request_type (enum('admin','bde')) [NOT NULL]
+  6. message (text)
+  7. status (enum('pending','approved','rejected')) [DEFAULT: pending]
+  8. processed_by (int)
+  9. processed_at (datetime)
+  10. chat_id (int)
+  11. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
+  12. approved_at (datetime)
+  13. rejected_reason (text)
+
+  Foreign Keys:
+    - from_user_id → users.user_id
+    - to_user_id → users.user_id
 
 
 ## TABLE: countries
@@ -91,6 +112,52 @@ Generated: 1/15/2026, 11:58:54 AM
   9. updated_at (datetime) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
 
 
+## TABLE: general_chat_messages
+--------------------------------------------------------------------------------
+  1. message_id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
+  2. chat_id (int) [INDEX, NOT NULL]
+  3. sender_id (int) [INDEX, NOT NULL]
+  4. content (text)
+  5. message_type (enum('text','file','image')) [DEFAULT: text]
+  6. attachments (json)
+  7. is_read (json)
+  8. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
+
+  Foreign Keys:
+    - chat_id → general_chats.chat_id
+    - sender_id → users.user_id
+
+
+## TABLE: general_chat_participants
+--------------------------------------------------------------------------------
+  1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
+  2. chat_id (int) [INDEX, NOT NULL]
+  3. user_id (int) [INDEX, NOT NULL]
+  4. role (varchar(20))
+  5. joined_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
+  6. last_read_at (datetime)
+
+  Foreign Keys:
+    - chat_id → general_chats.chat_id
+    - user_id → users.user_id
+
+
+## TABLE: general_chats
+--------------------------------------------------------------------------------
+  1. chat_id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
+  2. order_id (int) [INDEX]
+  3. chat_type (enum('direct','group')) [DEFAULT: direct]
+  4. created_by (int) [INDEX, NOT NULL]
+  5. title (varchar(255))
+  6. status (enum('active','closed','restricted','deleted')) [DEFAULT: active]
+  7. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
+  8. updated_at (datetime) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
+  9. is_important (tinyint(1)) [DEFAULT: 0]
+
+  Foreign Keys:
+    - created_by → users.user_id
+
+
 ## TABLE: master_services
 --------------------------------------------------------------------------------
   1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
@@ -124,6 +191,21 @@ Generated: 1/15/2026, 11:58:54 AM
   3. is_active (int) [DEFAULT: 0]
 
 
+## TABLE: notification_reminders
+--------------------------------------------------------------------------------
+  1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
+  2. notification_id (int) [NOT NULL]
+  3. user_id (int) [INDEX, NOT NULL]
+  4. event_type (varchar(100)) [NOT NULL]
+  5. reminder_count (int) [DEFAULT: 0]
+  6. max_reminders (int) [DEFAULT: 4]
+  7. interval_minutes (int) [DEFAULT: 30]
+  8. last_sent_at (datetime)
+  9. next_send_at (datetime) [INDEX]
+  10. is_resolved (tinyint(1)) [DEFAULT: 0]
+  11. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
+
+
 ## TABLE: notifications
 --------------------------------------------------------------------------------
   1. notification_id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
@@ -134,62 +216,7 @@ Generated: 1/15/2026, 11:58:54 AM
   6. is_read (tinyint) [DEFAULT: 0]
   7. link_url (varchar(255))
   8. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
-
-
-## TABLE: order_chat_message_reads
---------------------------------------------------------------------------------
-  1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
-  2. message_id (int) [INDEX, NOT NULL]
-  3. user_id (int) [INDEX, NOT NULL]
-  4. read_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
-
-  Foreign Keys:
-    - message_id → order_chat_messages.message_id
-
-
-## TABLE: order_chat_messages
---------------------------------------------------------------------------------
-  1. message_id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
-  2. chat_id (int) [INDEX, NOT NULL]
-  3. order_id (int) [INDEX]
-  4. sender_id (int) [NOT NULL]
-  5. sender_role (varchar(32)) [NOT NULL]
-  6. message_type (varchar(32)) [DEFAULT: text]
-  7. content (text)
-  8. attachments (json)
-  9. is_edited (tinyint(1)) [DEFAULT: 0]
-  10. edited_at (datetime)
-  11. is_deleted (tinyint(1)) [DEFAULT: 0]
-  12. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
-
-  Foreign Keys:
-    - chat_id → order_chats.chat_id
-
-
-## TABLE: order_chat_participants
---------------------------------------------------------------------------------
-  1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
-  2. chat_id (int) [INDEX, NOT NULL]
-  3. user_id (int) [NOT NULL]
-  4. role (varchar(32)) [NOT NULL]
-  5. is_muted (tinyint(1)) [DEFAULT: 0]
-  6. joined_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
-
-  Foreign Keys:
-    - chat_id → order_chats.chat_id
-
-
-## TABLE: order_chats
---------------------------------------------------------------------------------
-  1. chat_id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
-  2. order_id (int) [INDEX, NOT NULL]
-  3. context_code (varchar(50)) [INDEX]
-  4. chat_name (varchar(255)) [DEFAULT: General]
-  5. participants (json)
-  6. messages (json)
-  7. status (enum('active','restricted','closed')) [DEFAULT: active]
-  8. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
-  9. updated_at (datetime) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
+  9. reminder_count (int) [DEFAULT: 0]
 
 
 ## TABLE: orders
@@ -205,9 +232,9 @@ Generated: 1/15/2026, 11:58:54 AM
   9. description (text)
   10. file_path (varchar(255))
   11. assignment_path (json)
-  12. basic_price_usd (decimal(10,2))
-  13. discount_usd (decimal(10,2)) [DEFAULT: 0.00]
-  14. total_price_usd (decimal(10,2))
+  12. basic_price (decimal(10,2))
+  13. discount (decimal(10,2)) [DEFAULT: 0.00]
+  14. total_price (decimal(10,2))
   15. status (int) [INDEX, DEFAULT: 1]
   16. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
   17. deadline_at (datetime)
@@ -223,6 +250,7 @@ Generated: 1/15/2026, 11:58:54 AM
   27. work_code (varchar(20))
   28. orderscol (varchar(45))
   29. writer_id (int)
+  30. updated_at (timestamp) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
 
 
 ## TABLE: orders_history
@@ -270,7 +298,7 @@ Generated: 1/15/2026, 11:58:54 AM
   3. user_id (int) [INDEX, NOT NULL]
   4. tax (decimal(10,2)) [DEFAULT: 0.00]
   5. discount (decimal(10,2)) [DEFAULT: 0.00]
-  6. quoted_price_usd (decimal(10,2)) [NOT NULL]
+  6. quoted_price (decimal(10,2)) [NOT NULL]
   7. notes (text)
   8. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
 
@@ -351,9 +379,10 @@ Generated: 1/15/2026, 11:58:54 AM
   2. order_id (int) [INDEX, NOT NULL]
   3. writer_id (int) [INDEX, NOT NULL]
   4. status (enum('pending','accepted','rejected','assigned','released')) [DEFAULT: pending]
-  5. comment (text)
-  6. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
-  7. updated_at (datetime) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
+  5. writer_status (enum('pending','accepted','rejected','in_progress','research_completed','writing_started','draft_submitted','rework_in_progress','completed')) [DEFAULT: pending]
+  6. comment (text)
+  7. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
+  8. updated_at (datetime) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
 
   Foreign Keys:
     - order_id → orders.order_id
@@ -421,7 +450,7 @@ Generated: 1/15/2026, 11:58:54 AM
   1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
   2. order_id (int) [INDEX, NOT NULL]
   3. writer_id (int) [INDEX, NOT NULL]
-  4. status (enum('invited','interested','accepted','rejected','assigned'))
+  4. status (enum('invited','interested','accepted','rejected','assigned','revoked')) [DEFAULT: invited]
   5. comment (text)
   6. created_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
   7. updated_at (datetime) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]

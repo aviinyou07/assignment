@@ -1,13 +1,25 @@
 const db = require('../config/db');
 const { sendMail } = require('../utils/mailer');
 const { logAction } = require('../utils/logger');
+const { STATUS, STATUS_NAMES, getLifecyclePhase } = require('../utils/order-state-machine');
+const { processWorkflowEvent, WORKFLOW_EVENTS } = require('../utils/workflow.service');
 
 /* =====================================================
-   ADMIN DASHBOARD - MAIN METRICS & KPIs
+   ADMIN DASHBOARD - COMPREHENSIVE KPIs
+   
+   KPI Cards (Per Specification):
+   - Revenue (Today/Month)
+   - New Queries
+   - Pending Quotations
+   - Confirmed Orders
+   - Active Tasks
+   - Completed Tasks
+   - Pending Approvals (Payments + Drafts Combined) - CRITICAL
 ===================================================== */
 
 exports.getDashboard = async (req, res) => {
   try {
+    console.log('[DEBUG] getDashboard called, user_id:', req.user?.user_id);
     const userId = req.user.user_id;
 
     // Fetch admin profile
@@ -20,7 +32,10 @@ exports.getDashboard = async (req, res) => {
       [userId]
     );
 
+    console.log('[DEBUG] Admin rows found:', adminRows.length);
+
     if (!adminRows.length) {
+      console.log('[DEBUG] No admin found for user_id:', userId);
       return res.status(404).render("errors/404", { title: "Not Found", layout: false });
     }
 
@@ -36,7 +51,7 @@ exports.getDashboard = async (req, res) => {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    // KPI QUERIES - ALL PARALLEL
+    // COMPREHENSIVE KPI QUERIES - ALL PARALLEL
     const [
       [todayRevenue],
       [monthRevenue],
@@ -45,87 +60,200 @@ exports.getDashboard = async (req, res) => {
       [confirmedOrders],
       [activeTasks],
       [completedTasks],
-      [pendingApprovals]
+      [pendingPayments],
+      [pendingDrafts],
+      [overdueOrders],
+      [writerPendingAcceptance],
+      [underRevision],
+      [readyForDelivery],
+      [deliveredToday],
+      [clientResponses]
     ] = await Promise.all([
-      // 1. Total Revenue Today
+      // 1. Total Revenue Today (from payments where order is verified/beyond)
       db.query(
-        `SELECT COALESCE(SUM(total_price_usd), 0) as revenue
-         FROM orders
-         WHERE DATE(created_at) = DATE(?)`,
-        [today]
+        `SELECT COALESCE(SUM(p.amount), 0) as revenue
+         FROM payments p
+         JOIN orders o ON p.order_id = o.order_id
+         WHERE o.status >= ? AND DATE(p.created_at) = DATE(?)`,
+        [STATUS.PAYMENT_VERIFIED, today]
       ),
       // 2. Total Revenue This Month
       db.query(
-        `SELECT COALESCE(SUM(total_price_usd), 0) as revenue
-         FROM orders
-         WHERE DATE(created_at) >= DATE(?) AND DATE(created_at) <= DATE(?)`,
-        [monthStart, monthEnd]
+        `SELECT COALESCE(SUM(p.amount), 0) as revenue
+         FROM payments p
+         JOIN orders o ON p.order_id = o.order_id
+         WHERE o.status >= ?
+           AND DATE(p.created_at) >= DATE(?) AND DATE(p.created_at) <= DATE(?)`,
+        [STATUS.PAYMENT_VERIFIED, monthStart, monthEnd]
       ),
-      // 3. New Queries Today (status: PENDING_QUERY)
+      // 3. New Queries Today (PENDING_QUERY status = 26)
       db.query(
         `SELECT COUNT(*) as count
          FROM orders
-         WHERE DATE(created_at) = DATE(?) AND status = 26`,
-        [today]
+         WHERE DATE(created_at) = DATE(?) AND status = ?`,
+        [today, STATUS.PENDING_QUERY]
       ),
-      // 4. Pending Quotations (QUOTATION_SENT status)
+      // 4. Pending Quotations (QUOTATION_SENT status = 27)
       db.query(
         `SELECT COUNT(*) as count
          FROM orders
-         WHERE status = 27`,
-        []
+         WHERE status = ?`,
+        [STATUS.QUOTATION_SENT]
       ),
       // 5. Confirmed Orders Today (PAYMENT_VERIFIED and beyond)
       db.query(
         `SELECT COUNT(*) as count
          FROM orders
-         WHERE DATE(created_at) = DATE(?) AND status >= 30`,
-        [today]
+         WHERE DATE(updated_at) = DATE(?) AND status >= ?`,
+        [today, STATUS.PAYMENT_VERIFIED]
       ),
-      // 6. Active Tasks In Progress
+      // 6. Active Tasks In Progress (submissions pending QC or revision)
       db.query(
         `SELECT COUNT(*) as count
          FROM submissions
-         WHERE status = 'pending_qc' OR status = 'revision_required'`,
+         WHERE status IN ('pending_qc', 'revision_required')`,
         []
       ),
       // 7. Completed Tasks This Month
       db.query(
         `SELECT COUNT(*) as count
          FROM submissions
-         WHERE status = 'completed' AND DATE(created_at) >= DATE(?) AND DATE(created_at) <= DATE(?)`,
+         WHERE status = 'approved' 
+           AND DATE(updated_at) >= DATE(?) AND DATE(updated_at) <= DATE(?)`,
         [monthStart, monthEnd]
       ),
-      // 8. Pending Approvals (Payment Submitted or Pending QC)
+      // 8. Pending Payments (AWAITING_VERIFICATION = 29)
       db.query(
-        `SELECT COUNT(DISTINCT po.order_id) as count
-         FROM orders po
-         WHERE po.status = 29 OR po.status = 33`,
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE status = ?`,
+        [STATUS.AWAITING_VERIFICATION]
+      ),
+      // 9. Pending Drafts/QC Review
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM submissions
+         WHERE status = 'pending_qc'`,
         []
+      ),
+      // 10. Overdue Orders (deadline passed but not delivered)
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE deadline_at < NOW() AND status NOT IN (?, ?, ?, ?)`,
+        [STATUS.DELIVERED, STATUS.COMPLETED, STATUS.QUERY_REJECTED, STATUS.CANCELLED]
+      ),
+      // 11. Writer Pending Acceptance (WRITER_ASSIGNED = 31)
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE status = ?`,
+        [STATUS.WRITER_ASSIGNED]
+      ),
+      // 12. Under Revision
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE status = ?`,
+        [STATUS.REVISION_REQUIRED]
+      ),
+      // 13. Ready For Delivery (APPROVED)
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE status = ?`,
+        [STATUS.APPROVED]
+      ),
+      // 14. Delivered Today
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE status = ? AND DATE(updated_at) = DATE(?)`,
+        [STATUS.DELIVERED, today]
+      ),
+      // 15. Awaiting Client Response (QUOTATION_SENT)
+      db.query(
+        `SELECT COUNT(*) as count
+         FROM orders
+         WHERE status = ? AND DATEDIFF(NOW(), updated_at) > 2`,
+        [STATUS.QUOTATION_SENT]
       )
     ]);
 
-    // Prepare KPI data
+    // COMBINED PENDING APPROVALS (Payments + Drafts)
+    const totalPendingApprovals = pendingPayments[0].count + pendingDrafts[0].count;
+
+    // Prepare comprehensive KPI data
     const kpis = {
+      // Financial
       todayRevenue: parseFloat(todayRevenue[0].revenue).toFixed(2),
       monthRevenue: parseFloat(monthRevenue[0].revenue).toFixed(2),
+      
+      // Query Pipeline
       newQueries: newQueries[0].count,
       pendingQuotations: pendingQuotations[0].count,
+      clientResponses: clientResponses[0].count, // Stale quotations
+      
+      // Orders
       confirmedOrders: confirmedOrders[0].count,
+      overdueOrders: overdueOrders[0].count,
+      
+      // Tasks/Work
       activeTasks: activeTasks[0].count,
       completedTasks: completedTasks[0].count,
-      pendingApprovals: pendingApprovals[0].count
+      writerPendingAcceptance: writerPendingAcceptance[0].count,
+      underRevision: underRevision[0].count,
+      
+      // Approvals - COMBINED METRIC
+      pendingApprovals: totalPendingApprovals,
+      pendingPayments: pendingPayments[0].count,
+      pendingDrafts: pendingDrafts[0].count,
+      
+      // Delivery
+      readyForDelivery: readyForDelivery[0].count,
+      deliveredToday: deliveredToday[0].count
     };
 
-    // Get recent activities (last 10)
+    // Get recent activities with status labels
     const [recentActivities] = await db.query(
       `SELECT 
-        order_id, order_code, user_id, paper_topic, 
-        service, status, created_at, writer_id
-      FROM orders
-      ORDER BY created_at DESC
-      LIMIT 10`
+        o.order_id, o.query_code, o.work_code, o.user_id, o.paper_topic, 
+        o.service, o.status, o.created_at, o.deadline_at, o.writer_id,
+        u.full_name as client_name,
+        w.full_name as writer_name
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.user_id
+      LEFT JOIN users w ON o.writer_id = w.user_id
+      ORDER BY o.updated_at DESC
+      LIMIT 15`
     );
+
+    // Add status label and phase to each activity
+    const activitiesWithLabels = recentActivities.map(activity => ({
+      ...activity,
+      statusLabel: STATUS_NAMES[activity.status] || `Status ${activity.status}`,
+      lifecyclePhase: getLifecyclePhase(activity.status),
+      isOverdue: activity.deadline_at && new Date(activity.deadline_at) < new Date() && activity.status < STATUS.DELIVERED
+    }));
+
+    // Get urgent items requiring attention
+    const [urgentItems] = await db.query(
+      `SELECT 
+        o.order_id, o.query_code, o.work_code, o.paper_topic, o.deadline_at, o.status,
+        TIMESTAMPDIFF(HOUR, NOW(), o.deadline_at) as hours_remaining
+      FROM orders o
+      WHERE o.deadline_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 24 HOUR)
+        AND o.status NOT IN (?, ?, ?, ?)
+      ORDER BY o.deadline_at ASC
+      LIMIT 10`,
+      [STATUS.DELIVERED, STATUS.COMPLETED, STATUS.QUERY_REJECTED, STATUS.CANCELLED]
+    );
+
+    const urgentItemsWithLabels = urgentItems.map(item => ({
+      ...item,
+      statusLabel: STATUS_NAMES[item.status] || `Status ${item.status}`,
+      urgencyLevel: item.hours_remaining <= 6 ? 'critical' : item.hours_remaining <= 12 ? 'high' : 'medium'
+    }));
 
     // Get admin initials
     const initials = profile.full_name
@@ -139,11 +267,14 @@ exports.getDashboard = async (req, res) => {
       profile,
       initials,
       kpis,
-      recentActivities
+      recentActivities: activitiesWithLabels,
+      urgentItems: urgentItemsWithLabels,
+      STATUS_NAMES
     });
 
   } catch (err) {
     console.error("Admin Dashboard error:", err);
+    console.error("Error stack:", err.stack);
     res.status(500).render("errors/500", { title: "Server Error", layout: false });
   }
 };
@@ -249,8 +380,8 @@ exports.viewQuery = async (req, res) => {
       `SELECT 
         o.order_id, o.order_code, o.paper_topic, o.service, 
         o.subject, o.urgency, o.deadline_at, o.status, 
-        o.created_at, o.description, o.file_path, o.basic_price_usd,
-        o.discount_usd, o.total_price_usd, o.user_id,
+        o.created_at, o.description, o.file_path, o.basic_price,
+        o.discount, o.total_price, o.user_id,
         u.full_name, u.email, u.mobile_number, u.university
       FROM orders o
       JOIN users u ON o.user_id = u.user_id
@@ -628,5 +759,176 @@ exports.approveQC = async (req, res) => {
     connection.release();
     console.error("Approve QC error:", err);
     res.status(500).json({ success: false, message: 'Failed to process QC' });
+  }
+};
+
+// ===== REAL-TIME DASHBOARD API =====
+
+/**
+ * Get sidebar counts for real-time badge updates
+ */
+exports.getSidebarCounts = async (req, res) => {
+  try {
+    // Queries count (status 26-27)
+    const [queriesResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status IN (26, 27)`
+    );
+
+    // Pending Payments count (status 28)
+    const [paymentsResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 28`
+    );
+
+    // QC Pending count (status 33)
+    const [qcResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 33`
+    );
+
+    // Delivery Pending count (status 37)
+    const [deliveryResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 37`
+    );
+
+    // Active Writers count
+    const [writersResult] = await db.query(
+      `SELECT COUNT(*) as count FROM users WHERE role = 'writer' AND is_active = 1`
+    );
+
+    // Active BDEs count
+    const [bdesResult] = await db.query(
+      `SELECT COUNT(*) as count FROM users WHERE role = 'bde' AND is_active = 1`
+    );
+
+    // Unread Notifications
+    const [notificationsResult] = await db.query(
+      `SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0`,
+      [req.user.user_id]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        queries: queriesResult[0].count,
+        payments: paymentsResult[0].count,
+        qc: qcResult[0].count,
+        delivery: deliveryResult[0].count,
+        writers: writersResult[0].count,
+        bdes: bdesResult[0].count,
+        notifications: notificationsResult[0].count
+      }
+    });
+
+  } catch (err) {
+    console.error("Get sidebar counts error:", err);
+    res.status(500).json({ success: false, message: 'Failed to fetch sidebar counts' });
+  }
+};
+
+/**
+ * Get dashboard KPIs for real-time updates
+ */
+exports.getDashboardKPIs = async (req, res) => {
+  try {
+    // Total Active Orders (status 26-39)
+    const [activeOrdersResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status BETWEEN 26 AND 39`
+    );
+
+    // Orders by Phase
+    const [phaseCountsResult] = await db.query(`
+      SELECT 
+        SUM(CASE WHEN status IN (26, 27) THEN 1 ELSE 0 END) as query_phase,
+        SUM(CASE WHEN status IN (28, 29, 30) THEN 1 ELSE 0 END) as payment_phase,
+        SUM(CASE WHEN status IN (31, 32, 33) THEN 1 ELSE 0 END) as execution_phase,
+        SUM(CASE WHEN status IN (34, 35, 36) THEN 1 ELSE 0 END) as qc_phase,
+        SUM(CASE WHEN status IN (37, 38, 39) THEN 1 ELSE 0 END) as delivery_phase,
+        SUM(CASE WHEN status IN (40, 41, 42, 43, 44, 45) THEN 1 ELSE 0 END) as terminal_phase
+      FROM orders WHERE status BETWEEN 26 AND 45
+    `);
+
+    // Today's Orders
+    const [todayOrdersResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE DATE(created_at) = CURDATE()`
+    );
+
+    // Revenue Today
+    const [todayRevenueResult] = await db.query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
+       WHERE status = 'confirmed' AND DATE(created_at) = CURDATE()`
+    );
+
+    // Revenue This Month
+    const [monthRevenueResult] = await db.query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payments 
+       WHERE status = 'confirmed' AND MONTH(created_at) = MONTH(CURDATE()) 
+       AND YEAR(created_at) = YEAR(CURDATE())`
+    );
+
+    // Pending Actions
+    const [pendingQueriesResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 26`
+    );
+    const [pendingQuotationsResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 27`
+    );
+    const [pendingPaymentsResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 28`
+    );
+    const [pendingQCResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 33`
+    );
+    const [pendingDeliveryResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders WHERE status = 37`
+    );
+
+    // Overdue Orders
+    const [overdueResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders 
+       WHERE deadline < NOW() AND status BETWEEN 26 AND 39`
+    );
+
+    // Due Today
+    const [dueTodayResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders 
+       WHERE DATE(deadline) = CURDATE() AND status BETWEEN 26 AND 39`
+    );
+
+    // Completion Rate (last 30 days)
+    const [completedResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders 
+       WHERE status = 40 AND updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`
+    );
+    const [totalCompletableResult] = await db.query(
+      `SELECT COUNT(*) as count FROM orders 
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`
+    );
+    const completionRate = totalCompletableResult[0].count > 0 
+      ? Math.round((completedResult[0].count / totalCompletableResult[0].count) * 100)
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        activeOrders: activeOrdersResult[0].count,
+        phases: phaseCountsResult[0],
+        todayOrders: todayOrdersResult[0].count,
+        todayRevenue: todayRevenueResult[0].total,
+        monthRevenue: monthRevenueResult[0].total,
+        pending: {
+          queries: pendingQueriesResult[0].count,
+          quotations: pendingQuotationsResult[0].count,
+          payments: pendingPaymentsResult[0].count,
+          qc: pendingQCResult[0].count,
+          delivery: pendingDeliveryResult[0].count
+        },
+        overdue: overdueResult[0].count,
+        dueToday: dueTodayResult[0].count,
+        completionRate: completionRate
+      }
+    });
+
+  } catch (err) {
+    console.error("Get dashboard KPIs error:", err);
+    res.status(500).json({ success: false, message: 'Failed to fetch dashboard KPIs' });
   }
 };

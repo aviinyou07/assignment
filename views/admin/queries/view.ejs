@@ -118,135 +118,292 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-blue-50 p-4 rounded-xl">
               <p class="text-sm text-slate-600 mb-1">Basic Price</p>
-              <p class="text-2xl font-black text-blue-600">$<%= parseFloat(query.basic_price_usd || 0).toFixed(2) %></p>
+              <p class="text-2xl font-black text-blue-600"><%= query.currency_code %> <%= parseFloat(query.basic_price || 0).toFixed(2) %></p>
             </div>
 
             <div class="bg-orange-50 p-4 rounded-xl">
               <p class="text-sm text-slate-600 mb-1">Discount</p>
-              <p class="text-2xl font-black text-orange-600">-$<%= parseFloat(query.discount_usd || 0).toFixed(2) %></p>
+              <p class="text-2xl font-black text-orange-600">-<%= query.currency_code %> <%= parseFloat(query.discount || 0).toFixed(2) %></p>
             </div>
 
             <div class="bg-green-50 p-4 rounded-xl">
               <p class="text-sm text-slate-600 mb-1">Total Price</p>
-              <p class="text-2xl font-black text-green-600">$<%= parseFloat(query.total_price_usd || 0).toFixed(2) %></p>
+              <p class="text-2xl font-black text-green-600"><%= query.currency_code %> <%= parseFloat(query.total_price || 0).toFixed(2) %></p>
             </div>
           </div>
         </div>
 
-        <!-- ASSIGNED WRITERS CARD -->
+        <!-- WRITER ASSIGNMENT WORKFLOW CARD -->
         <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
           <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-            <h3 class="text-lg font-black text-slate-800">Writer Assignment Workflow</h3>
-          </div>
-          <button onclick="openInviteWriterModal()" class="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition">Invite Writers</button>
-
-          <h4 class="text-md font-bold text-indigo-700 mb-2 mt-4">Invited Writers</h4>
-                    <% if (invitedWriters && invitedWriters.length > 0) { %>
-                      <div class="space-y-2 mb-4">
-                        <% invitedWriters.forEach(writer => { %>
-                          <div class="flex items-center justify-between p-2 bg-indigo-50 rounded-lg">
-                            <div class="flex items-center gap-2">
-                              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white font-bold text-xs">
-                                <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
-                              </div>
-                              <div>
-                                <p class="font-bold text-indigo-800 text-xs"><%= writer.full_name %></p>
-                                <p class="text-xs text-indigo-700 mt-1"><%= writer.email %></p>
-                              </div>
-                            </div>
-                            <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-bold">Invited</span>
-                          </div>
-                        <% }); %>
-                      </div>
-                    <% } else { %>
-                      <div class="text-center py-2 text-slate-500">No writers have been invited yet.</div>
-                    <% } %>
-
-          <h4 class="text-md font-bold text-slate-700 mb-2 mt-4">Interested Writers</h4>
-          <% if (interestedWriters && interestedWriters.length > 0) { %>
-            <div class="space-y-2 mb-4">
-              <% interestedWriters.forEach(writer => { %>
-                <% if (writer.status === 'interested' || writer.status === 'assigned') { %>
-                <div class="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-violet-500 flex items-center justify-center text-white font-bold text-xs">
-                      <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
-                    </div>
-                    <div>
-                      <p class="font-bold text-slate-800 text-xs"><%= writer.full_name %></p>
-                    </div>
-                  </div>
-                  <div>
-                    <% if (writer.status === 'assigned') { %>
-                      <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Assigned</span>
-                    <% } else { %>
-                      <button class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold" onclick="assignWriter('<%= writer.writer_id %>')">Assign</button>
-                    <% } %>
-                  </div>
-                </div>
-                <% } %>
-              <% }); %>
-            </div>
-          <% } else { %>
-            <div class="text-center py-4 text-slate-500">No writers have shown interest yet.</div>
-          <% } %>
-
-          <h4 class="text-md font-bold text-green-700 mb-2 mt-4">Accepted Writers</h4>
-          <% if (acceptedWriters && acceptedWriters.length > 0) { %>
-            <div class="space-y-2 mb-4">
-              <% acceptedWriters.forEach(writer => { %>
-                <div class="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 flex items-center justify-center text-white font-bold text-xs">
-                      <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
-                    </div>
-                    <div>
-                      <p class="font-bold text-green-800 text-xs"><%= writer.full_name %></p>
-                    </div>
-                  </div>
-                  <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">Accepted</span>
-                </div>
-              <% }); %>
-            </div>
-          <% } else { %>
-            <div class="text-center py-2 text-slate-500">No writers have accepted yet.</div>
-          <% } %>
-
-          <h4 class="text-md font-bold text-rose-700 mb-2 mt-4">Rejected Writers</h4>
-          <% if (rejectedWriters && rejectedWriters.length > 0) { %>
-            <div class="space-y-2 mb-4">
-              <% rejectedWriters.forEach(writer => { %>
-                <div class="flex items-center justify-between p-2 bg-rose-50 rounded-lg">
-                  <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white font-bold text-xs">
-                      <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
-                    </div>
-                    <div>
-                      <p class="font-bold text-rose-800 text-xs"><%= writer.full_name %></p>
-                      <p class="text-xs text-rose-700 mt-1">Reason: <%= writer.reason %></p>
-                    </div>
-                  </div>
-                  <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-xs font-bold">Rejected</span>
-                </div>
-              <% }); %>
-            </div>
-          <% } else { %>
-            <div class="text-center py-2 text-slate-500">No writers have rejected yet.</div>
-          <% } %>
-          <h4 class="text-md font-bold text-slate-700 mb-2 mt-4">Assigned Writer</h4>
-          <% if (assignedWriter) { %>
-            <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 flex items-center justify-center text-white font-bold text-xs">
-                <%= assignedWriter.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <i class="fi fi-rr-users text-white"></i>
               </div>
               <div>
-                <p class="font-bold text-green-800 text-xs"><%= assignedWriter.full_name %></p>
+                <h3 class="text-lg font-black text-slate-800">Writer Assignment Workflow</h3>
+                <p class="text-xs text-slate-500">Invite, review responses, and assign writers</p>
               </div>
             </div>
-          <% } else { %>
-            <div class="text-center py-4 text-slate-500">No writer assigned yet.</div>
+            <button onclick="openInviteWriterModal()" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-200 flex items-center gap-2">
+              <i class="fi fi-rr-user-add"></i> Invite Writers
+            </button>
+          </div>
+
+          <!-- Workflow Progress -->
+          <div class="flex items-center justify-between mb-6 px-4">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full <%= invitedWriters && invitedWriters.length > 0 ? 'bg-indigo-600' : 'bg-slate-300' %> flex items-center justify-center text-white text-xs font-bold">1</div>
+              <span class="text-xs font-bold <%= invitedWriters && invitedWriters.length > 0 ? 'text-indigo-600' : 'text-slate-400' %>">Invite</span>
+            </div>
+            <div class="flex-1 h-1 mx-2 <%= interestedWriters && interestedWriters.length > 0 ? 'bg-emerald-400' : 'bg-slate-200' %> rounded"></div>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full <%= interestedWriters && interestedWriters.length > 0 ? 'bg-emerald-600' : 'bg-slate-300' %> flex items-center justify-center text-white text-xs font-bold">2</div>
+              <span class="text-xs font-bold <%= interestedWriters && interestedWriters.length > 0 ? 'text-emerald-600' : 'text-slate-400' %>">Responses</span>
+            </div>
+            <div class="flex-1 h-1 mx-2 <%= assignedWriter ? 'bg-green-400' : 'bg-slate-200' %> rounded"></div>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full <%= assignedWriter ? 'bg-green-600' : 'bg-slate-300' %> flex items-center justify-center text-white text-xs font-bold">3</div>
+              <span class="text-xs font-bold <%= assignedWriter ? 'text-green-600' : 'text-slate-400' %>">Assigned</span>
+            </div>
+          </div>
+
+          <!-- Assigned Writer (if exists) - Show prominently at top -->
+          <% if (assignedWriter) { %>
+          <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
+            <div class="flex items-center gap-2 mb-3">
+              <i class="fi fi-rr-badge-check text-green-600"></i>
+              <span class="text-sm font-black text-green-700 uppercase tracking-wider">Currently Assigned Writer</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-green-600 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg shadow-green-200">
+                  <%= assignedWriter.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                </div>
+                <div>
+                  <p class="font-bold text-green-800"><%= assignedWriter.full_name %></p>
+                  <p class="text-xs text-green-600">Writer is working on this assignment</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                  <i class="fi fi-rr-check-circle"></i> Active
+                </span>
+                <button onclick="revokeWriterAssignment()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors">
+                  <i class="fi fi-rr-cross-circle"></i> Revoke
+                </button>
+              </div>
+            </div>
+          </div>
           <% } %>
+
+          <!-- Tabs for writer categories -->
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <!-- Tab Headers -->
+            <div class="flex bg-slate-50 border-b border-slate-200">
+              <button onclick="showWriterTab('invited')" id="tab-invited" class="flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-indigo-600 text-indigo-700 bg-white">
+                <i class="fi fi-rr-paper-plane mr-1"></i> Invited 
+                <span class="ml-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full"><%= invitedWriters ? invitedWriters.length : 0 %></span>
+              </button>
+              <button onclick="showWriterTab('accepted')" id="tab-accepted" class="flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-emerald-600">
+                <i class="fi fi-rr-check mr-1"></i> Accepted 
+                <span class="ml-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"><%= interestedWriters ? interestedWriters.filter(w => w.status === 'interested' || w.status === 'accepted').length : 0 %></span>
+              </button>
+              <button onclick="showWriterTab('rejected')" id="tab-rejected" class="flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-rose-600">
+                <i class="fi fi-rr-cross-circle mr-1"></i> Declined 
+                <span class="ml-1 bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full"><%= rejectedWriters ? rejectedWriters.length : 0 %></span>
+              </button>
+              <button onclick="showWriterTab('revoked')" id="tab-revoked" class="flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-amber-600">
+                <i class="fi fi-rr-undo mr-1"></i> Revoked 
+                <span class="ml-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"><%= revokedWriters ? revokedWriters.length : 0 %></span>
+              </button>
+            </div>
+
+            <!-- Tab Content: Invited -->
+            <div id="content-invited" class="p-4">
+              <% if (invitedWriters && invitedWriters.length > 0) { %>
+                <div class="space-y-2">
+                  <% invitedWriters.forEach(writer => { %>
+                    <div class="flex items-center justify-between p-3 bg-indigo-50 rounded-xl border border-indigo-100 hover:shadow-md transition-shadow">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-200">
+                          <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                        </div>
+                        <div>
+                          <p class="font-bold text-indigo-800 text-sm"><%= writer.full_name %></p>
+                          <p class="text-xs text-indigo-600"><%= writer.email %></p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+                          <i class="fi fi-rr-clock"></i> Awaiting Response
+                        </span>
+                      </div>
+                    </div>
+                  <% }); %>
+                </div>
+              <% } else { %>
+                <div class="text-center py-8">
+                  <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fi fi-rr-paper-plane text-2xl text-slate-400"></i>
+                  </div>
+                  <p class="text-slate-500 font-medium">No writers have been invited yet</p>
+                  <p class="text-xs text-slate-400 mt-1">Click "Invite Writers" to get started</p>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Tab Content: Accepted (Writers who accepted invitations) -->
+            <div id="content-accepted" class="p-4 hidden">
+              <% 
+                const acceptedList = interestedWriters ? interestedWriters.filter(w => w.status === 'interested' || w.status === 'accepted') : [];
+              %>
+              <% if (acceptedList.length > 0) { %>
+                <div class="space-y-2">
+                  <% acceptedList.forEach(writer => { %>
+                    <div class="flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-100 hover:shadow-md transition-shadow">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-green-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-200">
+                          <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                        </div>
+                        <div>
+                          <p class="font-bold text-emerald-800 text-sm"><%= writer.full_name %></p>
+                          <p class="text-xs text-emerald-600"><%= writer.email %></p>
+                          <% if (writer.comment) { %>
+                            <p class="text-xs text-slate-600 mt-1 italic">"<%= writer.comment %>"</p>
+                          <% } %>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <% if (writer.status === 'assigned' || (assignedWriter && assignedWriter.user_id == writer.writer_id)) { %>
+                          <span class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                            <i class="fi fi-rr-check-circle"></i> Assigned
+                          </span>
+                        <% } else if (!assignedWriter) { %>
+                          <button onclick="assignWriter('<%= writer.writer_id %>')" class="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-200 flex items-center gap-1">
+                            <i class="fi fi-rr-user-check"></i> Assign Writer
+                          </button>
+                        <% } else { %>
+                          <span class="bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold">
+                            Not Selected
+                          </span>
+                        <% } %>
+                      </div>
+                    </div>
+                  <% }); %>
+                </div>
+              <% } else { %>
+                <div class="text-center py-8">
+                  <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fi fi-rr-check text-2xl text-emerald-400"></i>
+                  </div>
+                  <p class="text-slate-500 font-medium">No writers have accepted yet</p>
+                  <p class="text-xs text-slate-400 mt-1">Writers who accept invitations will appear here</p>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Tab Content: Rejected -->
+            <div id="content-rejected" class="p-4 hidden">
+              <% if (rejectedWriters && rejectedWriters.length > 0) { %>
+                <div class="space-y-2">
+                  <% rejectedWriters.forEach(writer => { %>
+                    <div class="flex items-center justify-between p-3 bg-rose-50 rounded-xl border border-rose-100">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-rose-200">
+                          <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                        </div>
+                        <div>
+                          <p class="font-bold text-rose-800 text-sm"><%= writer.full_name %></p>
+                          <p class="text-xs text-rose-600"><%= writer.email %></p>
+                          <% if (writer.reason) { %>
+                            <div class="mt-2 p-2 bg-rose-100 rounded-lg">
+                              <p class="text-xs text-rose-700"><strong>Reason:</strong> <%= writer.reason %></p>
+                            </div>
+                          <% } %>
+                        </div>
+                      </div>
+                      <span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <i class="fi fi-rr-cross-circle"></i> Declined
+                      </span>
+                    </div>
+                  <% }); %>
+                </div>
+              <% } else { %>
+                <div class="text-center py-8">
+                  <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fi fi-rr-cross-circle text-2xl text-rose-400"></i>
+                  </div>
+                  <p class="text-slate-500 font-medium">No writers have declined</p>
+                  <p class="text-xs text-slate-400 mt-1">Writers who decline invitations will appear here</p>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Tab Content: Revoked -->
+            <div id="content-revoked" class="p-4 hidden">
+              <% if (revokedWriters && revokedWriters.length > 0) { %>
+                <div class="space-y-2">
+                  <% revokedWriters.forEach(writer => { %>
+                    <div class="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-100">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-amber-200">
+                          <%= writer.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+                        </div>
+                        <div>
+                          <p class="font-bold text-amber-800 text-sm"><%= writer.full_name %></p>
+                          <p class="text-xs text-amber-600"><%= writer.email %></p>
+                          <% if (writer.revoked_at) { %>
+                            <p class="text-xs text-slate-500 mt-1">Revoked on: <%= new Date(writer.revoked_at).toLocaleDateString() %></p>
+                          <% } %>
+                        </div>
+                      </div>
+                      <span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <i class="fi fi-rr-undo"></i> Revoked
+                      </span>
+                    </div>
+                  <% }); %>
+                </div>
+              <% } else { %>
+                <div class="text-center py-8">
+                  <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fi fi-rr-undo text-2xl text-amber-400"></i>
+                  </div>
+                  <p class="text-slate-500 font-medium">No revoked assignments</p>
+                  <p class="text-xs text-slate-400 mt-1">Writers whose assignments were revoked will appear here</p>
+                </div>
+              <% } %>
+            </div>
+          </div>
         </div>
+
+        <script>
+          function showWriterTab(tab) {
+            // Hide all content
+            document.getElementById('content-invited').classList.add('hidden');
+            document.getElementById('content-accepted').classList.add('hidden');
+            document.getElementById('content-rejected').classList.add('hidden');
+            document.getElementById('content-revoked').classList.add('hidden');
+            
+            // Reset all tab styles
+            document.getElementById('tab-invited').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-indigo-600';
+            document.getElementById('tab-accepted').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-emerald-600';
+            document.getElementById('tab-rejected').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-rose-600';
+            document.getElementById('tab-revoked').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-transparent text-slate-500 hover:text-amber-600';
+            
+            // Show selected content and highlight tab
+            document.getElementById('content-' + tab).classList.remove('hidden');
+            if (tab === 'invited') {
+              document.getElementById('tab-invited').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-indigo-600 text-indigo-700 bg-white';
+            } else if (tab === 'accepted') {
+              document.getElementById('tab-accepted').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-emerald-600 text-emerald-700 bg-white';
+            } else if (tab === 'rejected') {
+              document.getElementById('tab-rejected').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-rose-600 text-rose-700 bg-white';
+            } else if (tab === 'revoked') {
+              document.getElementById('tab-revoked').className = 'flex-1 px-4 py-3 text-xs font-bold transition-colors border-b-2 border-amber-600 text-amber-700 bg-white';
+            }
+          }
+        </script>
 
       </div>
 
@@ -259,10 +416,10 @@
 
           <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold">
-              <%= query.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) %>
+              <%= query.full_name ? query.full_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2) : 'NA' %>
             </div>
             <div>
-              <p class="font-bold text-slate-800"><%= query.full_name %></p>
+              <p class="font-bold text-slate-800"><%= query.full_name || 'Unknown' %></p>
               <p class="text-xs text-slate-500">User ID: <%= query.user_id %></p>
             </div>
           </div>
@@ -305,14 +462,11 @@
             const current = statusColors[query.status] || statusColors[26];
           %>
 
-          <div class="<%= current.bg %> <%= current.border %> border-2 rounded-xl p-4 mb-4">
+          <div class="<%= current.bg %> <%= current.border %> border-2 rounded-xl p-4">
             <p class="text-xs text-slate-600 mb-1">Current Status</p>
             <p class="<%= current.text %> text-xl font-black"><%= current.name %></p>
           </div>
-
-          <button onclick="showStatusModal()" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition">
-            <i class="fi fi-rr-edit mr-2"></i>Change Status
-          </button>
+          <!-- Status updates automatically based on workflow actions -->
         </div>
 
         <!-- ACTIONS CARD -->
@@ -357,14 +511,17 @@
       <p class="text-sm text-slate-500 mt-1">Create a price quotation for this query</p>
     </div>
     <form id="quotation-form" class="p-6 space-y-4">
+      <div class="bg-slate-50 p-3 rounded-lg mb-2">
+        <p class="text-xs text-slate-500">Client Currency: <span class="font-bold text-slate-700"><%= query.currency_code %></span></p>
+      </div>
       <div>
-        <label class="text-sm font-bold text-slate-700 block mb-2">Base Price (USD) *</label>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Base Price (<%= query.currency_code %>) *</label>
         <input type="number" name="basePrice" step="0.01" min="0" required
                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                placeholder="Enter base price">
       </div>
       <div>
-        <label class="text-sm font-bold text-slate-700 block mb-2">Urgency Charge (USD)</label>
+        <label class="text-sm font-bold text-slate-700 block mb-2">Urgency Charge (<%= query.currency_code %>)</label>
         <input type="number" name="urgencyCharge" step="0.01" min="0" value="0"
                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                placeholder="Additional urgency charge">
@@ -580,42 +737,37 @@ async function assignWriter(writerId) {
     showToast('Error: ' + error.message, 'error');
   }
 }
-const queryId = '<%= query.order_id %>';
 
-// Status Modal
-async function showStatusModal() {
-  const statuses = [
-    { value: 26, label: 'Pending Query' },
-    { value: 27, label: 'Quotation Sent' },
-    { value: 28, label: 'Accepted' },
-    { value: 30, label: 'Payment Verified' },
-    { value: 31, label: 'Writer Assigned' },
-    { value: 35, label: 'Completed' },
-    { value: 37, label: 'Closed' }
-  ];
-
-  const selected = await showInputModal('Update Query Status', 'Select the new status for this query:', '', {
-    options: statuses.map(s => ({ value: s.value, label: s.label }))
-  });
+// Revoke writer assignment
+async function revokeWriterAssignment() {
+  const confirmed = await showConfirmModal(
+    'Revoke Assignment',
+    'Are you sure you want to revoke this writer\'s assignment? The task will need to be reassigned to another writer.',
+    'danger'
+  );
   
-  if (!selected) return;
-
-  fetch(`/admin/queries/${queryId}/status`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: selected })
-  })
-  .then(res => res.json())
-  .then(result => {
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(`/admin/query/${queryId}/revoke-writer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const result = await response.json();
     if (result.success) {
-      showToast('Status updated successfully', 'success');
+      showToast('Writer assignment revoked. You can now invite and assign a new writer.', 'success');
       location.reload();
     } else {
-      showToast('Failed to update status: ' + (result.message || 'Unknown error'), 'error');
+      showToast('Error: ' + (result.message || 'Failed to revoke assignment'), 'error');
     }
-  })
-  .catch(err => showToast('Error: ' + err.message, 'error'));
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
 }
+
+const queryId = '<%= query.order_id %>';
+
+// Status updates automatically via workflow actions - no manual update needed
 
 // Quotation Modal
 function openQuotationModal() {

@@ -39,7 +39,7 @@
                   <p class="text-sm text-slate-500"><%= order.email %></p>
                 </td>
                 <td class="px-6 py-4 font-bold text-slate-800">
-                  $<%= order.total_price_usd.toFixed(2) %>
+                  <%= order.currency_code %> <%= (parseFloat(order.total_price) || 0).toFixed(2) %>
                 </td>
                 <td class="px-6 py-4 text-slate-600 text-sm">
                   <%= new Date(order.deadline_at).toLocaleDateString() %>

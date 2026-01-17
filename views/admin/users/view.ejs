@@ -150,7 +150,7 @@
                 <td class="px-6 py-4 text-sm font-bold text-slate-800"><%= order.order_code %></td>
                 <td class="px-6 py-4 text-sm text-slate-600"><%= order.paper_topic.substring(0, 40) %>...</td>
                 <td class="px-6 py-4 text-sm text-slate-600"><%= order.service || "—" %></td>
-                <td class="px-6 py-4 text-sm font-bold text-indigo-600">$<%= parseFloat(order.total_price_usd).toFixed(2) %></td>
+                <td class="px-6 py-4 text-sm font-bold text-indigo-600"><%= user.currency_code %> <%= parseFloat(order.total_price || 0).toFixed(2) %></td>
                 <td class="px-6 py-4">
                   <% 
                     let statusText = '';

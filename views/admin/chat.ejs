@@ -1,280 +1,667 @@
+<!-- ADMIN CHAT HUB -->
 <section class="space-y-6">
-  <div class="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-7 text-white shadow-lg flex items-center justify-between">
-    <div>
-      <p class="text-sm uppercase tracking-[0.2em] font-bold text-white/70">Messaging Hub</p>
-      <h1 class="text-3xl font-black mt-1">Chats by role</h1>
-      <p class="text-indigo-100 text-sm mt-2">Quickly switch between client, BDE, and writer conversations. Admins can view and reply everywhere.</p>
-    </div>
-    <div class="hidden md:flex gap-3">
-      <button id="refresh-chats" class="px-4 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold rounded-xl text-sm transition flex items-center gap-2">
-        <i class="fi fi-rr-rotate-right text-sm"></i>
-        Refresh
-      </button>
-      <button onclick="openGlobalChat()" class="px-4 py-2 bg-white text-indigo-700 font-semibold rounded-xl text-sm shadow-md flex items-center gap-2">
-        <i class="fi fi-rr-messages"></i>
-        Open Inbox
-      </button>
-    </div>
-  </div>
-
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
-    <div class="border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 py-3 gap-4 flex-wrap">
-      <div class="flex gap-2">
-        <button data-filter="clients" class="chat-tab active px-4 py-2 rounded-lg font-semibold text-sm bg-indigo-50 text-indigo-700 border border-indigo-100">Clients</button>
-        <button data-filter="bde" class="chat-tab px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-50 border border-transparent">BDE</button>
-        <button data-filter="writers" class="chat-tab px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-50 border border-transparent">Writers</button>
-        <button data-filter="bde-client" class="chat-tab px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-50 border border-transparent">BDE ↔ Client</button>
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-slate-900 via-indigo-900 to-violet-900 rounded-2xl p-6 text-white shadow-xl">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-black">Chat Governance Hub</h1>
+        <p class="text-indigo-200 text-sm mt-1">Monitor and manage all conversations</p>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <i class="fi fi-rr-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-          <input id="chat-search" type="text" placeholder="Search by name or code" class="pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        </div>
-        <button id="refresh-chats-mobile" class="md:hidden px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-semibold">
-          <i class="fi fi-rr-rotate-right"></i>
+      <div class="flex gap-3">
+        <button id="refresh-btn" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl text-sm transition flex items-center gap-2">
+          <i class="fi fi-rr-rotate-right"></i> Refresh
+        </button>
+        <button id="new-chat-btn" class="px-4 py-2 bg-white text-indigo-700 font-bold rounded-xl text-sm shadow-lg hover:shadow-xl transition flex items-center gap-2">
+          <i class="fi fi-rr-comment-plus"></i> New Chat
         </button>
       </div>
     </div>
+    
+    <!-- Stats -->
+    <div class="flex gap-4 mt-4">
+      <div class="bg-white/10 rounded-lg px-4 py-2">
+        <p class="text-indigo-200 text-xs font-semibold">Total Chats</p>
+        <p class="text-xl font-black" id="stat-total">--</p>
+      </div>
+      <div class="bg-amber-500/20 rounded-lg px-4 py-2">
+        <p class="text-amber-200 text-xs font-semibold">Pending Requests</p>
+        <p class="text-xl font-black text-amber-400" id="stat-requests">--</p>
+      </div>
+    </div>
+  </div>
 
-    <div class="p-4 sm:p-6">
-      <div id="chat-list" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  <!-- Main Panel -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
+    <!-- Tabs -->
+    <div class="border-b border-slate-100 flex items-center justify-between px-6 py-4 gap-4 flex-wrap">
+      <div class="flex gap-2">
+        <button data-tab="requests" class="tab-btn px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-100 border border-slate-200">
+          <i class="fi fi-rr-bell mr-1"></i>Requests
+        </button>
+        <button data-tab="clients" class="tab-btn active px-4 py-2 rounded-lg font-bold text-sm bg-emerald-500 text-white shadow">
+          <i class="fi fi-rr-user mr-1"></i>Clients
+        </button>
+        <button data-tab="bde" class="tab-btn px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-100 border border-slate-200">
+          <i class="fi fi-rr-briefcase mr-1"></i>BDE
+        </button>
+        <button data-tab="writers" class="tab-btn px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-100 border border-slate-200">
+          <i class="fi fi-rr-pen-fancy mr-1"></i>Writers
+        </button>
+        <button data-tab="bde-client" class="tab-btn px-4 py-2 rounded-lg font-semibold text-sm text-slate-600 hover:bg-slate-100 border border-slate-200">
+          <i class="fi fi-rr-arrows-repeat mr-1"></i>BDE↔Client
+        </button>
+      </div>
+      
+      <input id="search-input" type="text" placeholder="Search..." class="px-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64">
+    </div>
+
+    <!-- Chat List -->
+    <div class="p-6">
+      <div id="admin-chat-list" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div class="col-span-full text-center py-10 text-slate-400">
           <i class="fi fi-rr-spinner-alt animate-spin text-2xl mb-2 block"></i>
-          Loading conversations...
+          Loading...
         </div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- New Chat Modal -->
+<div id="new-chat-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+    <div class="px-6 py-4 border-b border-slate-100 bg-indigo-600 rounded-t-2xl">
+      <h3 class="text-lg font-bold text-white flex items-center gap-2">
+        <i class="fi fi-rr-comment-plus"></i> Start New Chat
+      </h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Search User</label>
+        <input type="text" id="user-search" placeholder="Search by name or email..." 
+          class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <div id="user-results" class="mt-2 max-h-40 overflow-y-auto border border-slate-200 rounded-lg hidden"></div>
+      </div>
+
+      <div id="selected-user-box" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+        <p class="text-xs font-semibold text-indigo-600 mb-1">Selected:</p>
+        <p id="selected-user-name" class="font-bold text-slate-800"></p>
+        <p id="selected-user-role" class="text-xs text-slate-500"></p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Chat Title (Optional)</label>
+        <input type="text" id="chat-title" placeholder="Enter title..." 
+          class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex gap-3">
+      <button id="create-chat-btn" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition disabled:opacity-50" disabled>
+        Start Chat
+      </button>
+      <button id="close-modal-btn" class="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
-(function () {
+console.log('[ADMIN CHAT] Script loaded');
+(function() {
+  // State
+  let chats = [];
+  let requests = [];
+  let currentTab = 'clients';
+  let search = '';
+  let selectedUser = null;
 
-  /* =====================================================
-     ADMIN CHAT — HARD ASSERT
-  ===================================================== */
-  const CURRENT_ROLE = 'admin'; // this page is ADMIN ONLY
-  if (CURRENT_ROLE !== 'admin') {
-    console.error('Unauthorized access to admin chat UI');
-    return;
+  // DOM Ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 
-  const state = {
-    conversations: [],
-    filter: 'clients',
-    search: ''
-  };
-
-  document.addEventListener('DOMContentLoaded', () => {
-    bindTabs();
-    bindSearch();
-    bindRefresh();
-    loadConversations();
-  });
-
-  /* =====================================================
-     UI BINDINGS
-  ===================================================== */
-  function bindTabs() {
-    document.querySelectorAll('.chat-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.chat-tab')
-          .forEach(b => b.classList.remove('active', 'bg-indigo-50', 'text-indigo-700', 'border-indigo-100'));
-
-        btn.classList.add('active', 'bg-indigo-50', 'text-indigo-700', 'border-indigo-100');
-        state.filter = btn.dataset.filter;
-        renderList();
-      });
-    });
-  }
-
-  function bindSearch() {
-    const search = document.getElementById('chat-search');
-    if (!search) return;
-
-    search.addEventListener('input', e => {
-      state.search = e.target.value.toLowerCase();
-      renderList();
-    });
-  }
-
-  function bindRefresh() {
-    ['refresh-chats', 'refresh-chats-mobile'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) btn.addEventListener('click', loadConversations);
-    });
-  }
-
-  /* =====================================================
-     DATA LOADING
-  ===================================================== */
-  async function loadConversations() {
-    const container = document.getElementById('chat-list');
-    container.innerHTML = loaderHtml();
-
+  function init() {
+    console.log('[ADMIN CHAT] init() called');
     try {
-      const res = await fetch('/chat/my-conversations', { credentials: 'include' });
-      const data = await res.json();
-
-      if (!data.success) throw new Error(data.message || 'Failed');
-
-      state.conversations = data.conversations || [];
-      renderList();
-    } catch (err) {
-      console.error('Chat load error:', err);
-      container.innerHTML = errorHtml();
+      bindEvents();
+      loadChats();
+      loadRequests();
+    } catch (e) {
+      console.error('[ADMIN CHAT] init error:', e);
+      showError();
     }
   }
 
-  /* =====================================================
-     RENDERING
-  ===================================================== */
-  function renderList() {
-    const container = document.getElementById('chat-list');
+  function bindEvents() {
+    console.log('[ADMIN CHAT] bindEvents() called');
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
 
-    const filtered = state.conversations
-      .map(conv => ({ ...conv, bucket: categorize(conv) }))
-      .filter(conv => conv.bucket === state.filter)
-      .filter(conv => {
-        if (!state.search) return true;
-        const hay = `${conv.display_name || ''} ${conv.context_code || ''} ${conv.last_message || ''}`.toLowerCase();
-        return hay.includes(state.search);
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', e => {
+        search = e.target.value.toLowerCase();
+        render();
       });
+    }
 
+    // Refresh
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        loadChats();
+        loadRequests();
+      });
+    }
+
+    // New Chat Modal
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+      newChatBtn.onclick = openModal; // Direct assignment for safety
+    }
+
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', closeModal);
+    }
+
+    // User Search
+    const userSearch = document.getElementById('user-search');
+    if (userSearch) {
+      userSearch.addEventListener('input', debounce(searchUsers, 300));
+    }
+
+    // Create Chat
+    const createChatBtn = document.getElementById('create-chat-btn');
+    if (createChatBtn) {
+      createChatBtn.addEventListener('click', createChat);
+    }
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+    
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-indigo-500', 'bg-blue-500', 'text-white', 'shadow');
+      btn.classList.add('text-slate-600', 'border-slate-200', 'hover:bg-slate-100');
+    });
+    
+    const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+    const colors = {
+      'requests': 'bg-blue-500',
+      'clients': 'bg-emerald-500',
+      'bde': 'bg-amber-500',
+      'writers': 'bg-purple-500',
+      'bde-client': 'bg-indigo-500'
+    };
+    activeBtn.classList.remove('text-slate-600', 'border-slate-200', 'hover:bg-slate-100');
+    activeBtn.classList.add('active', colors[tab] || 'bg-emerald-500', 'text-white', 'shadow');
+
+    // Toggle New Chat Button
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+      if (tab === 'bde-client') {
+        newChatBtn.style.display = 'none';
+      } else {
+        newChatBtn.style.display = 'flex';
+      }
+    }
+    
+    render();
+  }
+
+  // Load data
+  async function loadChats() {
+    console.log('[DEBUG] loadChats called');
+    try {
+      const res = await fetch('/chat/my-conversations', { credentials: 'include' });
+      console.log('[DEBUG] loadChats response status:', res.status);
+      const data = await res.json();
+      console.log('[DEBUG] loadChats data:', data);
+      if (data.success) {
+        chats = data.data || [];
+        document.getElementById('stat-total').textContent = chats.length;
+        render();
+      } else {
+        console.error('[DEBUG] loadChats failed:', data.message);
+        showError();
+      }
+    } catch (err) {
+      console.error('[DEBUG] Error loading chats:', err);
+      showError();
+    }
+  }
+
+  async function loadRequests() {
+    console.log('[DEBUG] loadRequests called');
+    try {
+      const res = await fetch('/chat/requests', { credentials: 'include' });
+      console.log('[DEBUG] loadRequests response status:', res.status);
+      const data = await res.json();
+      console.log('[DEBUG] loadRequests data:', data);
+      if (data.success) {
+        requests = data.data || [];
+        document.getElementById('stat-requests').textContent = requests.length;
+        if (currentTab === 'requests') render();
+      } else {
+        console.error('[DEBUG] loadRequests failed:', data.message);
+      }
+    } catch (err) {
+      console.error('[DEBUG] Error loading requests:', err);
+    }
+  }
+
+  // Categorize chat based on participants
+  function categorize(chat) {
+    // If backend already provides participant flags
+    if (chat.has_admin === 1 && chat.has_writer === 1 && (!chat.has_client || chat.has_client === 0) && (!chat.has_bde || chat.has_bde === 0)) return 'writers';
+    if (chat.has_admin === 1 && chat.has_bde === 1 && (!chat.has_client || chat.has_client === 0) && (!chat.has_writer || chat.has_writer === 0)) return 'bde';
+    if (chat.has_admin === 1 && chat.has_client === 1 && (!chat.has_bde || chat.has_bde === 0) && (!chat.has_writer || chat.has_writer === 0)) return 'clients';
+    
+    // BDE-Client check
+    // If chat has BDE (1) and Client (1), it is a BDE-Client chat. 
+    // It should appear in 'bde-client' tab.
+    if (chat.has_bde === 1 && chat.has_client === 1) return 'bde-client';
+    
+    // Fallbacks
+    if (chat.role_label === 'client') return 'clients';
+    if (chat.role_label === 'writer') return 'writers';
+    if (chat.role_label === 'bde') return 'bde';
+    
+    // Default fallback
+    return 'clients';
+  }
+
+  // Render
+  function render() {
+    const container = document.getElementById('admin-chat-list');
+    
+    if (currentTab === 'requests') {
+      renderRequests(container);
+      return;
+    }
+    
+    let filtered = chats
+      .filter(c => categorize(c) === currentTab)
+      .filter(c => {
+        if (!search) return true;
+        const hay = `${c.display_name || ''} ${c.title || ''} ${c.last_message || ''}`.toLowerCase();
+        return hay.includes(search);
+      });
+    
     if (!filtered.length) {
       container.innerHTML = emptyHtml();
       return;
     }
-
-    container.innerHTML = filtered.map(renderCard).join('');
+    
+    container.innerHTML = filtered.map(renderChatCard).join('');
   }
 
-  /* =====================================================
-     ENTERPRISE-SAFE CATEGORIZATION (ADMIN VIEW)
-  ===================================================== */
-  function categorize(conv) {
-    if (conv.has_writer && conv.has_admin) return 'writers';
-    if (conv.has_bde && conv.has_admin && !conv.has_client) return 'bde';
-    if (conv.has_client && conv.has_admin && !conv.has_bde) return 'clients';
-    if (conv.has_bde && conv.has_client && !conv.has_admin) return 'bde-client';
-    return 'clients'; // safe default for admin
+  function renderRequests(container) {
+    let filtered = requests.filter(r => {
+      if (!search) return true;
+      return `${r.from_name || ''} ${r.from_role || ''}`.toLowerCase().includes(search);
+    });
+    
+    if (!filtered.length) {
+      container.innerHTML = `
+        <div class="col-span-full text-center py-10 text-slate-400">
+          <i class="fi fi-rr-bell text-3xl mb-2 block"></i>
+          <p class="font-semibold">No pending requests</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = filtered.map(renderRequestCard).join('');
   }
 
-  function renderCard(conv) {
-    const initials = getInitials(conv);
-    const lastTime = conv.last_message_at ? formatTimeAgo(conv.last_message_at) : 'No messages yet';
-    const unread = Number(conv.unread_count) > 0;
-
-    const badgeMap = {
-      'clients': 'Client',
-      'bde': 'BDE',
-      'writers': 'Writer',
-      'bde-client': 'BDE ↔ Client'
-    };
-
-    const badgeStyle = {
-      'clients': 'bg-emerald-50 text-emerald-700',
-      'bde': 'bg-amber-50 text-amber-700',
-      'writers': 'bg-purple-50 text-purple-700',
-      'bde-client': 'bg-indigo-50 text-indigo-700'
-    };
-
+  function renderChatCard(chat) {
+    const initials = (chat.display_name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const lastTime = chat.last_message_at ? formatTime(chat.last_message_at) : 'No messages';
+    
     return `
-      <div class="border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative">
-        ${unread ? unreadBadge(conv.unread_count) : ''}
-
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-11 h-11 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black">
-            ${initials}
+      <div class="border border-slate-200 rounded-xl p-4 hover:shadow-md hover:border-indigo-200 transition relative">
+        ${chat.unread_count > 0 ? `<span class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">${chat.unread_count}</span>` : ''}
+        ${chat.is_important ? `<span class="absolute top-2 left-2 bg-amber-100 text-amber-600 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fi fi-rr-star"></i></span>` : ''}
+        ${chat.is_restricted ? `<span class="absolute top-2 left-2 bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Restricted</span>` : ''}
+        
+        <div class="flex items-center gap-3 mb-3 ${chat.is_important || chat.is_restricted ? 'mt-5' : ''}">
+          <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-sm">
+            ${esc(initials)}
           </div>
           <div class="min-w-0 flex-1">
-            <p class="font-bold text-slate-800 truncate">${escapeHtml(conv.display_name || conv.context_code)}</p>
-            <p class="text-xs text-slate-500 truncate">${escapeHtml(conv.role_label || '')}</p>
+            <p class="font-bold text-slate-800 truncate">${esc(chat.display_name || chat.title || 'Chat')}</p>
+            <p class="text-xs text-slate-500">${esc(chat.role_label || '')}</p>
           </div>
-          <span class="text-[11px] px-2 py-1 rounded-full ${badgeStyle[conv.bucket]} font-semibold">
-            ${badgeMap[conv.bucket]}
-          </span>
         </div>
-
-        <p class="text-sm text-slate-600 line-clamp-2 mb-3">
-          ${escapeHtml(conv.last_message || 'No messages yet')}
-        </p>
-
-        <div class="flex items-center justify-between text-xs text-slate-500">
-          <span>${escapeHtml(conv.context_code || '')}</span>
+        
+        <p class="text-sm text-slate-600 line-clamp-2 mb-3">${esc(chat.last_message || 'No messages yet')}</p>
+        
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-3">
           <span>${lastTime}</span>
+          <span>${chat.message_count || 0} msgs</span>
         </div>
-
-        <button class="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-700 transition"
-          onclick="openChatFromAdmin('${conv.context_code}', '${escapeHtmlAttr(conv.display_name || conv.context_code)}')">
-          View & reply
-        </button>
+        
+        <div class="flex gap-2">
+          <button class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg font-semibold text-sm hover:bg-indigo-700 transition"
+            onclick="openChat('${chat.context_code}', '${escAttr(chat.display_name || chat.title)}')">
+            <i class="fi fi-rr-comment-dots mr-1"></i>View
+          </button>
+          <button class="px-3 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 transition text-sm"
+            onclick="showActions('${chat.chat_id}')">
+            <i class="fi fi-rr-menu-dots"></i>
+          </button>
+        </div>
       </div>
     `;
   }
 
-  /* =====================================================
-     ADMIN OPEN CHAT
-  ===================================================== */
-  window.openChatFromAdmin = function (contextCode, title) {
-    openGlobalChat();
-    setTimeout(() => {
+  function renderRequestCard(req) {
+    return `
+      <div class="border border-blue-200 bg-blue-50 rounded-xl p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+            ${(req.from_name || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p class="font-bold text-slate-800">${esc(req.from_name)}</p>
+            <p class="text-xs text-slate-500">${esc(req.from_role)} • ${formatTime(req.created_at)}</p>
+          </div>
+        </div>
+        
+        ${req.message ? `<p class="text-sm text-slate-600 mb-3">"${esc(req.message)}"</p>` : ''}
+        
+        <div class="flex gap-2">
+          <button class="flex-1 bg-emerald-500 text-white px-3 py-2 rounded-lg font-semibold text-sm hover:bg-emerald-600 transition"
+            onclick="approveRequest(${req.request_id})">
+            <i class="fi fi-rr-check mr-1"></i>Approve
+          </button>
+          <button class="flex-1 bg-red-500 text-white px-3 py-2 rounded-lg font-semibold text-sm hover:bg-red-600 transition"
+            onclick="rejectRequest(${req.request_id})">
+            <i class="fi fi-rr-cross mr-1"></i>Reject
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Actions
+  window.openChat = function(contextCode, title) {
+    if (typeof openGlobalChat === 'function') {
+      openGlobalChat();
+      
+      // Short delay to ensure transition logic starts, but we can likely call immediately
+      // depending on how global chat handles state.
+      // Updated to call immediately for better responsiveness
       if (typeof openConversation === 'function') {
         openConversation(contextCode, title);
       }
-    }, 300);
+    } else {
+      showToast('Chat panel not available', 'error');
+    }
   };
 
-  /* =====================================================
-     HELPERS
-  ===================================================== */
-  function getInitials(conv) {
-    const base = conv.display_name || conv.context_code || 'A';
-    return base.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  window.showActions = async function(chatId) {
+    // Replace prompt with modal
+    const action = await showInputModal(
+        'Manage Chat', 
+        'Choose an action for this chat:', 
+        '',
+        [
+            { value: 'view', label: 'View Chat' },
+            { value: 'important', label: 'Mark/Unmark Important' },
+            { value: 'restrict', label: 'Restrict/Unrestrict' },
+            { value: 'close', label: 'Close Chat' },
+            { value: 'delete', label: 'Delete Chat' }
+        ]
+    );
+
+    if (!action) return;
+
+    if (action === 'view') {
+        const chat = chats.find(c => c.chat_id == chatId);
+        if (chat) openChat(chat.context_code, chat.display_name);
+        return;
+    }
+
+    if (action === 'delete') {
+        const confirmed = await showConfirmModal('Delete Chat', 'Are you sure you want to delete this chat permanently?', 'danger');
+        if (!confirmed) return;
+    }
+
+    let endpoint = action;
+    if (action === 'important') endpoint = 'tag-important';
+    
+    try {
+      const res = await fetch(`/chat/${chatId}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Action completed', 'success');
+        loadChats();
+      } else {
+        showToast(data.message || 'Failed', 'error');
+      }
+    } catch (err) {
+      showToast('Error performing action', 'error');
+    }
+  };
+
+  window.approveRequest = async function(requestId) {
+    try {
+      const res = await fetch(`/chat/requests/${requestId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Request approved', 'success');
+        loadRequests();
+        loadChats();
+      } else {
+        showToast(data.message || 'Failed', 'error');
+      }
+    } catch (err) {
+      showToast('Error approving request', 'error');
+    }
+  };
+
+  window.rejectRequest = async function(requestId) {
+    try {
+      const res = await fetch(`/chat/requests/${requestId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Request rejected', 'success');
+        loadRequests();
+      } else {
+        showToast(data.message || 'Failed', 'error');
+      }
+    } catch (err) {
+      showToast('Error rejecting request', 'error');
+    }
+  };
+
+  // New Chat Modal
+  window.openModal = function() {
+    const modal = document.getElementById('new-chat-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    
+    const search = document.getElementById('user-search');
+    if (search) search.value = '';
+    
+    document.getElementById('user-results')?.classList.add('hidden');
+    document.getElementById('selected-user-box')?.classList.add('hidden');
+    
+    const title = document.getElementById('chat-title');
+    if (title) title.value = '';
+    
+    const btn = document.getElementById('create-chat-btn');
+    if (btn) btn.disabled = true;
+    
+    selectedUser = null;
+  };
+
+  window.closeModal = function() {
+    document.getElementById('new-chat-modal')?.classList.add('hidden');
+  };
+
+  async function searchUsers(e) {
+    const q = e.target.value.trim();
+    const results = document.getElementById('user-results');
+    
+    if (q.length < 2) {
+      results.classList.add('hidden');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/chat/users/search?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+      const data = await res.json();
+      
+      if (data.success && data.data.length > 0) {
+        results.innerHTML = data.data.map(u => `
+          <div class="p-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100" onclick="selectUser(${u.user_id}, '${escAttr(u.full_name)}', '${u.role}')">
+            <p class="font-semibold text-sm">${esc(u.full_name)}</p>
+            <p class="text-xs text-slate-500">${u.role} • ${u.email}</p>
+          </div>
+        `).join('');
+        results.classList.remove('hidden');
+      } else {
+        results.innerHTML = '<p class="p-2 text-sm text-slate-500">No users found</p>';
+        results.classList.remove('hidden');
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+    }
   }
 
-  function unreadBadge(count) {
-    return `<span class="absolute top-3 right-3 bg-indigo-600 text-white text-[10px] font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">${count}</span>`;
+  window.selectUser = function(userId, name, role) {
+    selectedUser = { user_id: userId, full_name: name, role };
+    document.getElementById('user-search').value = '';
+    document.getElementById('user-results').classList.add('hidden');
+    document.getElementById('selected-user-name').textContent = name;
+    document.getElementById('selected-user-role').textContent = role;
+    document.getElementById('selected-user-box').classList.remove('hidden');
+    document.getElementById('create-chat-btn').disabled = false;
+  };
+
+  async function createChat() {
+    if (!selectedUser) return;
+    
+    const title = document.getElementById('chat-title').value.trim() || `Chat with ${selectedUser.full_name}`;
+    
+    try {
+      const res = await fetch('/chat/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: selectedUser.user_id, title }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        showToast('Chat created', 'success');
+        closeModal();
+        loadChats();
+        if (data.chat_id) {
+          setTimeout(() => openChat(`general-${data.chat_id}`, title), 500);
+        }
+      } else {
+        if (data.data && data.data.chat_id) {
+           showToast('Opening existing chat', 'info');
+           closeModal();
+           setTimeout(() => openChat(`general-${data.data.chat_id}`, title), 500);
+        } else {
+           showToast(data.message || 'Failed', 'error');
+        }
+      }
+    } catch (err) {
+      showToast('Error creating chat', 'error');
+    }
   }
 
-  function loaderHtml() {
-    return `<div class="col-span-full text-center py-10 text-slate-400">
-      <i class="fi fi-rr-spinner-alt animate-spin text-2xl mb-2 block"></i>Loading conversations...
-    </div>`;
-  }
-
+  // Helpers
   function emptyHtml() {
-    return `<div class="col-span-full text-center py-10 text-slate-400">
-      <i class="fi fi-rr-comment text-3xl mb-2 block"></i>No conversations in this tab
-    </div>`;
+    return `
+      <div class="col-span-full text-center py-10 text-slate-400">
+        <i class="fi fi-rr-comment text-3xl mb-2 block"></i>
+        <p class="font-semibold">No chats in this category</p>
+        ${currentTab !== 'bde-client' ? `<button onclick="window.openModal ? window.openModal() : document.getElementById('new-chat-btn').click()" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold">
+          Start New Chat
+        </button>` : ''}
+      </div>
+    `;
   }
 
-  function errorHtml() {
-    return `<div class="col-span-full text-center py-10 text-red-400">
-      <i class="fi fi-rr-exclamation text-2xl mb-2 block"></i>Unable to load conversations
-    </div>`;
+  function showError() {
+    const list = document.getElementById('admin-chat-list');
+    if (list) {
+      list.innerHTML = `
+      <div class="col-span-full text-center py-10 text-red-400">
+        <i class="fi fi-rr-exclamation text-3xl mb-2 block"></i>
+        <p class="font-semibold">Failed to load chats</p>
+        <button onclick="loadChats()" class="mt-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm">Retry</button>
+      </div>
+      `;
+    }
   }
 
-  function escapeHtml(str) {
+  function esc(str) {
     const div = document.createElement('div');
     div.textContent = str || '';
     return div.innerHTML;
   }
 
-  function escapeHtmlAttr(str) {
+  function escAttr(str) {
     return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  function formatTimeAgo(dateStr) {
+  function formatTime(dateStr) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const m = Math.floor(diff / 60000);
-    if (m < 1) return 'just now';
-    if (m < 60) return `${m}m ago`;
+    if (m < 1) return 'now';
+    if (m < 60) return `${m}m`;
     const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    const d = Math.floor(h / 24);
-    return `${d}d ago`;
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
   }
 
+  function debounce(fn, ms) {
+    let t;
+    return function(...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+
+  function showToast(msg, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg text-white text-sm font-semibold shadow-lg ${
+      type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+    }`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
 })();
 </script>
+
+<style>
+#admin-chat-list { min-height: 200px; }
+</style>

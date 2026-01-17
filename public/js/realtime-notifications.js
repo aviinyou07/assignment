@@ -131,6 +131,19 @@ function connectSocket(token) {
       }
     });
 
+    // Chat request events (for admin)
+    notificationSocket.on('chat:request', (data) => {
+      if (typeof handleChatRequest === 'function') {
+        handleChatRequest(data);
+      }
+    });
+
+    notificationSocket.on('chat:approved', (data) => {
+      if (typeof handleChatApproved === 'function') {
+        handleChatApproved(data);
+      }
+    });
+
     // Subscribe to context if on order/query page
     const contextCode = getContextCodeFromURL();
     if (contextCode) {
@@ -169,10 +182,57 @@ async function loadNotifications() {
         }));
 
         renderNotifications(normalized);
+      } else {
+        console.error('Notifications API returned error:', data);
+        // Show error state
+        const container = document.getElementById('notifications-list');
+        if (container) {
+          container.innerHTML = `
+            <div class="bg-white p-8 rounded-2xl border border-red-200 text-center">
+              <i class="fi fi-rr-exclamation-triangle text-3xl text-red-400 mb-4 block"></i>
+              <p class="text-red-600">Failed to load notifications</p>
+              <p class="text-sm text-slate-500 mt-2">Please try refreshing the page</p>
+            </div>
+          `;
+        }
+      }
+    } else {
+      console.error('Notifications API request failed:', response.status, response.statusText);
+      // Show error state for authentication or server errors
+      const container = document.getElementById('notifications-list');
+      if (container) {
+        if (response.status === 401) {
+          container.innerHTML = `
+            <div class="bg-white p-8 rounded-2xl border border-red-200 text-center">
+              <i class="fi fi-rr-user-xmark text-3xl text-red-400 mb-4 block"></i>
+              <p class="text-red-600">Authentication required</p>
+              <p class="text-sm text-slate-500 mt-2">Please log in again</p>
+            </div>
+          `;
+        } else {
+          container.innerHTML = `
+            <div class="bg-white p-8 rounded-2xl border border-red-200 text-center">
+              <i class="fi fi-rr-exclamation-triangle text-3xl text-red-400 mb-4 block"></i>
+              <p class="text-red-600">Failed to load notifications</p>
+              <p class="text-sm text-slate-500 mt-2">Server error (${response.status})</p>
+            </div>
+          `;
+        }
       }
     }
   } catch (error) {
     console.error('Error loading notifications:', error);
+    // Show error state for network errors
+    const container = document.getElementById('notifications-list');
+    if (container) {
+      container.innerHTML = `
+        <div class="bg-white p-8 rounded-2xl border border-red-200 text-center">
+          <i class="fi fi-rr-wifi-slash text-3xl text-red-400 mb-4 block"></i>
+          <p class="text-red-600">Network error</p>
+          <p class="text-sm text-slate-500 mt-2">Check your connection and try again</p>
+        </div>
+      `;
+    }
   }
 }
 

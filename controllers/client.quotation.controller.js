@@ -10,8 +10,9 @@ const {
  * 
  * Client can:
  * - View quotations
- * - Accept quotations (does NOT create work_code)
- * - Upload payment receipts
+ * - Accept quotations (triggers 50% payment request)
+ * - Upload 50% payment receipts
+ * - Upload final payment receipts
  * 
  * Client CANNOT:
  * - Generate quotations (BDE/Admin only)
@@ -50,7 +51,7 @@ exports.viewQuotation = async (req, res) => {
       `SELECT 
         quotation_id,
         order_id,
-        quoted_price_usd,
+        quoted_price,
         tax,
         discount,
         notes,
@@ -130,12 +131,39 @@ exports.acceptQuotation = async (req, res) => {
     }
 
     // =======================
-    // UPDATE ACCEPTANCE
+    // UPDATE ACCEPTANCE AND STATUS
     // =======================
-    await db.query(
-      `UPDATE orders SET acceptance = 1 WHERE order_id = ?`,
-      [orderId]
+    const { updateOrderStatus } = require('../utils/workflow.service');
+    const { STATUS } = require('../utils/order-state-machine');
+    
+    const statusResult = await updateOrderStatus(
+      orderId,
+      STATUS.ACCEPTED,
+      'client',
+      {
+        userId: userId,
+        userName: req.user.full_name,
+        io: req.io,
+        reason: 'Client accepted quotation'
+      }
     );
+
+    if (!statusResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: statusResult.error
+      });
+    }
+
+    // =======================
+    // TRIGGER PAYMENT REQUEST WORKFLOW
+    // =======================
+    const { processWorkflowEvent } = require('../utils/workflow.service');
+    await processWorkflowEvent('PAYMENT_50_REQUESTED', order, { client_id: userId }, {
+      currency: '$',
+      amount: order.total_price.toFixed(2),
+      half_amount: (order.total_price / 2).toFixed(2)
+    }, req.io);
 
     // =======================
     // AUDIT LOG
@@ -151,34 +179,9 @@ exports.acceptQuotation = async (req, res) => {
       user_agent: req.get('User-Agent')
     });
 
-    // =======================
-    // SEND NOTIFICATION
-    // =======================
-    await createNotification({
-      user_id: userId,
-      type: 'success',
-      title: 'Quotation Accepted',
-      message: 'Your quotation has been accepted. Please upload payment receipt next.',
-      link_url: `/client/orders/${orderId}/payment`
-    });
-
-    // Notify admin
-    const [admins] = await db.query(
-      `SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1 LIMIT 1`
-    );
-    if (admins.length > 0) {
-      await createNotification({
-        user_id: admins[0].user_id,
-        type: 'info',
-        title: 'Quotation Accepted',
-        message: `Client accepted quotation for order ${orderId}`,
-        link_url: `/admin/orders/${orderId}`
-      });
-    }
-
     return res.json({
       success: true,
-      message: 'Quotation accepted. Next, upload payment receipt.'
+      message: 'Quotation accepted. Next, upload 50% payment receipt.'
     });
 
   } catch (err) {
@@ -192,14 +195,14 @@ exports.acceptQuotation = async (req, res) => {
 
 /**
  * UPLOAD PAYMENT RECEIPT
- * Client uploads payment proof
+ * Client uploads payment proof for 50% or final payment
  * Payment is ALWAYS unverified initially
- * Only Admin can verify and trigger work_code generation
+ * Only Admin can verify payments
  */
 exports.uploadPaymentReceipt = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const { orderId } = req.body;
+    const { orderId, paymentType } = req.body; // paymentType: '50_percent' or 'final'
 
     if (!orderId) {
       return res.status(400).json({
@@ -224,7 +227,11 @@ exports.uploadPaymentReceipt = async (req, res) => {
     // VERIFY CLIENT OWNS ORDER
     // =======================
     const [[order]] = await db.query(
-      `SELECT order_id, user_id, acceptance, total_price_usd FROM orders WHERE order_id = ? LIMIT 1`,
+      `SELECT o.order_id, o.user_id, o.acceptance, o.total_price, o.status,
+              p.payment_id, p.payment_type
+       FROM orders o
+       LEFT JOIN payments p ON o.order_id = p.order_id
+       WHERE o.order_id = ? LIMIT 1`,
       [orderId]
     );
 
@@ -235,25 +242,56 @@ exports.uploadPaymentReceipt = async (req, res) => {
       });
     }
 
-    if (order.acceptance !== 1) {
+    // =======================
+    // DETERMINE PAYMENT TYPE AND VALIDATE
+    // =======================
+    let actualPaymentType = paymentType;
+    let expectedAmount = order.total_price;
+
+    if (!actualPaymentType) {
+      // Auto-determine based on order status
+      if (order.status === 28) { // ACCEPTED
+        actualPaymentType = '50_percent';
+        expectedAmount = order.total_price / 2;
+      } else if (order.status === 34) { // APPROVED
+        actualPaymentType = 'final';
+        expectedAmount = order.total_price / 2;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid order status for payment upload'
+        });
+      }
+    }
+
+    // Validate payment type
+    if (actualPaymentType === '50_percent' && order.status !== 28 && order.status !== 29) {
       return res.status(400).json({
         success: false,
-        message: 'Quotation must be accepted before uploading payment'
+        message: '50% payment can only be uploaded after quotation acceptance'
+      });
+    }
+
+    if (actualPaymentType === 'final' && order.status !== 34 && order.status !== 42) {
+      return res.status(400).json({
+        success: false,
+        message: 'Final payment can only be uploaded after work approval'
       });
     }
 
     // =======================
-    // CHECK IF PAYMENT ALREADY EXISTS
+    // CHECK IF PAYMENT ALREADY EXISTS FOR THIS TYPE
     // =======================
     const [[existingPayment]] = await db.query(
-      `SELECT payment_id FROM payments WHERE order_id = ? LIMIT 1`,
-      [orderId]
+      `SELECT payment_id FROM payments 
+       WHERE order_id = ? AND payment_type = ? LIMIT 1`,
+      [orderId, actualPaymentType]
     );
 
     if (existingPayment) {
       return res.status(400).json({
         success: false,
-        message: 'Payment already submitted for this order. Awaiting verification.'
+        message: `${actualPaymentType === '50_percent' ? '50%' : 'Final'} payment already submitted for this order. Awaiting verification.`
       });
     }
 
@@ -267,9 +305,9 @@ exports.uploadPaymentReceipt = async (req, res) => {
       [
         orderId,
         userId,
-        order.total_price_usd || 0,
+        expectedAmount,
         'manual_upload',
-        'receipt',
+        actualPaymentType,
         receiptFile.filename || receiptFile.originalname
       ]
     );
@@ -285,44 +323,41 @@ exports.uploadPaymentReceipt = async (req, res) => {
       event_type: 'PAYMENT_UPLOADED',
       resource_type: 'payment',
       resource_id: paymentId,
-      details: `Client uploaded payment receipt for order ${orderId}`,
+      details: `Client uploaded ${actualPaymentType} payment receipt for order ${orderId}`,
       ip_address: req.ip,
       user_agent: req.get('User-Agent'),
-      event_data: { order_id: orderId, amount: order.total_price_usd }
+      event_data: { order_id: orderId, payment_type: actualPaymentType, amount: expectedAmount }
     });
 
     // =======================
     // SEND NOTIFICATION TO CLIENT
     // =======================
+    const eventName = actualPaymentType === '50_percent' ? 'PAYMENT_50_UPLOADED' : 'PAYMENT_FINAL_UPLOADED';
+    
     await createNotification({
       user_id: userId,
       type: 'success',
       title: 'Payment Receipt Uploaded',
-      message: 'Your payment receipt has been submitted. Admin will verify shortly.',
+      message: `Your ${actualPaymentType === '50_percent' ? '50%' : 'final'} payment receipt has been submitted. Admin will verify shortly.`,
       link_url: `/client/orders/${orderId}`
     });
 
     // =======================
-    // SEND NOTIFICATION TO ADMIN
+    // TRIGGER WORKFLOW EVENT
     // =======================
-    const [admins] = await db.query(
-      `SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1 LIMIT 1`
-    );
-    if (admins.length > 0) {
-      await createNotification({
-        user_id: admins[0].user_id,
-        type: 'critical',
-        title: 'Payment Awaiting Verification',
-        message: `Payment receipt uploaded for order ${orderId}. Amount: ${order.total_price_usd}`,
-        link_url: `/admin/payments/${paymentId}`
-      });
-    }
+    const { processWorkflowEvent } = require('../utils/workflow.service');
+    await processWorkflowEvent(eventName, order, { client_id: userId }, {
+      currency: '$',
+      amount: expectedAmount.toFixed(2),
+      half_amount: (order.total_price / 2).toFixed(2)
+    }, req.io);
 
     return res.status(201).json({
       success: true,
-      message: 'Payment receipt uploaded successfully',
+      message: `${actualPaymentType === '50_percent' ? '50%' : 'Final'} payment receipt uploaded successfully. Awaiting verification.`,
       data: {
         payment_id: paymentId,
+        payment_type: actualPaymentType,
         status: 'pending_verification',
         created_at: new Date()
       }

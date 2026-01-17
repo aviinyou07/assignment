@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const clientController = require('../controllers/client.profile.controller');
-const clientAuth = require('../middlewares/client.auth.middleware');
+const { authGuard } = require('../middleware/auth.middleware');
 
-router.get('/profile', clientAuth, clientController.getProfile);
-router.patch('/profile', clientAuth, clientController.updateProfile);
+// Client authentication - only 'client' role can access
+router.get('/profile', authGuard('client'), clientController.getProfile);
+router.patch('/profile', authGuard('client'), clientController.updateProfile);
 
 module.exports = router;

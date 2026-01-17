@@ -8,9 +8,9 @@
 
     <div class="flex items-center gap-4">
         <!-- Chat Button -->
-        <button onclick="openGlobalChat()" id="chat-btn" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
+        <a href="/writer/chat" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
             <i class="fi fi-rr-messages text-lg"></i>
-        </button>
+        </a>
 
         <!-- Notifications Button -->
         <div class="relative">
@@ -38,13 +38,31 @@
 
         <div class="h-8 w-px bg-slate-200 mx-1"></div>
         
-        <div class="flex items-center gap-3">
-            <div class="text-right hidden sm:block">
-                <p class="text-sm font-bold text-slate-700 leading-none"><%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Writer' %></p>
-                <p class="text-[11px] text-indigo-500 font-semibold mt-1">Writer</p>
-            </div>
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-100 border-2 border-white">
-                <span class="font-bold"><%= typeof initials !== 'undefined' ? initials : 'WR' %></span>
+        <!-- User Profile Dropdown -->
+        <div class="relative group">
+            <button class="flex items-center gap-3 hover:bg-slate-50 rounded-xl px-3 py-2 transition-all">
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-bold text-slate-700 leading-none"><%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Writer' %></p>
+                    <p class="text-[11px] text-emerald-600 font-semibold mt-1">Writer</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100 border-2 border-white">
+                    <span class="font-bold"><%= typeof initials !== 'undefined' ? initials : 'WR' %></span>
+                </div>
+                <i class="fi fi-rr-angle-down text-xs text-slate-400 hidden sm:block"></i>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 hidden group-hover:block z-50">
+                <a href="/writer" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <i class="fi fi-rr-home text-slate-400"></i> Dashboard
+                </a>
+                <a href="/writer/profile" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <i class="fi fi-rr-user text-slate-400"></i> My Profile
+                </a>
+                <div class="border-t border-slate-100 my-1"></div>
+                <a href="/auth/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    <i class="fi fi-rr-sign-out-alt"></i> Sign Out
+                </a>
             </div>
         </div>
     </div>

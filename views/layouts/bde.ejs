@@ -28,61 +28,203 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 4px; }
   </style>
+  <%- typeof style !== 'undefined' ? style : '' %>
 </head>
 <body>
   <div class="flex h-screen bg-slate-50">
-    <!-- SIDEBAR -->
-    <aside class="w-64 bg-white border-r border-slate-200 shadow-sm flex flex-col">
+    
+    <!-- PREMIUM BDE SIDEBAR -->
+    <aside class="w-72 bg-gradient-to-b from-blue-900 via-indigo-900 to-violet-900 flex flex-col shadow-2xl">
       
-      <!-- LOGO -->
-      <div class="p-6 border-b border-slate-100">
-        <h1 class="text-2xl font-black text-slate-900">
-          <span class="text-green-600">A</span>366 BDE
-        </h1>
+      <!-- LOGO SECTION -->
+      <div class="p-6 border-b border-blue-700/30">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <span class="text-white font-black text-lg">A</span>
+          </div>
+          <div>
+            <h1 class="text-xl font-black text-white tracking-tight">Assignment<span class="text-blue-400">366</span></h1>
+            <p class="text-[10px] text-blue-300 uppercase tracking-widest font-semibold">BDE Portal</p>
+          </div>
+        </div>
       </div>
 
       <!-- NAVIGATION -->
-      <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-        <a href="/bde" class="<%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-          <i class="fi fi-rr-chart-histogram"></i> Dashboard
+      <nav class="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+        
+        <!-- Dashboard -->
+        <a href="/bde" class="<%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' : 'text-blue-200 hover:bg-blue-800/50 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+          <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'dashboard' ? 'bg-white/20' : 'bg-blue-800/50 group-hover:bg-blue-700/50' %> flex items-center justify-center transition-colors">
+            <i class="fi fi-rr-chart-histogram text-sm"></i>
+          </div>
+          Dashboard
         </a>
 
-        <!-- BDE OPERATIONS -->
-        <div class="pt-2">
-          <p class="text-xs font-black text-slate-500 uppercase tracking-widest px-4 mb-2">OPERATIONS</p>
+        <!-- OPERATIONS SECTION -->
+        <div class="pt-4 pb-2">
+          <p class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] px-4 mb-3">Operations</p>
           
-          <a href="/bde/clients" class="<%= typeof currentPage !== 'undefined' && currentPage === 'clients' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-            <i class="fi fi-rr-users"></i> Clients
+          <a href="/bde/clients" class="<%= typeof currentPage !== 'undefined' && currentPage === 'clients' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30' : 'text-blue-200 hover:bg-blue-800/50 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+            <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'clients' ? 'bg-white/20' : 'bg-blue-800/50 group-hover:bg-blue-700/50' %> flex items-center justify-center transition-colors">
+              <i class="fi fi-rr-users text-sm"></i>
+            </div>
+            <span class="flex-1">My Clients</span>
           </a>
 
-          <a href="/bde/queries" class="<%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-            <i class="fi fi-rr-inbox"></i> Queries
+          <a href="/bde/queries" class="<%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/30' : 'text-blue-200 hover:bg-blue-800/50 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+            <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'queries' ? 'bg-white/20' : 'bg-blue-800/50 group-hover:bg-blue-700/50' %> flex items-center justify-center transition-colors">
+              <i class="fi fi-rr-envelope-open-text text-sm"></i>
+            </div>
+            <span class="flex-1">Queries</span>
+            <span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold" id="sidebar-queries-count">0</span>
           </a>
 
-          <a href="/bde/orders" class="<%= typeof currentPage !== 'undefined' && currentPage === 'orders' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-            <i class="fi fi-rr-briefcase"></i> Orders
+          <a href="/bde/orders" class="<%= typeof currentPage !== 'undefined' && currentPage === 'orders' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30' : 'text-blue-200 hover:bg-blue-800/50 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+            <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'orders' ? 'bg-white/20' : 'bg-blue-800/50 group-hover:bg-blue-700/50' %> flex items-center justify-center transition-colors">
+              <i class="fi fi-rr-briefcase text-sm"></i>
+            </div>
+            <span class="flex-1">Active Orders</span>
+            <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full text-[10px] font-bold" id="sidebar-orders-count">0</span>
           </a>
 
-          <a href="/bde/payments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100' %> px-4 py-3 rounded-lg font-semibold text-sm transition-all flex items-center gap-2">
-            <i class="fi fi-rr-credit"></i> Payments
+          <a href="/bde/payments" class="<%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30' : 'text-blue-200 hover:bg-blue-800/50 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+            <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'payments' ? 'bg-white/20' : 'bg-blue-800/50 group-hover:bg-blue-700/50' %> flex items-center justify-center transition-colors">
+              <i class="fi fi-rr-credit-card text-sm"></i>
+            </div>
+            <span class="flex-1">Payments</span>
+            <span class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full text-[10px] font-bold" id="sidebar-payments-count">0</span>
+          </a>
+
+          <a href="/bde/chat" class="<%= typeof currentPage !== 'undefined' && currentPage === 'chat' ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/30' : 'text-blue-200 hover:bg-blue-800/50 hover:text-white' %> px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center gap-3 group">
+            <div class="w-8 h-8 rounded-lg <%= typeof currentPage !== 'undefined' && currentPage === 'chat' ? 'bg-white/20' : 'bg-blue-800/50 group-hover:bg-blue-700/50' %> flex items-center justify-center transition-colors">
+              <i class="fi fi-rr-comments text-sm"></i>
+            </div>
+            <span class="flex-1">Chat Hub</span>
           </a>
         </div>
-      </nav>
 
-      <!-- FOOTER -->
-      <div class="p-4 border-t border-slate-100 space-y-2">
-        <a href="/auth/logout" class="text-slate-600 hover:bg-red-50 hover:text-red-600 px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 w-full">
-          <i class="fi fi-rr-sign-out-alt"></i> Logout
-        </a>
-      </div>
+      </nav>
 
     </aside>
 
     <!-- MAIN CONTENT -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- HEADER -->
-      <%- include('../bde/components/header') %>
+      <!-- BDE HEADER -->
+      <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+        
+        <!-- LEFT: PAGE TITLE -->
+        <div>
+          <h2 class="text-2xl font-black text-slate-800">Dashboard</h2>
+          <p class="text-sm text-slate-400">Welcome to your BDE workspace</p>
+        </div>
+
+        <!-- RIGHT: USER MENU -->
+        <div class="flex items-center gap-4">
+          <!-- Chat Button -->
+          <a href="/bde/chat" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
+            <i class="fi fi-rr-messages text-lg"></i>
+          </a>
+
+          <!-- Notifications Button -->
+          <div class="relative">
+            <button onclick="toggleNotifications()" id="notif-btn" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
+              <i class="fi fi-rr-bell text-lg"></i>
+              <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+              <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white hidden"></span>
+            </button>
+
+            <div id="notif-modal" class="absolute top-14 right-0 w-80 md:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl py-0 hidden z-50 transform origin-top-right transition-all">
+              <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Notifications</h3>
+                <button onclick="markAllAsRead()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 uppercase">Mark all read</button>
+              </div>
+
+              <div id="notif-list" class="max-h-[400px] overflow-y-auto custom-scrollbar">
+                <div class="p-4 text-center text-slate-400 text-sm">Loading notifications...</div>
+              </div>
+
+              <div class="p-3 text-center border-t border-slate-100">
+                <a href="/bde/notifications" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">View All Notifications</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="h-8 w-px bg-slate-200 mx-1"></div>
+
+          <!-- User Profile Dropdown -->
+          <div class="relative group">
+            <button class="flex items-center gap-3 hover:bg-slate-50 rounded-xl px-3 py-2 transition-all">
+              <div class="text-right hidden sm:block">
+                <p class="text-sm font-bold text-slate-800">
+                  <%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'BDE User' %>
+                </p>
+                <p class="text-xs text-indigo-600 font-semibold">BDE</p>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 
+                flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                <%= typeof initials !== 'undefined' ? initials : 'BD' %>
+              </div>
+              <i class="fi fi-rr-angle-down text-xs text-slate-400 hidden sm:block"></i>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 hidden group-hover:block z-50">
+              <a href="/bde" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                <i class="fi fi-rr-home text-slate-400"></i> Dashboard
+              </a>
+              <a href="/bde/notifications" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                <i class="fi fi-rr-bell text-slate-400"></i> Notifications
+              </a>
+              <div class="border-t border-slate-100 my-1"></div>
+              <a href="/auth/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                <i class="fi fi-rr-sign-out-alt"></i> Sign Out
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </header>
+
+      <script src="/js/realtime-notifications.js"></script>
+      <script>
+        function toggleNotifications() {
+          const modal = document.getElementById('notif-modal');
+          modal.classList.toggle('hidden');
+          
+          if (!modal.classList.contains('hidden')) {
+            modal.classList.add('animate-in', 'fade-in', 'slide-in-from-top-2', 'duration-200');
+            if (window.realtimeNotifications && window.realtimeNotifications.loadNotifications) {
+              window.realtimeNotifications.loadNotifications();
+            }
+          }
+        }
+
+        window.addEventListener('click', function(e) {
+          const modal = document.getElementById('notif-modal');
+          const btn = document.getElementById('notif-btn');
+          
+          if (!btn.contains(e.target) && !modal.contains(e.target)) {
+            modal.classList.add('hidden');
+          }
+        });
+
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+          }
+        `;
+        document.head.appendChild(style);
+      </script>
 
       <!-- PAGE CONTENT -->
       <main class="flex-1 overflow-y-auto">
@@ -94,12 +236,313 @@
   </div>
 
   <!-- Global Modal System -->
-  <%- include('../partials/modal-system') %>
-  
-  <!-- Global Chat Modal -->
-  <%- include('../partials/global-chat-modal', { userRole: 'bde', userId: typeof profile !== 'undefined' ? profile.user_id : '' }) %>
+  <!-- GLOBAL MODAL SYSTEM -->
 
-  <!-- Real-time Notifications Script -->
-  <script src="/js/realtime-notifications.js"></script>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div class="p-6">
+        <div class="flex items-center gap-4 mb-4">
+          <div id="confirm-icon" class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+            <i class="fi fi-rr-exclamation text-xl"></i>
+          </div>
+          <div>
+            <h3 id="confirm-title" class="text-lg font-bold text-slate-800">Confirm Action</h3>
+            <p id="confirm-message" class="text-sm text-slate-500">Are you sure you want to proceed?</p>
+          </div>
+        </div>
+      </div>
+      <div class="border-t px-6 py-4 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
+        <button onclick="closeConfirmModal(false)" class="px-5 py-2.5 text-slate-700 bg-white border border-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all">
+          Cancel
+        </button>
+        <button id="confirm-btn" onclick="closeConfirmModal(true)" class="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Modal (for prompts) -->
+  <div id="input-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div class="border-b px-6 py-4">
+        <h3 id="input-title" class="text-lg font-bold text-slate-800">Enter Value</h3>
+        <p id="input-description" class="text-sm text-slate-500 mt-1">Please provide the required information.</p>
+      </div>
+      <div class="p-6">
+        <input type="text" id="input-field" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm" placeholder="">
+        <div id="input-options" class="hidden mt-4 space-y-2">
+          <!-- Radio options will be inserted here -->
+        </div>
+      </div>
+      <div class="border-t px-6 py-4 flex justify-end gap-3 bg-slate-50 rounded-b-2xl">
+        <button onclick="closeInputModal(null)" class="px-5 py-2.5 text-slate-700 bg-white border border-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all">
+          Cancel
+        </button>
+        <button onclick="submitInputModal()" class="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
+          Submit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert/Success Modal -->
+  <div id="alert-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div class="p-6 text-center">
+        <div id="alert-icon" class="w-16 h-16 mx-auto mb-4 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+          <i class="fi fi-rr-check text-3xl"></i>
+        </div>
+        <h3 id="alert-title" class="text-xl font-bold text-slate-800 mb-2">Success!</h3>
+        <p id="alert-message" class="text-slate-500">Operation completed successfully.</p>
+      </div>
+      <div class="border-t px-6 py-4 flex justify-center bg-slate-50 rounded-b-2xl">
+        <button onclick="closeAlertModal()" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ===== TOAST NOTIFICATIONS =====
+  function showToast(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    const icons = {
+      success: 'fi-rr-check-circle',
+      error: 'fi-rr-exclamation',
+      warning: 'fi-rr-exclamation',
+      info: 'fi-rr-info'
+    };
+    
+    const colors = {
+      success: 'bg-green-500',
+      error: 'bg-red-500',
+      warning: 'bg-amber-500',
+      info: 'bg-blue-500'
+    };
+    
+    toast.className = `${colors[type]} text-white px-5 py-3.5 rounded-xl font-semibold text-sm flex items-center gap-3 shadow-lg animate-in slide-in-from-right duration-300`;
+    toast.innerHTML = `
+      <i class="fi ${icons[type]} text-lg"></i>
+      <span>${message}</span>
+      <button onclick="this.parentElement.remove()" class="ml-auto hover:opacity-80">
+        <i class="fi fi-rr-cross-small text-lg"></i>
+      </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('animate-out', 'slide-out-to-right');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  // ===== CONFIRM MODAL =====
+  let confirmResolve = null;
+
+  function showConfirmModal(title, message, type = 'warning') {
+    return new Promise((resolve) => {
+      confirmResolve = resolve;
+      
+      const modal = document.getElementById('confirm-modal');
+      const iconEl = document.getElementById('confirm-icon');
+      const titleEl = document.getElementById('confirm-title');
+      const messageEl = document.getElementById('confirm-message');
+      const btnEl = document.getElementById('confirm-btn');
+      
+      titleEl.textContent = title;
+      messageEl.textContent = message;
+      
+      const iconColors = {
+        warning: { bg: 'bg-amber-100', text: 'text-amber-600', icon: 'fi-rr-exclamation' },
+        danger: { bg: 'bg-red-100', text: 'text-red-600', icon: 'fi-rr-trash' },
+        info: { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'fi-rr-info' },
+        success: { bg: 'bg-green-100', text: 'text-green-600', icon: 'fi-rr-check' }
+      };
+      
+      const config = iconColors[type] || iconColors.warning;
+      iconEl.className = `w-12 h-12 ${config.bg} ${config.text} rounded-xl flex items-center justify-center`;
+      iconEl.innerHTML = `<i class="fi ${config.icon} text-xl"></i>`;
+      
+      if (type === 'danger') {
+        btnEl.className = 'px-5 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all';
+      } else {
+        btnEl.className = 'px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all';
+      }
+      
+      modal.classList.remove('hidden');
+    });
+  }
+
+  function closeConfirmModal(result) {
+    document.getElementById('confirm-modal').classList.add('hidden');
+    if (confirmResolve) {
+      confirmResolve(result);
+      confirmResolve = null;
+    }
+  }
+
+  // ===== INPUT/PROMPT MODAL =====
+  let inputResolve = null;
+
+  function showInputModal(title, description, placeholder = '', options = null) {
+    return new Promise((resolve) => {
+      inputResolve = resolve;
+      
+      const modal = document.getElementById('input-modal');
+      const titleEl = document.getElementById('input-title');
+      const descEl = document.getElementById('input-description');
+      const inputEl = document.getElementById('input-field');
+      const optionsEl = document.getElementById('input-options');
+      
+      titleEl.textContent = title;
+      descEl.textContent = description;
+      inputEl.placeholder = placeholder;
+      inputEl.value = '';
+      
+      if (options && options.length > 0) {
+        inputEl.classList.add('hidden');
+        optionsEl.classList.remove('hidden');
+        optionsEl.innerHTML = options.map((opt, i) => `
+          <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all">
+            <input type="radio" name="input-option" value="${opt.value}" ${i === 0 ? 'checked' : ''} class="w-4 h-4 text-indigo-600">
+            <span class="font-medium text-slate-700">${opt.label}</span>
+          </label>
+        `).join('');
+      } else {
+        inputEl.classList.remove('hidden');
+        optionsEl.classList.add('hidden');
+      }
+      
+      modal.classList.remove('hidden');
+      setTimeout(() => inputEl.focus(), 100);
+    });
+  }
+
+  function submitInputModal() {
+    const inputEl = document.getElementById('input-field');
+    const optionsEl = document.getElementById('input-options');
+    
+    let value;
+    if (!inputEl.classList.contains('hidden')) {
+      value = inputEl.value;
+    } else {
+      const selected = optionsEl.querySelector('input[name="input-option"]:checked');
+      value = selected ? selected.value : null;
+    }
+    
+    closeInputModal(value);
+  }
+
+  function closeInputModal(result) {
+    document.getElementById('input-modal').classList.add('hidden');
+    if (inputResolve) {
+      inputResolve(result);
+      inputResolve = null;
+    }
+  }
+
+  // ===== ALERT MODAL =====
+  let alertResolve = null;
+
+  function showAlertModal(title, message, type = 'success') {
+    return new Promise((resolve) => {
+      alertResolve = resolve;
+      
+      const modal = document.getElementById('alert-modal');
+      const iconEl = document.getElementById('alert-icon');
+      const titleEl = document.getElementById('alert-title');
+      const messageEl = document.getElementById('alert-message');
+      
+      titleEl.textContent = title;
+      messageEl.textContent = message;
+      
+      const iconColors = {
+        success: { bg: 'bg-green-100', text: 'text-green-600', icon: 'fi-rr-check' },
+        error: { bg: 'bg-red-100', text: 'text-red-600', icon: 'fi-rr-cross' },
+        warning: { bg: 'bg-amber-100', text: 'text-amber-600', icon: 'fi-rr-exclamation' },
+        info: { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'fi-rr-info' }
+      };
+      
+      const config = iconColors[type] || iconColors.success;
+      iconEl.className = `w-16 h-16 mx-auto mb-4 ${config.bg} ${config.text} rounded-full flex items-center justify-center`;
+      iconEl.innerHTML = `<i class="fi ${config.icon} text-3xl"></i>`;
+      
+      modal.classList.remove('hidden');
+    });
+  }
+
+  function closeAlertModal() {
+    document.getElementById('alert-modal').classList.add('hidden');
+    if (alertResolve) {
+      alertResolve();
+      alertResolve = null;
+    }
+  }
+
+  // Close modals on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeConfirmModal(false);
+      closeInputModal(null);
+      closeAlertModal();
+    }
+  });
+
+  // Close modals on backdrop click
+  document.querySelectorAll('#confirm-modal, #input-modal, #alert-modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        if (modal.id === 'confirm-modal') closeConfirmModal(false);
+        else if (modal.id === 'input-modal') closeInputModal(null);
+        else closeAlertModal();
+      }
+    });
+  });
+  </script>
+
+  <!-- Global Chat Modal -->
+  <%- include('../partials/global-chat-modal', { userRole: 'bde', userId: typeof profile !== 'undefined' ? profile.user_id : null }) %>
+
+  <!-- Enterprise Components -->
+  <script src="/js/enterprise-components.js"></script>
+  
+  <!-- Sidebar Real-time Updates -->
+  <script>
+    async function updateBDESidebarCounts() {
+      try {
+        const response = await fetch('/bde/api/sidebar-counts');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            const queriesEl = document.getElementById('sidebar-queries-count');
+            const ordersEl = document.getElementById('sidebar-orders-count');
+            const paymentsEl = document.getElementById('sidebar-payments-count');
+            const notificationsEl = document.getElementById('sidebar-notifications-count');
+            
+            if (queriesEl) queriesEl.textContent = data.data.queries || 0;
+            if (ordersEl) ordersEl.textContent = data.data.active || 0;
+            if (paymentsEl) paymentsEl.textContent = data.data.payments || 0;
+            if (notificationsEl) notificationsEl.textContent = data.data.notifications || 0;
+          }
+        }
+      } catch (err) {
+        console.log('BDE sidebar counts fetch failed:', err.message);
+      }
+    }
+    
+    updateBDESidebarCounts();
+    setInterval(updateBDESidebarCounts, 30000);
+  </script>
+
+  <%- script %>
 </body>
 </html>

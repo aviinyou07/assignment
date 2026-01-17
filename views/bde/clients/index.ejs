@@ -50,6 +50,9 @@
                     <a href="/bde/clients/<%= client.user_id %>" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
                       View
                     </a>
+                    <button onclick="openNotificationModal('<%= client.user_id %>', '<%= client.full_name %>')" class="px-3 py-1 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 font-semibold" title="Send Notification">
+                      <i class="fi fi-rr-bell"></i>
+                    </button>
                     <a href="https://wa.me/<%= client.whatsapp ? client.whatsapp.replace(/\D/g, '') : client.mobile_number.replace(/\D/g, '') %>" target="_blank" class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 font-semibold">
                       <i class="fi fi-brands-whatsapp"></i>
                     </a>
@@ -86,3 +89,134 @@
   <% } %>
 
 </section>
+
+<!-- SEND NOTIFICATION MODAL -->
+<div id="notification-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold text-slate-800">Send Notification</h3>
+      <button onclick="closeNotificationModal()" class="text-slate-400 hover:text-slate-600">
+        <i class="fi fi-rr-cross text-lg"></i>
+      </button>
+    </div>
+    
+    <form id="notification-form" onsubmit="sendCustomNotification(event)">
+      <input type="hidden" id="notif-target-user" name="target_user_id">
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">To:</label>
+        <div class="p-3 bg-slate-100 rounded-lg">
+          <span id="notif-target-name" class="font-semibold text-slate-800"></span>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Severity</label>
+        <select name="severity" id="notif-severity" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          <option value="info">ℹ️ Info</option>
+          <option value="success">✅ Success</option>
+          <option value="warning">⚠️ Warning</option>
+          <option value="critical">🚨 Critical</option>
+        </select>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Title (optional)</label>
+        <input type="text" name="title" id="notif-title" placeholder="Notification title..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Message <span class="text-red-500">*</span></label>
+        <textarea name="message" id="notif-message" required rows="4" placeholder="Enter your message..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Context Code (optional)</label>
+        <input type="text" name="context_code" id="notif-context" placeholder="QUERY_XXXX or WORK_CODE" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      
+      <div class="flex gap-3">
+        <button type="button" onclick="closeNotificationModal()" class="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300">
+          Cancel
+        </button>
+        <button type="submit" id="notif-submit-btn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+          Send Notification
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Notification Modal Functions
+function openNotificationModal(userId, userName) {
+  document.getElementById('notif-target-user').value = userId;
+  document.getElementById('notif-target-name').textContent = userName;
+  document.getElementById('notification-modal').classList.remove('hidden');
+}
+
+function closeNotificationModal() {
+  document.getElementById('notification-modal').classList.add('hidden');
+  document.getElementById('notification-form').reset();
+}
+
+async function sendCustomNotification(event) {
+  event.preventDefault();
+  
+  const submitBtn = document.getElementById('notif-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+  
+  try {
+    const formData = {
+      target_user_id: document.getElementById('notif-target-user').value,
+      target_role: 'client',
+      severity: document.getElementById('notif-severity').value,
+      title: document.getElementById('notif-title').value,
+      message: document.getElementById('notif-message').value,
+      context_code: document.getElementById('notif-context').value
+    };
+    
+    const response = await fetch('/bde/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      if (typeof showToast === 'function') {
+        showToast('Notification sent successfully!', 'success');
+      } else {
+        alert('Notification sent successfully!');
+      }
+      closeNotificationModal();
+    } else {
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Failed to send notification', 'error');
+      } else {
+        alert(data.message || 'Failed to send notification');
+      }
+    }
+  } catch (err) {
+    console.error('Error sending notification:', err);
+    if (typeof showToast === 'function') {
+      showToast('Error sending notification', 'error');
+    } else {
+      alert('Error sending notification');
+    }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Send Notification';
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('notification-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('notification-modal')) {
+    closeNotificationModal();
+  }
+});
+</script>

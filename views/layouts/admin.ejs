@@ -29,6 +29,8 @@
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
+
+  <%- typeof style !== 'undefined' ? style : '' %>
 </head>
 <body>
   <div class="flex h-screen bg-slate-50">
@@ -51,11 +53,42 @@
 
   <!-- Global Modal System -->
   <%- include('../partials/modal-system') %>
-  
-  <!-- Global Chat Modal -->
-  <%- include('../partials/global-chat-modal', { userRole: 'admin', userId: typeof profile !== 'undefined' ? profile.user_id : '' }) %>
 
-  <!-- Real-time Notifications Script -->
-  <script src="/js/realtime-notifications.js"></script>
+  <!-- Global Chat Modal -->
+  <%- include('../partials/global-chat-modal', { userRole: 'admin', userId: typeof profile !== 'undefined' ? profile.user_id : null }) %>
+
+  <!-- Enterprise Components -->
+  <script src="/js/enterprise-components.js"></script>
+  
+  <!-- Sidebar Real-time Updates -->
+  <script>
+    // Fetch sidebar counts on page load
+    async function updateSidebarCounts() {
+      try {
+        const response = await fetch('/admin/api/sidebar-counts');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            // Update badges
+            const queriesEl = document.getElementById('sidebar-queries-count');
+            const paymentsEl = document.getElementById('sidebar-payments-count');
+            const qcEl = document.getElementById('sidebar-qc-count');
+            
+            if (queriesEl) queriesEl.textContent = data.data.queries || 0;
+            if (paymentsEl) paymentsEl.textContent = data.data.payments || 0;
+            if (qcEl) qcEl.textContent = data.data.qc || 0;
+          }
+        }
+      } catch (err) {
+        console.log('Sidebar counts fetch failed:', err.message);
+      }
+    }
+    
+    // Update on load and every 30 seconds
+    updateSidebarCounts();
+    setInterval(updateSidebarCounts, 30000);
+  </script>
+
+  <%- script %>
 </body>
 </html>

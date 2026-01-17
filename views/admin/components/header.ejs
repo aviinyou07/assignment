@@ -1,83 +1,171 @@
-<!-- ADMIN HEADER -->
-<header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+<!-- PREMIUM ADMIN HEADER -->
+<header class="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-8 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
   
-  <!-- LEFT: PAGE TITLE -->
+  <!-- LEFT: PAGE TITLE & BREADCRUMB -->
   <div>
-    <h2 class="text-2xl font-black text-slate-800">
-      <% 
-        let pageTitle = 'Dashboard';
-        if (typeof currentPage !== 'undefined') {
-          if (currentPage === 'users') pageTitle = 'Users Management';
-          if (currentPage === 'chat') pageTitle = 'Chat';
-        }
-      %>
-      <%= pageTitle %>
-    </h2>
-    <p class="text-sm text-slate-400">System administration and control</p>
+    <div class="flex items-center gap-2 text-xs text-slate-400 mb-1">
+      <a href="/admin" class="hover:text-indigo-600 transition-colors">Admin</a>
+      <i class="fi fi-rr-angle-right text-[8px]"></i>
+      <span class="text-slate-600 font-medium">
+        <% 
+          let pageTitle = 'Dashboard';
+          if (typeof currentPage !== 'undefined') {
+            if (currentPage === 'users') pageTitle = 'Users Management';
+            if (currentPage === 'chat') pageTitle = 'Chat Hub';
+            if (currentPage === 'queries') pageTitle = 'Queries';
+            if (currentPage === 'payments') pageTitle = 'Payments';
+            if (currentPage === 'qc') pageTitle = 'Quality Control';
+            if (currentPage === 'assignments') pageTitle = 'Assignments';
+            if (currentPage === 'delivery') pageTitle = 'Delivery';
+            if (currentPage === 'audit') pageTitle = 'Audit Logs';
+          }
+        %>
+        <%= pageTitle %>
+      </span>
+    </div>
+    <h2 class="text-2xl font-black text-slate-800"><%= pageTitle %></h2>
   </div>
 
-  <!-- RIGHT: USER MENU -->
-  <div class="flex items-center gap-4">
-    <!-- Chat Button -->
-    <button onclick="openGlobalChat()" id="chat-btn" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
-      <i class="fi fi-rr-messages text-lg"></i>
+  <!-- RIGHT: ACTIONS & USER -->
+  <div class="flex items-center gap-3">
+    
+    <!-- Search Button -->
+    <button onclick="openGlobalSearch()" class="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all" title="Search (Ctrl+K)">
+      <i class="fi fi-rr-search text-lg"></i>
     </button>
+
+    <!-- Chat Button -->
+    <a href="/admin/chat" class="relative p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+      <i class="fi fi-rr-comment-dots text-lg"></i>
+      <span id="chat-badge" class="hidden absolute -top-0.5 -right-0.5 bg-indigo-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">0</span>
+    </a>
 
     <!-- Notifications Button -->
     <div class="relative">
-      <button onclick="toggleNotifications()" id="notif-btn" class="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all relative">
+      <button onclick="toggleNotifications()" id="notif-btn" class="relative p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all">
         <i class="fi fi-rr-bell text-lg"></i>
-        <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
-        <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white hidden"></span>
+        <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center border-2 border-white">0</span>
       </button>
 
-      <div id="notif-modal" class="absolute top-14 right-0 w-80 md:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl py-0 hidden z-50 transform origin-top-right transition-all">
-        <div class="p-4 border-b border-slate-100 flex justify-between items-center">
-          <h3 class="font-bold text-slate-800">Notifications</h3>
-          <button onclick="markAllAsRead()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 uppercase">Mark all read</button>
+      <!-- Enhanced Notification Dropdown -->
+      <div id="notif-modal" class="hidden absolute top-14 right-0 w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 transform origin-top-right overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-3 flex justify-between items-center">
+          <h3 class="font-bold text-white text-sm flex items-center gap-2">
+            <i class="fi fi-rr-bell"></i> Notifications
+          </h3>
+          <div class="flex items-center gap-2">
+            <button onclick="markAllAsRead()" class="text-[10px] font-bold text-slate-300 hover:text-white uppercase transition-colors">Mark all read</button>
+          </div>
         </div>
 
+        <!-- Notification Filters -->
+        <div class="flex gap-1 p-2 border-b border-slate-100 bg-slate-50">
+          <button class="notif-filter active text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-700" data-filter="all">All</button>
+          <button class="notif-filter text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100" data-filter="critical">🔴 Critical</button>
+          <button class="notif-filter text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100" data-filter="warning">🟡 Warning</button>
+          <button class="notif-filter text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100" data-filter="success">🟢 Success</button>
+        </div>
+
+        <!-- Notification List -->
         <div id="notif-list" class="max-h-[400px] overflow-y-auto custom-scrollbar">
-          <div class="p-4 text-center text-slate-400 text-sm">Loading notifications...</div>
+          <div class="p-6 text-center">
+            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2">
+              <i class="fi fi-rr-spinner-alt animate-spin text-slate-400"></i>
+            </div>
+            <p class="text-slate-400 text-sm">Loading notifications...</p>
+          </div>
         </div>
 
-        <div class="p-3 text-center border-t border-slate-100">
-          <a href="/admin/notifications" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">View All Notifications</a>
+        <!-- Footer -->
+        <div class="p-3 text-center border-t border-slate-100 bg-slate-50">
+          <a href="/admin/notifications" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors flex items-center justify-center gap-1">
+            View All Notifications <i class="fi fi-rr-arrow-right text-[10px]"></i>
+          </a>
         </div>
       </div>
     </div>
 
+    <!-- Divider -->
     <div class="h-8 w-px bg-slate-200 mx-1"></div>
 
-    <div class="text-right">
-      <p class="text-sm font-bold text-slate-800">
-        <%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Admin User' %>
-      </p>
-      <p class="text-xs text-slate-400">Administrator</p>
+    <!-- User Profile Dropdown -->
+    <div class="relative group">
+      <button class="flex items-center gap-3 hover:bg-slate-50 rounded-xl px-3 py-2 transition-all">
+        <div class="text-right hidden sm:block">
+          <p class="text-sm font-bold text-slate-800">
+            <%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Admin User' %>
+          </p>
+          <p class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider">Super Admin</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/30">
+          <%= typeof initials !== 'undefined' ? initials : 'AD' %>
+        </div>
+        <i class="fi fi-rr-angle-down text-slate-400 text-xs"></i>
+      </button>
+      
+      <!-- Dropdown Menu -->
+      <div class="absolute top-full right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+        <div class="p-3 border-b border-slate-100">
+          <p class="text-sm font-bold text-slate-800"><%= typeof profile !== 'undefined' && profile.full_name ? profile.full_name : 'Admin' %></p>
+          <p class="text-xs text-slate-500"><%= typeof profile !== 'undefined' && profile.email ? profile.email : '' %></p>
+        </div>
+        <div class="p-2">
+          <a href="/admin/profile" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+            <i class="fi fi-rr-user text-slate-400"></i> My Profile
+          </a>
+          <a href="/admin/settings" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+            <i class="fi fi-rr-settings text-slate-400"></i> Settings
+          </a>
+          <a href="/admin/audit/logs" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+            <i class="fi fi-rr-time-past text-slate-400"></i> Activity Log
+          </a>
+        </div>
+        <div class="p-2 border-t border-slate-100">
+          <a href="/auth/logout" class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <i class="fi fi-rr-sign-out-alt"></i> Sign Out
+          </a>
+        </div>
+      </div>
     </div>
-    
-    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 
-      flex items-center justify-center text-white font-bold text-sm shadow-lg">
-      <%= typeof initials !== 'undefined' ? initials : 'AD' %>
-    </div>
+
   </div>
 
 </header>
 
+<!-- Global Search Modal -->
+<div id="global-search-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-start justify-center pt-[15vh]">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
+    <div class="p-4 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <i class="fi fi-rr-search text-slate-400 text-xl"></i>
+        <input type="text" id="global-search-input" class="flex-1 text-lg outline-none placeholder:text-slate-400" placeholder="Search orders, clients, writers..." autofocus>
+        <kbd class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded font-mono">ESC</kbd>
+      </div>
+    </div>
+    <div id="search-results" class="max-h-[400px] overflow-y-auto p-2">
+      <div class="p-4 text-center text-slate-400 text-sm">
+        <p>Start typing to search...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/js/realtime-notifications.js"></script>
 <script>
+  // Toggle notifications panel
   function toggleNotifications() {
     const modal = document.getElementById('notif-modal');
     modal.classList.toggle('hidden');
     
     if (!modal.classList.contains('hidden')) {
-      modal.classList.add('animate-in', 'fade-in', 'slide-in-from-top-2', 'duration-200');
       if (window.realtimeNotifications && window.realtimeNotifications.loadNotifications) {
         window.realtimeNotifications.loadNotifications();
       }
     }
   }
 
+  // Close notifications when clicking outside
   window.addEventListener('click', function(e) {
     const modal = document.getElementById('notif-modal');
     const btn = document.getElementById('notif-btn');
@@ -87,15 +175,109 @@
     }
   });
 
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+  // Notification filter tabs
+  document.querySelectorAll('.notif-filter').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.notif-filter').forEach(b => {
+        b.classList.remove('active', 'bg-indigo-100', 'text-indigo-700');
+        b.classList.add('text-slate-500');
+      });
+      this.classList.add('active', 'bg-indigo-100', 'text-indigo-700');
+      this.classList.remove('text-slate-500');
+      
+      const filter = this.dataset.filter;
+      filterNotifications(filter);
+    });
+  });
+
+  function filterNotifications(type) {
+    const items = document.querySelectorAll('#notif-list .notif-item');
+    items.forEach(item => {
+      if (type === 'all' || item.dataset.type === type) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  // Global Search
+  function openGlobalSearch() {
+    const modal = document.getElementById('global-search-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('global-search-input').focus();
+  }
+
+  function closeGlobalSearch() {
+    document.getElementById('global-search-modal').classList.add('hidden');
+  }
+
+  document.getElementById('global-search-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeGlobalSearch();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      openGlobalSearch();
     }
-    .animate-slide-in {
-      animation: slideIn 0.3s ease-out;
+    if (e.key === 'Escape') {
+      closeGlobalSearch();
     }
-  `;
-  document.head.appendChild(style);
+  });
+
+  // Search functionality
+  let searchTimeout;
+  document.getElementById('global-search-input')?.addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+    
+    if (query.length < 2) {
+      document.getElementById('search-results').innerHTML = '<div class="p-4 text-center text-slate-400 text-sm"><p>Start typing to search...</p></div>';
+      return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/admin/search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        renderSearchResults(data);
+      } catch (err) {
+        console.error('Search error:', err);
+      }
+    }, 300);
+  });
+
+  function renderSearchResults(data) {
+    const container = document.getElementById('search-results');
+    if (!data.results || data.results.length === 0) {
+      container.innerHTML = '<div class="p-4 text-center text-slate-400 text-sm"><i class="fi fi-rr-search-alt block text-2xl mb-2"></i><p>No results found</p></div>';
+      return;
+    }
+
+    let html = '';
+    data.results.forEach(result => {
+      html += `
+        <a href="${result.link}" class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors">
+          <div class="w-10 h-10 rounded-lg ${result.type === 'order' ? 'bg-indigo-100' : result.type === 'client' ? 'bg-emerald-100' : 'bg-purple-100'} flex items-center justify-center">
+            <i class="fi ${result.type === 'order' ? 'fi-rr-document text-indigo-600' : result.type === 'client' ? 'fi-rr-user text-emerald-600' : 'fi-rr-user-pen text-purple-600'}"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-800 text-sm truncate">${result.title}</p>
+            <p class="text-xs text-slate-500">${result.subtitle}</p>
+          </div>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full ${result.type === 'order' ? 'bg-indigo-100 text-indigo-700' : result.type === 'client' ? 'bg-emerald-100 text-emerald-700' : 'bg-purple-100 text-purple-700'}">${result.type}</span>
+        </a>
+      `;
+    });
+    container.innerHTML = html;
+  }
+</script>
+
+<style>
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 4px; }
+</style>
+
 </script>

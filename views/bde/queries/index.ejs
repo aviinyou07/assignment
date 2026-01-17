@@ -80,9 +80,20 @@
                   </span>
                 </td>
                 <td class="px-6 py-4">
-                  <a href="/bde/queries/<%= query.query_code %>" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
-                    View Details
-                  </a>
+                  <div class="flex gap-2">
+                    <a href="/bde/queries/<%= query.query_code %>" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 font-semibold">
+                      View
+                    </a>
+                    <button onclick="openChatModal('<%= query.query_code %>', '<%= query.full_name %>', 'client')" class="px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 font-semibold" title="Chat with Client">
+                      <i class="fi fi-rr-comment"></i>
+                    </button>
+                    <button onclick="openChatModal('<%= query.query_code %>', 'Admin', 'admin')" class="px-3 py-1 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 font-semibold" title="Chat with Admin">
+                      <i class="fi fi-rr-user-headset"></i>
+                    </button>
+                    <button onclick="openQueryNotificationModal('<%= query.user_id %>', '<%= query.full_name %>', '<%= query.query_code %>')" class="px-3 py-1 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 font-semibold" title="Send Notification">
+                      <i class="fi fi-rr-bell"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             <% }); %>
@@ -115,3 +126,238 @@
   <% } %>
 
 </section>
+
+<!-- CHAT MODAL -->
+<div id="chat-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl">
+    <div class="flex items-center justify-between p-4 border-b">
+      <h3 class="text-lg font-bold text-slate-800" id="chat-modal-title">Chat</h3>
+      <button onclick="closeChatModal()" class="text-slate-400 hover:text-slate-600">
+        <i class="fi fi-rr-cross"></i>
+      </button>
+    </div>
+    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 min-h-[300px]">
+      <div class="text-center text-slate-400">Loading...</div>
+    </div>
+    <form id="chat-form" onsubmit="sendChatMessage(event)" class="p-4 border-t flex gap-2">
+      <input type="hidden" id="chat-context-code">
+      <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" required>
+      <button type="submit" id="chat-send-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+        <i class="fi fi-rr-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- NOTIFICATION MODAL FOR QUERIES -->
+<div id="query-notification-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold text-slate-800">Send Notification</h3>
+      <button onclick="closeQueryNotificationModal()" class="text-slate-400 hover:text-slate-600">
+        <i class="fi fi-rr-cross text-lg"></i>
+      </button>
+    </div>
+    
+    <form id="query-notification-form" onsubmit="sendQueryNotification(event)">
+      <input type="hidden" id="qnotif-target-user" name="target_user_id">
+      <input type="hidden" id="qnotif-context-code" name="context_code">
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">To:</label>
+        <div class="p-3 bg-slate-100 rounded-lg">
+          <span id="qnotif-target-name" class="font-semibold text-slate-800"></span>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Context:</label>
+        <div class="p-3 bg-blue-50 rounded-lg">
+          <span id="qnotif-context-display" class="font-mono font-semibold text-blue-700"></span>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Severity</label>
+        <select name="severity" id="qnotif-severity" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          <option value="info">ℹ️ Info</option>
+          <option value="success">✅ Success</option>
+          <option value="warning">⚠️ Warning</option>
+          <option value="critical">🚨 Critical</option>
+        </select>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Title (optional)</label>
+        <input type="text" name="title" id="qnotif-title" placeholder="Notification title..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Message <span class="text-red-500">*</span></label>
+        <textarea name="message" id="qnotif-message" required rows="4" placeholder="Enter your message..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+      </div>
+      
+      <div class="flex gap-3">
+        <button type="button" onclick="closeQueryNotificationModal()" class="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300">
+          Cancel
+        </button>
+        <button type="submit" id="qnotif-submit-btn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+          Send Notification
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Chat Modal Functions
+function openChatModal(contextCode, targetName, targetRole) {
+  document.getElementById('chat-context-code').value = contextCode;
+  document.getElementById('chat-modal-title').textContent = `Chat with ${targetName}`;
+  document.getElementById('chat-modal').classList.remove('hidden');
+  loadChatMessages(contextCode);
+}
+
+function closeChatModal() {
+  document.getElementById('chat-modal').classList.add('hidden');
+  document.getElementById('chat-messages').innerHTML = '<div class="text-center text-slate-400">Loading...</div>';
+}
+
+async function loadChatMessages(contextCode) {
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = '<div class="text-center text-slate-400"><i class="fi fi-rr-spinner animate-spin text-xl"></i> Loading messages...</div>';
+  
+  try {
+    const response = await fetch(`/chat/${contextCode}`, { credentials: 'include' });
+    const data = await response.json();
+    
+    if (data.success && data.messages && data.messages.length > 0) {
+      container.innerHTML = data.messages.map(msg => `
+        <div class="flex ${msg.is_mine ? 'justify-end' : 'justify-start'}">
+          <div class="${msg.is_mine ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'} px-4 py-2 rounded-2xl max-w-[80%]">
+            <p class="text-sm">${msg.content || msg.message}</p>
+            <p class="text-xs ${msg.is_mine ? 'text-blue-200' : 'text-slate-400'} mt-1">${new Date(msg.created_at).toLocaleTimeString()}</p>
+          </div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+    } else {
+      container.innerHTML = '<div class="text-center text-slate-400 py-8"><i class="fi fi-rr-comment block text-3xl mb-2"></i>No messages yet. Start the conversation!</div>';
+    }
+  } catch (err) {
+    console.error('Error loading chat:', err);
+    container.innerHTML = '<div class="text-center text-red-400"><i class="fi fi-rr-exclamation-triangle block text-3xl mb-2"></i>Failed to load messages</div>';
+  }
+}
+
+async function sendChatMessage(event) {
+  event.preventDefault();
+  const contextCode = document.getElementById('chat-context-code').value;
+  const message = document.getElementById('chat-input').value.trim();
+  const sendBtn = document.getElementById('chat-send-btn');
+  
+  if (!message) return;
+  
+  // Show loading state
+  const originalText = sendBtn.innerHTML;
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<i class="fi fi-rr-spinner animate-spin"></i>';
+  document.getElementById('chat-input').disabled = true;
+  
+  try {
+    const response = await fetch(`/chat/${contextCode}/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ content: message })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      document.getElementById('chat-input').value = '';
+      loadChatMessages(contextCode);
+    } else {
+      if (typeof showToast === 'function') showToast(data.message || 'Failed to send', 'error');
+    }
+  } catch (err) {
+    console.error('Error sending message:', err);
+    if (typeof showToast === 'function') showToast('Error sending message', 'error');
+  } finally {
+    // Restore button state
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = originalText;
+    document.getElementById('chat-input').disabled = false;
+  }
+}
+
+// Query Notification Modal Functions
+function openQueryNotificationModal(userId, userName, contextCode) {
+  document.getElementById('qnotif-target-user').value = userId;
+  document.getElementById('qnotif-context-code').value = contextCode;
+  document.getElementById('qnotif-target-name').textContent = userName;
+  document.getElementById('qnotif-context-display').textContent = contextCode;
+  document.getElementById('query-notification-modal').classList.remove('hidden');
+}
+
+function closeQueryNotificationModal() {
+  document.getElementById('query-notification-modal').classList.add('hidden');
+  document.getElementById('query-notification-form').reset();
+}
+
+async function sendQueryNotification(event) {
+  event.preventDefault();
+  
+  const submitBtn = document.getElementById('qnotif-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+  
+  try {
+    const formData = {
+      target_user_id: document.getElementById('qnotif-target-user').value,
+      target_role: 'client',
+      severity: document.getElementById('qnotif-severity').value,
+      title: document.getElementById('qnotif-title').value,
+      message: document.getElementById('qnotif-message').value,
+      context_code: document.getElementById('qnotif-context-code').value
+    };
+    
+    const response = await fetch('/bde/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      if (typeof showToast === 'function') {
+        showToast('Notification sent successfully!', 'success');
+      } else {
+        alert('Notification sent!');
+      }
+      closeQueryNotificationModal();
+    } else {
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Failed to send', 'error');
+      } else {
+        alert(data.message || 'Failed');
+      }
+    }
+  } catch (err) {
+    console.error('Error:', err);
+    if (typeof showToast === 'function') showToast('Error sending notification', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Send Notification';
+  }
+}
+
+// Close modals on backdrop click
+document.getElementById('chat-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('chat-modal')) closeChatModal();
+});
+document.getElementById('query-notification-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('query-notification-modal')) closeQueryNotificationModal();
+});
+</script>

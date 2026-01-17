@@ -3,6 +3,7 @@
 
 <head>
     <%- include('../partials/head') %>
+    <%- typeof style !== 'undefined' ? style : '' %>
 </head>
 
 <body class="bg-slate-50 min-h-screen flex overflow-x-hidden">
@@ -18,12 +19,14 @@
 
     <!-- Global Modal System -->
     <%- include('../partials/modal-system') %>
-    
-    <!-- Global Chat Modal -->
-    <%- include('../partials/global-chat-modal', { userRole: 'writer', userId: typeof profile !== 'undefined' ? profile.user_id : '' }) %>
 
-    <!-- Real-time Notifications Script -->
-    <script src="/js/realtime-notifications.js"></script>
+    <!-- Global Chat Modal -->
+    <%- include('../partials/global-chat-modal', { userRole: 'writer', userId: typeof profile !== 'undefined' ? profile.user_id : null }) %>
+    
+    <!-- Enterprise Components -->
+    <script src="/js/enterprise-components.js"></script>
+
+    <%- script %>
 </body>
 
 </html>

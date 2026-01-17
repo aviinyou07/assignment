@@ -458,58 +458,255 @@ exports.finalizeAssignment = async (req, res) => {
   }
 };
 
-// Reassign writer (Admin action)
+// Reassign writer (Admin action) - ENHANCED with full task history sharing
 exports.reassignWriter = async (req, res) => {
+  const connection = await db.getConnection();
+  
   try {
+    const adminId = req.user.user_id;
     const { taskEvalId } = req.params;
-    const { newWriterId, reason } = req.body;
+    const { newWriterId, reason, shareHistory = true } = req.body;
 
     if (!newWriterId) {
       return res.status(400).json({ success: false, error: 'New writer ID required' });
     }
 
-    const [[assignment]] = await db.query(
-      `SELECT te.*, u.full_name as old_writer_name FROM task_evaluations te
+    await connection.beginTransaction();
+
+    // Get current assignment and order details
+    const [[assignment]] = await connection.query(
+      `SELECT te.*, u.full_name as old_writer_name, u.email as old_writer_email,
+              o.order_id, o.query_code, o.work_code, o.paper_topic, o.deadline_at, o.status as order_status
+       FROM task_evaluations te
        JOIN users u ON te.writer_id = u.user_id
+       JOIN orders o ON te.order_id = o.order_id
        WHERE te.id = ?`,
       [taskEvalId]
     );
 
     if (!assignment) {
+      await connection.rollback();
       return res.status(404).json({ success: false, error: 'Assignment not found' });
     }
 
-    // Delete old assignment
-    await db.query(
-      `DELETE FROM task_evaluations WHERE id = ?`,
-      [taskEvalId]
+    // Get new writer details
+    const [[newWriter]] = await connection.query(
+      `SELECT user_id, full_name, email FROM users WHERE user_id = ? AND role = 'writer' AND is_active = 1`,
+      [newWriterId]
     );
 
-    // Create new assignment
-    await db.query(
+    if (!newWriter) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, error: 'New writer not found or inactive' });
+    }
+
+    // =======================
+    // GET FULL TASK HISTORY TO SHARE
+    // =======================
+    let taskHistory = null;
+    if (shareHistory) {
+      // Get previous submissions
+      const [submissions] = await connection.query(
+        `SELECT submission_id, file_url, status, feedback, grammarly_score, ai_score, plagiarism_score, created_at
+         FROM submissions WHERE order_id = ? ORDER BY created_at DESC`,
+        [assignment.order_id]
+      );
+
+      // Get revision requests
+      const [revisions] = await connection.query(
+        `SELECT id, revision_number, reason, status, deadline, created_at
+         FROM revision_requests WHERE order_id = ? ORDER BY created_at DESC`,
+        [String(assignment.order_id)]
+      );
+
+      // Get order history
+      const [orderHistory] = await connection.query(
+        `SELECT action_type, description, modified_by_role, created_at
+         FROM orders_history WHERE order_id = ? ORDER BY created_at DESC LIMIT 20`,
+        [assignment.order_id]
+      );
+
+      // Get file versions
+      const [files] = await connection.query(
+        `SELECT file_name, file_url, version_number, created_at
+         FROM file_versions WHERE order_id = ? ORDER BY version_number DESC`,
+        [String(assignment.order_id)]
+      );
+
+      taskHistory = {
+        submissions,
+        revisions,
+        orderHistory,
+        files,
+        previousWriter: {
+          name: assignment.old_writer_name,
+          rejectionReason: reason
+        }
+      };
+    }
+
+    // =======================
+    // RELEASE OLD WRITER
+    // =======================
+    await connection.query(
+      `UPDATE task_evaluations SET status = 'released', 
+       comment = CONCAT(IFNULL(comment, ''), '\nReleased by Admin: ', ?),
+       updated_at = NOW()
+       WHERE id = ?`,
+      [reason || 'Reassigned to another writer', taskEvalId]
+    );
+
+    // =======================
+    // CREATE NEW ASSIGNMENT WITH HISTORY CONTEXT
+    // =======================
+    const historyNote = shareHistory 
+      ? `\n\n[TASK HISTORY SHARED]\nPrevious writer: ${assignment.old_writer_name}\nReason for reassignment: ${reason || 'Not specified'}\nPrevious submissions: ${taskHistory.submissions.length}\nRevision requests: ${taskHistory.revisions.length}`
+      : '';
+
+    const [newEvalResult] = await connection.query(
       `INSERT INTO task_evaluations (order_id, writer_id, status, comment, created_at)
        VALUES (?, ?, 'pending', ?, NOW())`,
-      [assignment.order_id, newWriterId, `Reassigned: ${reason || 'Previous writer was unavailable'}`]
+      [assignment.order_id, newWriterId, `Reassigned from ${assignment.old_writer_name}. ${reason || ''}${historyNote}`]
     );
 
-    // Log action
-    await logAction({
-        userId: req.user.user_id,
-        action: 'writer_reassigned',
-        details: `Reassigned from ${assignment.old_writer_name} to new writer. Reason: ${reason || 'Not specified'}`,
-        resource_type: 'order',
-        resource_id: assignment.order_id,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
+    const newTaskEvalId = newEvalResult.insertId;
+
+    // =======================
+    // UPDATE ORDER WRITER_ID
+    // =======================
+    await connection.query(
+      `UPDATE orders SET writer_id = ? WHERE order_id = ?`,
+      [newWriterId, assignment.order_id]
+    );
+
+    // =======================
+    // CREATE ORDER HISTORY
+    // =======================
+    await connection.query(
+      `INSERT INTO orders_history 
+       (order_id, modified_by, modified_by_name, modified_by_role, action_type, description, created_at)
+       VALUES (?, ?, 'Admin', 'Admin', 'WRITER_REASSIGNED', ?, NOW())`,
+      [
+        assignment.order_id,
+        adminId,
+        `Writer reassigned from ${assignment.old_writer_name} to ${newWriter.full_name}. Reason: ${reason || 'N/A'}`
+      ]
+    );
+
+    await connection.commit();
+
+    // =======================
+    // AUDIT LOG
+    // =======================
+    await createAuditLog({
+      user_id: adminId,
+      role: 'admin',
+      event_type: 'WRITER_REASSIGNED',
+      resource_type: 'order',
+      resource_id: assignment.order_id,
+      details: `Reassigned from ${assignment.old_writer_name} to ${newWriter.full_name}. History shared: ${shareHistory}`,
+      ip_address: req.ip,
+      user_agent: req.get('User-Agent'),
+      event_data: {
+        old_writer_id: assignment.writer_id,
+        new_writer_id: newWriterId,
+        reason,
+        share_history: shareHistory
+      }
     });
 
+    // =======================
+    // NOTIFY OLD WRITER (Released)
+    // =======================
+    await createNotification({
+      user_id: assignment.writer_id,
+      type: 'info',
+      title: 'Task Reassigned',
+      message: `Your assignment for "${assignment.paper_topic}" has been reassigned to another writer.`,
+      link_url: `/writer/tasks`
+    });
+
+    // =======================
+    // NOTIFY NEW WRITER WITH FULL CONTEXT
+    // =======================
+    const notificationMessage = shareHistory
+      ? `You have been assigned to continue work on "${assignment.paper_topic}". This is a reassignment - full task history has been shared with you including ${taskHistory.submissions.length} previous submissions.`
+      : `You have been assigned to work on: "${assignment.paper_topic}". Deadline: ${new Date(assignment.deadline_at).toLocaleString()}`;
+
+    if (req.io) {
+      await notificationsController.createNotificationWithRealtime(
+        req.io,
+        {
+          user_id: newWriterId,
+          type: 'warning',
+          title: '📋 New Task Assignment (Reassignment)',
+          message: notificationMessage,
+          link_url: `/writer/tasks/${assignment.order_id}`,
+          context_code: assignment.work_code || assignment.query_code,
+          triggered_by: {
+            user_id: adminId,
+            role: 'admin'
+          }
+        }
+      );
+    } else {
+      await createNotification({
+        user_id: newWriterId,
+        type: 'warning',
+        title: '📋 New Task Assignment (Reassignment)',
+        message: notificationMessage,
+        link_url: `/writer/tasks/${assignment.order_id}`
+      });
+    }
+
+    // =======================
+    // SEND EMAIL TO NEW WRITER WITH HISTORY
+    // =======================
+    const { sendMail } = require('../utils/mailer');
+    let emailHtml = `
+      <h2>New Task Assignment (Reassignment)</h2>
+      <p>Hello ${newWriter.full_name},</p>
+      <p>You have been assigned to continue work on: <strong>${assignment.paper_topic}</strong></p>
+      <p><strong>This is a reassignment from a previous writer.</strong></p>
+      <p><strong>Reason:</strong> ${reason || 'Previous writer was unavailable'}</p>
+      <p><strong>Deadline:</strong> ${new Date(assignment.deadline_at).toLocaleString()}</p>
+    `;
+
+    if (shareHistory && taskHistory) {
+      emailHtml += `
+        <h3>Task History Summary:</h3>
+        <ul>
+          <li>Previous Writer: ${assignment.old_writer_name}</li>
+          <li>Previous Submissions: ${taskHistory.submissions.length}</li>
+          <li>Revision Requests: ${taskHistory.revisions.length}</li>
+          <li>File Versions: ${taskHistory.files.length}</li>
+        </ul>
+        <p>Please review the full history in your dashboard before starting work.</p>
+      `;
+    }
+
+    emailHtml += `<p>Thank you!</p>`;
+
+    sendMail({
+      to: newWriter.email,
+      subject: `Task Reassignment: ${assignment.paper_topic}`,
+      html: emailHtml
+    }).catch(err => console.error('Email error:', err));
 
     res.json({
       success: true,
-      message: 'Writer reassigned successfully'
+      message: 'Writer reassigned successfully',
+      data: {
+        new_task_eval_id: newTaskEvalId,
+        new_writer: newWriter.full_name,
+        history_shared: shareHistory
+      }
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error reassigning writer:', error);
     res.status(500).json({ success: false, error: error.message });
+  } finally {
+    connection.release();
   }
 };

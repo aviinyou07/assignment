@@ -147,27 +147,59 @@ exports.deleteNotification = async (req, res) => {
 // Auto-trigger: Payment uploaded
 exports.notifyPaymentUploaded = async (orderId, userId, io) => {
   try {
-    const targetUser = process.env.ADMIN_USER_ID || 1;
-    const title = 'Payment Verification Required';
-    const message = `Payment uploaded for order ${orderId}`;
-
-    // If io provided, use realtime helper to create + emit
-    if (io) {
-      await exports.createNotificationWithRealtime(io, {
-        user_id: targetUser,
-        type: 'warning',
-        title,
-        message,
-        context_code: null
-      });
-      return;
-    }
-
-    await db.query(
-      `INSERT INTO notifications (user_id, type, title, message, is_read, created_at)
-       VALUES (?, 'warning', ?, ?, 0, NOW())`,
-      [targetUser, title, message]
+    // Get all admins for CRITICAL notification
+    const [admins] = await db.query(
+      `SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`
     );
+    
+    // Also get BDE if available
+    const [[orderInfo]] = await db.query(
+      `SELECT u.bde FROM orders o JOIN users u ON o.user_id = u.user_id WHERE o.order_id = ?`,
+      [orderId]
+    );
+    
+    const title = '🚨 CRITICAL: Payment Verification Required';
+    const message = `Payment uploaded for order ${orderId}. Immediate verification needed.`;
+
+    // Notify all admins with CRITICAL severity
+    for (const admin of admins) {
+      if (io) {
+        await exports.createNotificationWithRealtime(io, {
+          user_id: admin.user_id,
+          type: 'critical',
+          title,
+          message,
+          link_url: `/admin/payments`,
+          context_code: null
+        });
+      } else {
+        await db.query(
+          `INSERT INTO notifications (user_id, type, title, message, is_read, created_at)
+           VALUES (?, 'critical', ?, ?, 0, NOW())`,
+          [admin.user_id, title, message]
+        );
+      }
+    }
+    
+    // Notify BDE if assigned
+    if (orderInfo?.bde) {
+      if (io) {
+        await exports.createNotificationWithRealtime(io, {
+          user_id: orderInfo.bde,
+          type: 'critical',
+          title: 'Payment Uploaded - Action Required',
+          message: `Client uploaded payment for order ${orderId}. Follow up on verification.`,
+          link_url: `/bde/payments`,
+          context_code: null
+        });
+      } else {
+        await db.query(
+          `INSERT INTO notifications (user_id, type, title, message, is_read, created_at)
+           VALUES (?, 'critical', 'Payment Uploaded', ?, 0, NOW())`,
+          [orderInfo.bde, `Client uploaded payment for order ${orderId}`]
+        );
+      }
+    }
   } catch (error) {
     logger.error(`Error notifying payment uploaded: ${error && error.message ? error.message : error}`);
   }
@@ -176,25 +208,40 @@ exports.notifyPaymentUploaded = async (orderId, userId, io) => {
 // Auto-trigger: Draft submitted
 exports.notifyDraftSubmitted = async (orderId, writerId, io) => {
   try {
-    const targetUser = process.env.ADMIN_USER_ID || 1;
-    const title = 'New Submission';
-    const message = `Writer submitted work for order ${orderId}`;
-
-    if (io) {
-      await exports.createNotificationWithRealtime(io, {
-        user_id: targetUser,
-        type: 'info',
-        title,
-        message
-      });
-      return;
-    }
-
-    await db.query(
-      `INSERT INTO notifications (user_id, type, title, message, is_read, created_at)
-       VALUES (?, 'info', ?, ?, 0, NOW())`,
-      [targetUser, title, message]
+    // Get all admins for CRITICAL QC notification
+    const [admins] = await db.query(
+      `SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1`
     );
+    
+    // Get order details for context
+    const [[order]] = await db.query(
+      `SELECT work_code, query_code, paper_topic FROM orders WHERE order_id = ?`,
+      [orderId]
+    );
+    
+    const contextCode = order?.work_code || order?.query_code || orderId;
+    const title = '🚨 CRITICAL: QC Review Required';
+    const message = `Writer submitted draft for "${order?.paper_topic || 'Order ' + orderId}" (${contextCode}). Immediate QC review needed.`;
+
+    // Notify all admins with CRITICAL severity
+    for (const admin of admins) {
+      if (io) {
+        await exports.createNotificationWithRealtime(io, {
+          user_id: admin.user_id,
+          type: 'critical',
+          title,
+          message,
+          link_url: `/admin/qc`,
+          context_code: contextCode
+        });
+      } else {
+        await db.query(
+          `INSERT INTO notifications (user_id, type, title, message, link_url, is_read, created_at)
+           VALUES (?, 'critical', ?, ?, '/admin/qc', 0, NOW())`,
+          [admin.user_id, title, message]
+        );
+      }
+    }
   } catch (error) {
     logger.error(`Error notifying draft submitted: ${error && error.message ? error.message : error}`);
   }

@@ -1,82 +1,150 @@
 <div class="space-y-8 animate-in fade-in duration-500">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+    <!-- ENTERPRISE WRITER COMMAND CENTER -->
+    <div class="relative overflow-hidden bg-gradient-to-r from-emerald-900 via-teal-900 to-cyan-900 rounded-3xl p-8 shadow-2xl border border-emerald-500/20">
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"40\" height=\"40\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cdefs%3E%3Cpattern id=\"dots\" width=\"40\" height=\"40\" patternUnits=\"userSpaceOnUse\"%3E%3Ccircle cx=\"2\" cy=\"2\" r=\"1\" fill=\"rgba(255,255,255,0.05)\"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\"100%25\" height=\"100%25\" fill=\"url(%23dots)\"/%3E%3C/svg%3E')]"></div>
+      
+      <div class="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div>
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+            <p class="text-emerald-400 text-xs font-bold uppercase tracking-[0.2em]">Writer Portal</p>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight">Your Workspace</h1>
+          <p class="text-teal-200 text-sm max-w-md">Task management • Submissions • Deadline tracking</p>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <!-- Performance Quick Stats -->
+          <div class="hidden lg:flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+            <div class="text-center px-3 border-r border-white/10">
+              <p class="text-2xl font-black text-white" id="header-active">-</p>
+              <p class="text-[10px] text-teal-300 uppercase tracking-wider">Active</p>
+            </div>
+            <div class="text-center px-3">
+              <p class="text-2xl font-black text-emerald-400" id="header-completed">-</p>
+              <p class="text-[10px] text-teal-300 uppercase tracking-wider">Done</p>
+            </div>
+          </div>
+          
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <i class="fi fi-rr-pen-nib text-white text-2xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREMIUM KPI CARDS -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
         
         <!-- New Tasks (Pending Acceptance) -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="switchTab('queries'); trackKPIClick('newTasks')">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                    <i class="fi fi-rr-time-fast text-xl"></i>
+        <div class="group relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-xl hover:border-orange-300 transition-all duration-300 overflow-hidden cursor-pointer" onclick="switchTab('queries'); trackKPIClick('newTasks')">
+            <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform">
+                        <i class="fi fi-rr-time-fast text-white text-2xl"></i>
+                    </div>
+                    <span class="text-[10px] font-black text-orange-600 bg-orange-50 px-3 py-1 rounded-full uppercase tracking-wider">Pending</span>
                 </div>
-                <span class="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-1 rounded-lg uppercase">Pending</span>
+                <p class="text-sm text-slate-500 font-semibold mb-1">New Tasks</p>
+                <h3 class="text-4xl font-black text-slate-800" id="kpi-new-tasks">-</h3>
+                <div class="mt-3 flex items-center text-xs text-orange-600 font-bold">
+                    <i class="fi fi-rr-arrow-right mr-1"></i> Accept Tasks →
+                </div>
             </div>
-            <p class="text-slate-500 text-sm font-medium">New Tasks</p>
-            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-new-tasks">-</h3>
         </div>
 
         <!-- Active Tasks (In Progress) -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="switchTab('active_tasks'); trackKPIClick('activeTasks')">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <i class="fi fi-rr-edit text-xl"></i>
+        <div class="group relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 overflow-hidden cursor-pointer" onclick="switchTab('active_tasks'); trackKPIClick('activeTasks')">
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+                        <i class="fi fi-rr-edit text-white text-2xl"></i>
+                    </div>
+                    <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-wider">Working</span>
                 </div>
-                <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg uppercase">In Progress</span>
+                <p class="text-sm text-slate-500 font-semibold mb-1">Active Tasks</p>
+                <h3 class="text-4xl font-black text-slate-800" id="kpi-active-tasks">-</h3>
+                <div class="mt-3 flex items-center text-xs text-indigo-600 font-bold">
+                    <i class="fi fi-rr-edit mr-1"></i> Continue →
+                </div>
             </div>
-            <p class="text-slate-500 text-sm font-medium">Active Tasks</p>
-            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-active-tasks">-</h3>
         </div>
 
         <!-- Tasks Due Today -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="trackKPIClick('dueTodayTasks')">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-colors">
-                    <i class="fi fi-rr-alarm-clock text-xl"></i>
+        <div class="group relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-xl hover:border-red-300 transition-all duration-300 overflow-hidden cursor-pointer" onclick="trackKPIClick('dueTodayTasks')">
+            <div class="absolute inset-0 bg-gradient-to-br from-red-500/5 to-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform animate-pulse">
+                        <i class="fi fi-rr-alarm-clock text-white text-2xl"></i>
+                    </div>
+                    <span class="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">Critical</span>
                 </div>
-                <span class="text-[10px] font-black text-red-600 bg-red-50 px-2 py-1 rounded-lg uppercase">Critical</span>
+                <p class="text-sm text-slate-500 font-semibold mb-1">Due Today</p>
+                <h3 class="text-4xl font-black text-red-600" id="kpi-due-today">-</h3>
+                <div class="mt-3 flex items-center text-xs text-red-600 font-bold">
+                    <i class="fi fi-rr-alarm-exclamation mr-1"></i> Urgent →
+                </div>
             </div>
-            <p class="text-slate-500 text-sm font-medium">Tasks Due Today</p>
-            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-due-today">-</h3>
         </div>
 
         <!-- Completed Tasks (This Month) -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group cursor-pointer" onclick="trackKPIClick('completedTasks')">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <i class="fi fi-rr-badge-check text-xl"></i>
+        <div class="group relative bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all duration-300 overflow-hidden cursor-pointer" onclick="trackKPIClick('completedTasks')">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
+                        <i class="fi fi-rr-badge-check text-white text-2xl"></i>
+                    </div>
+                    <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-wider">MTD</span>
                 </div>
-                <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg uppercase">Month</span>
+                <p class="text-sm text-slate-500 font-semibold mb-1">Completed</p>
+                <h3 class="text-4xl font-black text-slate-800" id="kpi-completed-tasks">-</h3>
+                <div class="mt-3 flex items-center text-xs text-emerald-600 font-bold">
+                    <i class="fi fi-rr-trophy mr-1"></i> Great Work! →
+                </div>
             </div>
-            <p class="text-slate-500 text-sm font-medium">Completed</p>
-            <h3 class="text-3xl font-black text-slate-800 mt-1" id="kpi-completed-tasks">-</h3>
         </div>
     </div>
 
+    <!-- MAIN CONTENT GRID -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
+        <!-- NEW TASKS TABLE -->
         <div class="lg:col-span-2 space-y-6">
-            <!-- New Tasks Table -->
-            <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-slate-100/50">
                     <div>
-                        <h3 class="font-bold text-slate-800">New Task Acceptance</h3>
-                        <p class="text-xs text-slate-500">Action required to move tasks to in-progress</p>
+                        <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">
+                            <i class="fi fi-rr-rocket-lunch text-orange-500"></i>
+                            New Task Invitations
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Accept tasks to start working</p>
                     </div>
-                    <button onclick="switchTab('queries')" class="text-xs font-bold text-indigo-600 hover:underline">View All</button>
+                    <button onclick="switchTab('queries')" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">
+                        View All →
+                    </button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="text-[10px] uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                            <tr class="text-[10px] uppercase tracking-widest text-slate-400 border-b border-slate-100 bg-slate-50/50">
                                 <th class="px-6 py-4 font-bold">Work Code</th>
                                 <th class="px-6 py-4 font-bold">Topic</th>
+                                <th class="px-6 py-4 font-bold">Deadline</th>
                                 <th class="px-6 py-4 font-bold text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50" id="pending-tasks-table">
                             <tr>
-                                <td colspan="3" class="px-6 py-4 text-center text-slate-500">
-                                    <span class="inline-flex items-center gap-2">
-                                        <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading tasks...
-                                    </span>
+                                <td colspan="4" class="px-6 py-8 text-center text-slate-400">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <i class="fi fi-rr-spinner-alt animate-spin text-2xl text-indigo-400"></i>
+                                        <span>Loading tasks...</span>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -85,37 +153,70 @@
             </div>
         </div>
 
+        <!-- RIGHT SIDEBAR -->
         <div class="lg:col-span-1 space-y-6">
+            
             <!-- Upcoming Deadlines -->
-            <div class="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
+            <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"20\" height=\"20\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Ccircle cx=\"1\" cy=\"1\" r=\"0.5\" fill=\"rgba(255,255,255,0.03)\"/%3E%3C/svg%3E')]"></div>
                 <div class="relative z-10">
-                    <h3 class="font-bold mb-4 flex items-center gap-2">
-                        <i class="fi fi-rr-calendar-clock text-indigo-400"></i>
+                    <h3 class="font-black text-lg mb-4 flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                            <i class="fi fi-rr-calendar-clock text-indigo-400"></i>
+                        </div>
                         Upcoming Deadlines
                     </h3>
                     <div class="space-y-3" id="upcoming-deadlines">
-                        <div class="text-center text-slate-400 text-xs py-4">
-                            <i class="fi fi-rr-spinner-alt animate-spin"></i> Loading...
+                        <div class="text-center text-slate-400 text-xs py-6">
+                            <i class="fi fi-rr-spinner-alt animate-spin text-xl block mb-2"></i>
+                            Loading...
                         </div>
                     </div>
                 </div>
                 <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
             </div>
 
-            <!-- Quick Stats -->
-            <div class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
+            <!-- Response Timer -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                 <div class="flex items-center justify-between mb-6">
-                    <h3 class="font-bold text-slate-800 text-sm">Response Deadline</h3>
-                    <i class="fi fi-rr-hourglass text-slate-400"></i>
+                    <h3 class="font-black text-slate-800 flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                            <i class="fi fi-rr-hourglass-end text-orange-600"></i>
+                        </div>
+                        Response Timer
+                    </h3>
                 </div>
+                <div class="text-center p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+                    <p class="text-5xl font-black text-orange-600" id="pending-response-count">-</p>
+                    <p class="text-xs text-slate-500 mt-2 uppercase font-bold tracking-widest">Tasks Awaiting Response</p>
+                </div>
+                <button onclick="switchTab('queries')" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 py-3 rounded-xl text-sm font-bold transition-all mt-4 shadow-lg shadow-indigo-500/30">
+                    <i class="fi fi-rr-eye mr-2"></i>Review Tasks
+                </button>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6">
+                <h3 class="font-bold text-slate-800 text-sm mb-4">This Month Performance</h3>
                 <div class="space-y-3">
-                    <div class="text-center">
-                        <p class="text-3xl font-black text-indigo-600" id="pending-response-count">-</p>
-                        <p class="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-widest">Awaiting Your Response</p>
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <span class="text-sm text-slate-600 flex items-center gap-2">
+                            <i class="fi fi-rr-check text-emerald-500"></i> On-Time Delivery
+                        </span>
+                        <span class="text-sm font-black text-emerald-600">95%</span>
                     </div>
-                    <button onclick="switchTab('queries')" class="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 py-2 rounded-xl text-xs font-bold transition-colors">
-                        Review Tasks
-                    </button>
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <span class="text-sm text-slate-600 flex items-center gap-2">
+                            <i class="fi fi-rr-star text-amber-500"></i> QC Pass Rate
+                        </span>
+                        <span class="text-sm font-black text-amber-600">92%</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                        <span class="text-sm text-slate-600 flex items-center gap-2">
+                            <i class="fi fi-rr-edit text-blue-500"></i> Avg. Revisions
+                        </span>
+                        <span class="text-sm font-black text-blue-600">0.3</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -129,14 +230,22 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    document.getElementById('kpi-new-tasks').textContent = data.kpis.newTasks;
-                    document.getElementById('kpi-active-tasks').textContent = data.kpis.activeTasks;
-                    document.getElementById('kpi-due-today').textContent = data.kpis.dueTodayTasks;
-                    document.getElementById('kpi-completed-tasks').textContent = data.kpis.completedTasks;
-                    document.getElementById('pending-response-count').textContent = data.kpis.newTasks;
+                    document.getElementById('kpi-new-tasks').textContent = data.kpis.newTasks || 0;
+                    document.getElementById('kpi-active-tasks').textContent = data.kpis.activeTasks || 0;
+                    document.getElementById('kpi-due-today').textContent = data.kpis.dueTodayTasks || 0;
+                    document.getElementById('kpi-completed-tasks').textContent = data.kpis.completedTasks || 0;
+                    document.getElementById('pending-response-count').textContent = data.kpis.newTasks || 0;
+                    
+                    // Update header stats
+                    document.getElementById('header-active').textContent = data.kpis.activeTasks || 0;
+                    document.getElementById('header-completed').textContent = data.kpis.completedTasks || 0;
                 }
             } catch (error) {
                 console.error('Error loading KPIs:', error);
+                // Set defaults on error
+                ['kpi-new-tasks', 'kpi-active-tasks', 'kpi-due-today', 'kpi-completed-tasks', 'pending-response-count', 'header-active', 'header-completed'].forEach(id => {
+                    document.getElementById(id).textContent = '0';
+                });
             }
         }
 
@@ -148,22 +257,27 @@
                 
                 if (data.success && data.tasks.length > 0) {
                     const tableBody = document.getElementById('pending-tasks-table');
-                    const tasks = data.tasks.slice(0, 3); // Show only 3 latest
+                    const tasks = data.tasks.slice(0, 4); // Show only 4 latest
                     
                     tableBody.innerHTML = tasks.map(task => `
-                        <tr class="hover:bg-slate-50/50 transition-colors">
-                            <td class="px-6 py-5 font-bold text-indigo-600 text-sm">${task.work_code || 'N/A'}</td>
+                        <tr class="hover:bg-slate-50/50 transition-colors group">
                             <td class="px-6 py-5">
-                                <p class="text-sm font-semibold text-slate-700 truncate">${task.topic || 'N/A'}</p>
+                                <span class="font-bold text-indigo-600 text-sm bg-indigo-50 px-3 py-1 rounded-lg">${task.work_code || 'N/A'}</span>
+                            </td>
+                            <td class="px-6 py-5">
+                                <p class="text-sm font-semibold text-slate-700 truncate max-w-[200px]">${task.topic || 'N/A'}</p>
                                 <p class="text-[11px] text-slate-400">${task.service || ''} • ${task.urgency || 'Normal'} Priority</p>
                             </td>
+                            <td class="px-6 py-5">
+                                <span class="text-xs font-semibold text-slate-600">${task.deadline_at ? new Date(task.deadline_at).toLocaleDateString() : 'N/A'}</span>
+                            </td>
                             <td class="px-6 py-5 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <button onclick="handleTaskAction('accept', ${task.order_id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all shadow-lg shadow-emerald-100">
-                                        Accept
+                                <div class="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="handleTaskAction('accept', ${task.order_id})" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-500/30">
+                                        <i class="fi fi-rr-check mr-1"></i>Accept
                                     </button>
-                                    <button onclick="handleTaskAction('decline', ${task.order_id})" class="bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-red-50 hover:text-red-600 transition-all">
-                                        Decline
+                                    <button onclick="handleTaskAction('decline', ${task.order_id})" class="bg-white border border-slate-200 text-slate-500 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">
+                                        <i class="fi fi-rr-cross mr-1"></i>Decline
                                     </button>
                                 </div>
                             </td>
@@ -172,8 +286,14 @@
                 } else {
                     document.getElementById('pending-tasks-table').innerHTML = `
                         <tr>
-                            <td colspan="3" class="px-6 py-4 text-center text-slate-500">
-                                No pending tasks. Great work!
+                            <td colspan="4" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                                        <i class="fi fi-rr-check text-emerald-600 text-2xl"></i>
+                                    </div>
+                                    <p class="text-slate-600 font-semibold">No pending tasks</p>
+                                    <p class="text-xs text-slate-400">All caught up! Great work.</p>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -191,13 +311,39 @@
                 
                 if (data.success && data.upcomingDeadlines.length > 0) {
                     const container = document.getElementById('upcoming-deadlines');
-                    const deadlines = data.upcomingDeadlines.slice(0, 3);
+                    const deadlines = data.upcomingDeadlines.slice(0, 4);
                     
                     container.innerHTML = deadlines.map(deadline => {
                         const hoursRemaining = parseInt(deadline.time_remaining.split(':')[0]);
-                        const colorClass = hoursRemaining < 6 ? 'text-red-400' : hoursRemaining < 24 ? 'text-amber-400' : 'text-emerald-400';
+                        const colorClass = hoursRemaining < 6 ? 'from-red-500 to-rose-600' : hoursRemaining < 24 ? 'from-amber-500 to-orange-600' : 'from-emerald-500 to-teal-600';
+                        const bgClass = hoursRemaining < 6 ? 'bg-red-500/20' : hoursRemaining < 24 ? 'bg-amber-500/20' : 'bg-emerald-500/20';
                         
                         return `
+                            <div class="flex items-center gap-3 p-3 rounded-xl ${bgClass} border border-white/10">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-black text-xs shadow-lg">
+                                    ${hoursRemaining}h
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-white font-bold text-sm truncate">${deadline.work_code || 'N/A'}</p>
+                                    <p class="text-slate-400 text-xs truncate">${deadline.topic?.substring(0, 25) || ''}...</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    document.getElementById('upcoming-deadlines').innerHTML = `
+                        <div class="text-center py-6">
+                            <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
+                                <i class="fi fi-rr-check text-emerald-400 text-xl"></i>
+                            </div>
+                            <p class="text-slate-400 text-sm">No urgent deadlines</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading deadlines:', error);
+            }
+        }
                             <div class="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center group hover:bg-white/10 transition-all cursor-default">
                                 <div>
                                     <p class="text-xs font-bold text-indigo-300">${deadline.work_code || 'Task'}</p>

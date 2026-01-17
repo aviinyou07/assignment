@@ -166,7 +166,7 @@ exports.viewUser = async (req, res) => {
     const [orders] = await db.query(
       `SELECT 
         order_id, query_code, order_code, paper_topic, service, 
-        subject, urgency, status, total_price_usd, created_at, 
+        subject, urgency, status, total_price, created_at, 
         deadline_at, writer_id, words_used, pages_used
       FROM orders
       WHERE user_id = ?
@@ -501,19 +501,73 @@ exports.deleteUser = async (req, res) => {
 
     const userEmail = userRows[0].email;
 
-    // Delete wallet transactions first (references wallets)
+    // 1. CLEANUP ORDERS (If user is a Client/Owner of orders)
+    // Find all orders owned by this user
+    const [orders] = await connection.query('SELECT order_id FROM orders WHERE user_id = ?', [userId]);
+    const orderIds = orders.map(o => o.order_id);
+
+    if (orderIds.length > 0) {
+       const placeholders = orderIds.map(() => '?').join(',');
+       
+       // Delete order dependencies
+       await connection.query(`DELETE FROM writer_query_interest WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM submissions WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM file_versions WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM task_evaluations WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM revision_requests WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM orders_history WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM quotations WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM writer_ratings WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM payments WHERE order_id IN (${placeholders})`, orderIds);
+       await connection.query(`DELETE FROM deadline_reminders WHERE order_id IN (${placeholders})`, orderIds);
+       
+       // Handle Chats linked to orders
+       const [orderChats] = await connection.query(`SELECT chat_id FROM general_chats WHERE order_id IN (${placeholders})`, orderIds);
+       const orderChatIds = orderChats.map(c => c.chat_id);
+       
+       if (orderChatIds.length > 0) {
+          const chatPlaceholders = orderChatIds.map(() => '?').join(',');
+          await connection.query(`DELETE FROM general_chat_messages WHERE chat_id IN (${chatPlaceholders})`, orderChatIds);
+          await connection.query(`DELETE FROM general_chat_participants WHERE chat_id IN (${chatPlaceholders})`, orderChatIds);
+          await connection.query(`DELETE FROM general_chats WHERE chat_id IN (${chatPlaceholders})`, orderChatIds);
+       }
+    }
+
+    // 2. CLEANUP USER DIRECT DATA
+    
+    // Wallet
     await connection.query('DELETE FROM wallet_transactions WHERE user_id = ?', [userId]);
-
-    // Delete wallet (cascade)
     await connection.query('DELETE FROM wallets WHERE user_id = ?', [userId]);
+    
+    // Chat & Notifications
+    await connection.query('DELETE FROM notifications WHERE user_id = ?', [userId]);
+    await connection.query('DELETE FROM notification_reminders WHERE user_id = ?', [userId]);
+    await connection.query('DELETE FROM chat_requests WHERE from_user_id = ? OR to_user_id = ?', [userId, userId]);
+    
+    // Remove user from any chats they are part of (that weren't deleted above)
+    await connection.query('DELETE FROM general_chat_messages WHERE sender_id = ?', [userId]);
+    await connection.query('DELETE FROM general_chat_participants WHERE user_id = ?', [userId]);
+    
+    // Chats created by user (orphaned from orders or direct)
+    const [userCreatedChats] = await connection.query('SELECT chat_id FROM general_chats WHERE created_by = ?', [userId]);
+    const userChatIds = userCreatedChats.map(c => c.chat_id);
+    if (userChatIds.length > 0) {
+        const chatPlaceholders = userChatIds.map(() => '?').join(',');
+        await connection.query(`DELETE FROM general_chat_messages WHERE chat_id IN (${chatPlaceholders})`, userChatIds);
+        await connection.query(`DELETE FROM general_chat_participants WHERE chat_id IN (${chatPlaceholders})`, userChatIds);
+        await connection.query(`DELETE FROM general_chats WHERE chat_id IN (${chatPlaceholders})`, userChatIds);
+    }
 
-    // Delete OTPs (by email since user_otps doesn't have user_id)
+    // Auth & Logging
     await connection.query('DELETE FROM user_otps WHERE email = ?', [userEmail]);
+    await connection.query('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId]);
+    await connection.query('DELETE FROM export_logs WHERE user_id = ?', [userId]);
 
-    // Delete orders (if any)
+    // 3. DELETE ORDERS (Now safe)
+    // Only delete orders belonging to this user (we already cleaned their dependencies)
     await connection.query('DELETE FROM orders WHERE user_id = ?', [userId]);
 
-    // Delete user (final)
+    // 4. DELETE USER
     await connection.query('DELETE FROM users WHERE user_id = ?', [userId]);
 
     await connection.commit();
@@ -537,3 +591,37 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+/* =====================================================
+   USER SEARCH API - For chat functionality
+===================================================== */
+
+exports.searchUsers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length < 2) {
+      return res.json({ success: true, users: [] });
+    }
+
+    const searchTerm = `%${q.trim()}%`;
+    
+    const [users] = await db.query(
+      `SELECT 
+        user_id, full_name, email, role
+      FROM users
+      WHERE (full_name LIKE ? OR email LIKE ?) 
+      AND is_active = 1 
+      ORDER BY full_name
+      LIMIT 10`,
+      [searchTerm, searchTerm]
+    );
+
+    res.json({ success: true, users });
+  } catch (err) {
+    console.error("Search users error:", err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search users'
+    });
+  }
+};

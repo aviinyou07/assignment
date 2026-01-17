@@ -15,7 +15,7 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    const { full_name, whatsapp, university, country } = req.body;
+    const { full_name, whatsapp, university, mobile_number } = req.body;
 
     const fields = [];
     const values = [];
@@ -35,9 +35,9 @@ exports.updateProfile = async (req, res) => {
       values.push(university);
     }
 
-    if (country !== undefined) {
-      fields.push('country = ?');
-      values.push(country);
+    if (mobile_number !== undefined) {
+      fields.push('mobile_number = ?');
+      values.push(mobile_number);
     }
 
     if (!fields.length) {
