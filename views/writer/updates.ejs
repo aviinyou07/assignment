@@ -12,7 +12,7 @@
         
         <div class="bg-indigo-600 p-6 rounded-[2rem] shadow-xl shadow-indigo-100 text-white flex flex-col justify-center">
             <p class="text-[10px] font-black uppercase tracking-widest opacity-80">Total Updates Sent</p>
-            <p class="text-3xl font-black">128</p>
+            <p class="text-3xl font-black"><%= totalUpdates %></p>
         </div>
     </div>
 
@@ -23,39 +23,43 @@
                     <i class="fi fi-rr-paper-plane text-indigo-600"></i> New Milestone
                 </h3>
 
-                <form class="space-y-5">
+                <form id="progress-form" class="space-y-5" onsubmit="submitProgress(event)">
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Active Work Code</label>
-                        <select class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                            <option>SS20250901 - Business Ethics</option>
-                            <option>JD20250102 - Case Study</option>
+                        <select id="update-order-id" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <% activeOrders.forEach(order => { %>
+                                <option value="<%= order.order_id %>"><%= order.work_code || order.order_id %> - <%= order.paper_topic.substring(0, 20) %>...</option>
+                            <% }) %>
+                            <% if(activeOrders.length === 0) { %>
+                                <option disabled selected>No active tasks</option>
+                            <% } %>
                         </select>
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Current Status</label>
-                        <select class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                            <option value="TASK_STARTED">Task Started</option>
-                            <option value="TASK_IN_PROGRESS" selected>Working on Task (On Track)</option>
-                            <option value="UPDATE_REQUESTED">Responding to Client Update</option>
-                            <option value="REVISION_IN_PROGRESS">Working on Revisions</option>
+                        <select id="update-status" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <option value="in_progress">Task Started</option>
+                            <option value="research_completed">Research Done</option>
+                            <option value="writing_started" selected>Writing Started</option>
+                            <option value="rework_in_progress">Rework</option>
                         </select>
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Words Completed So Far</label>
                         <div class="relative">
-                            <input type="number" placeholder="e.g. 1500" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="number" id="update-words" placeholder="e.g. 1500" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500">
                             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 uppercase">Words</span>
                         </div>
                     </div>
 
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Brief Progress Note</label>
-                        <textarea rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Explain what has been done..."></textarea>
+                        <textarea id="update-notes" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Explain what has been done..."></textarea>
                     </div>
 
-                    <button class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-slate-200 hover:bg-indigo-600 transition-all flex items-center justify-center gap-3">
+                    <button type="submit" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-slate-200 hover:bg-indigo-600 transition-all flex items-center justify-center gap-3">
                         <i class="fi fi-rr-cloud-upload"></i>
                         Push Progress Log
                     </button>
@@ -74,30 +78,80 @@
                 </div>
 
                 <div class="divide-y divide-slate-50">
-                    <div class="p-6 hover:bg-slate-50/50 transition-colors">
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div class="flex gap-4">
-                                <div class="flex flex-col items-center">
-                                    <div class="w-2 h-2 rounded-full bg-indigo-500 mb-1"></div>
-                                    <div class="w-px h-full bg-slate-200"></div>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-black text-slate-800">Milestone Reached: 2,500 Words</p>
-                                    <p class="text-xs text-slate-500 mt-1 font-medium italic">"Research phase and literature review completed. Proceeding to methodology section."</p>
-                                    <div class="flex items-center gap-3 mt-3">
-                                        <span class="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-lg uppercase">#SS20250901</span>
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase">Received by BDE: 10:30 AM</span>
+                    <% if(updates.length > 0) { %>
+                        <% updates.forEach(log => { %>
+                            <div class="p-6 hover:bg-slate-50/50 transition-colors">
+                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div class="flex gap-4">
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-2 h-2 rounded-full bg-indigo-500 mb-1"></div>
+                                            <div class="w-px h-full bg-slate-200"></div>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-black text-slate-800"><%= log.action || log.event_type %></p>
+                                            <p class="text-xs text-slate-500 mt-1 font-medium italic">"<%= log.details %>"</p>
+                                            <div class="flex items-center gap-3 mt-3">
+                                                <span class="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-lg uppercase">#<%= log.work_code || log.resource_id %></span>
+                                                <span class="text-[10px] font-bold text-slate-400 uppercase">Topic: <%= log.paper_topic %></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-bold text-slate-400">
+                                        <%= new Date(log.created_at).toLocaleString() %>
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex -space-x-2">
-                                <div class="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold" title="Admin">A</div>
-                                <div class="w-8 h-8 rounded-full border-2 border-white bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold" title="Writer">W</div>
-                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="p-12 text-center text-slate-400">
+                            No recent updates found.
                         </div>
-                    </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                    <div class="p-6 hover:bg-slate-50/50 transition-colors">
+<script>
+    async function submitProgress(e) {
+        e.preventDefault();
+        
+        const orderId = document.getElementById('update-order-id').value;
+        if(!orderId) {
+            showToast('No active task selected', 'error');
+            return;
+        }
+
+        const status = document.getElementById('update-status').value;
+        const words = document.getElementById('update-words').value;
+        const notes = document.getElementById('update-notes').value;
+        
+        const fullNote = (words ? `[Words: ${words}] ` : '') + (notes || '');
+        
+        try {
+            const res = await fetch(`/writer/tasks/${orderId}/status`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    newStatus: status,
+                    notes: fullNote
+                })
+            });
+            const data = await res.json();
+            
+            if(data.success) {
+                showToast('Progress Logged Successfully!', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error || 'Failed', 'error');
+            }
+        } catch(err) {
+            console.error(err);
+            showToast('Submission error', 'error');
+        }
+    }
+</script>
                         <div class="flex gap-4">
                             <div class="flex flex-col items-center">
                                 <div class="w-2 h-2 rounded-full bg-amber-500 mb-1"></div>

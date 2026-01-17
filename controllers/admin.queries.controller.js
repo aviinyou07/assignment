@@ -686,7 +686,7 @@ exports.adminAssignWriter = async (req, res) => {
         'success',
         'New Assignment - You Have Been Selected!',
         `You have been assigned to work on: ${orderInfo?.paper_topic || 'N/A'}. Work Code: ${orderInfo?.order_code || orderInfo?.query_code || orderId}. Deadline: ${orderInfo?.deadline_at ? new Date(orderInfo.deadline_at).toLocaleDateString() : 'N/A'}`,
-        `/writer/tasks`
+        `/writer/active-tasks`
       ]
     );
     
@@ -695,7 +695,7 @@ exports.adminAssignWriter = async (req, res) => {
       type: 'success',
       title: 'New Assignment - You Have Been Selected!',
       message: `You have been assigned to work on: ${orderInfo?.paper_topic || 'N/A'}`,
-      link_url: `/writer/tasks`
+      link_url: `/writer/active-tasks`
     });
 
     // Notify all admins about the assignment
@@ -771,7 +771,7 @@ exports.revokeWriterAssignment = async (req, res) => {
         'warning',
         'Assignment Revoked',
         `Your assignment for "${order.paper_topic || 'N/A'}" (${order.query_code || orderId}) has been revoked by admin. The task will be reassigned to another writer.`,
-        `/writer/tasks`
+        `/writer/active-tasks`
       ]
     );
 

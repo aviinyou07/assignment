@@ -154,6 +154,10 @@
         ];
 
         // Load active tasks
+        function filterByStatus(status) {
+            loadActiveTasks(status);
+        }
+
         async function loadActiveTasks(filterStatus = 'all') {
             try {
                 const url = filterStatus === 'all' 
@@ -217,220 +221,45 @@
                                     <p class="text-xs text-slate-500 mt-1">65% complete</p>
                                 </td>
                                 <td class="px-8 py-6 text-right">
-                                    <button onclick="openTaskExecutionModal(${task.order_id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-100">
-                                        Manage Task
-                                    </button>
+                                    <a href="/writer/tasks/${task.order_id}/view" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5">
+                                        View Details
+                                    </a>
                                 </td>
                             </tr>
                         `;
                     }).join('');
+                } else {
+                    const tableBody = document.getElementById('active-tasks-table');
+                    if (tableBody) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="px-8 py-12 text-center text-red-500">
+                                    <i class="fi fi-rr-circle-xmark text-4xl block mb-2"></i>
+                                    <span class="font-bold">Error loading tasks: ${data.error || 'Unknown error'}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading active tasks:', error);
-            }
-        }
-
-        // Open task execution modal
-        async function openTaskExecutionModal(taskId) {
-            try {
-                const response = await fetch(`/writer/tasks/${taskId}/details`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const task = data.task;
-                    currentExecutionTaskId = taskId;
-                    selectedStatus = null;
-                    selectedFile = null;
-                    
-                    document.getElementById('exec-work-code').textContent = task.work_code || task.order_id;
-                    document.getElementById('exec-topic').textContent = task.topic || 'No topic';
-                    document.getElementById('exec-current-status').textContent = task.status || 'Unknown';
-                    
-                    // Create status buttons
-                    const buttonsContainer = document.getElementById('status-buttons');
-                    buttonsContainer.innerHTML = statusHierarchy.map(status => `
-                        <button onclick="selectStatus('${status.value}')" 
-                                class="status-button bg-slate-100 hover:bg-${status.color}-200 text-slate-700 hover:text-${status.color}-900 font-bold py-2 px-3 rounded-lg transition-all text-xs" 
-                                data-status="${status.value}">
-                            ${status.label}
-                        </button>
-                    `).join('');
-                    
-                    // Load file history
-                    await loadFileHistory(taskId);
-                    
-                    document.getElementById('task-execution-modal').classList.remove('hidden');
+                const tableBody = document.getElementById('active-tasks-table');
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-8 py-12 text-center text-red-500">
+                                <i class="fi fi-rr-circle-xmark text-4xl block mb-2"></i>
+                                <span class="font-bold">Error loading tasks: ${error.message}</span>
+                            </td>
+                        </tr>
+                    `;
                 }
-            } catch (error) {
-                console.error('Error opening task modal:', error);
-                showToast('Failed to load task details', 'error');
             }
         }
 
-        function closeTaskExecutionModal() {
-            document.getElementById('task-execution-modal').classList.add('hidden');
-            document.getElementById('progress-notes').value = '';
-            document.getElementById('file-preview').innerHTML = '';
-            selectedFile = null;
-        }
-
-        function selectStatus(status) {
-            selectedStatus = status;
-            document.querySelectorAll('.status-button').forEach(btn => {
-                btn.classList.remove('ring-2', 'ring-emerald-400');
-                btn.classList.add('opacity-50');
-            });
-            document.querySelector(`[data-status="${status}"]`).classList.remove('opacity-50');
-            document.querySelector(`[data-status="${status}"]`).classList.add('ring-2', 'ring-emerald-400');
-        }
-
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            selectedFile = file;
-            document.getElementById('file-preview').innerHTML = `
-                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <i class="fi fi-rr-document text-indigo-600 text-lg"></i>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">${file.name}</p>
-                            <p class="text-xs text-slate-400">${(file.size / 1024).toFixed(2)} KB</p>
-                        </div>
-                    </div>
-                    <button onclick="selectedFile = null; document.getElementById('file-preview').innerHTML = '';" class="text-red-600 hover:text-red-700">
-                        <i class="fi fi-rr-circle-xmark text-lg"></i>
-                    </button>
-                </div>
-            `;
-        }
-
-        async function loadFileHistory(taskId) {
-            try {
-                const response = await fetch(`/writer/tasks/${taskId}/files`);
-                const data = await response.json();
-                
-                if (data.success && data.files.length > 0) {
-                    document.getElementById('file-history').innerHTML = data.files.map(file => `
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex justify-between items-center group hover:bg-slate-100 transition-colors">
-                            <div class="flex items-center gap-3">
-                                <i class="fi fi-rr-document text-indigo-600"></i>
-                                <div class="flex-1">
-                                    <p class="text-sm font-bold text-slate-700">${file.file_name}</p>
-                                    <p class="text-xs text-slate-400">v${file.version_number} • ${new Date(file.created_at).toLocaleDateString()}</p>
-                                </div>
-                            </div>
-                            <a href="${file.file_url}" target="_blank" class="text-indigo-600 hover:text-indigo-700 font-bold">
-                                <i class="fi fi-rr-download"></i>
-                            </a>
-                        </div>
-                    `).join('');
-                }
-            } catch (error) {
-                console.error('Error loading file history:', error);
-            }
-        }
-
-        async function submitStatusUpdate() {
-            if (!selectedStatus) {
-                showToast('Please select a new status', 'warning');
-                return;
-            }
-
-            const notes = document.getElementById('progress-notes').value;
-            
-            try {
-                const response = await fetch(`/writer/tasks/${currentExecutionTaskId}/status`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        newStatus: selectedStatus,
-                        notes: notes || null
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    showToast('Status updated successfully!', 'success');
-                    closeTaskExecutionModal();
-                    loadActiveTasks();
-                } else {
-                    showToast('Error: ' + data.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showToast('Failed to update status', 'error');
-            }
-        }
-
-        async function submitDraftForReview() {
-            if (!selectedFile) {
-                showToast('Please upload a file before submitting for QC review', 'warning');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('taskId', currentExecutionTaskId);
-            formData.append('fileType', 'draft');
-
-            try {
-                // Upload file first
-                const uploadResponse = await fetch(`/writer/tasks/${currentExecutionTaskId}/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const uploadData = await uploadResponse.json();
-                
-                if (!uploadData.success) {
-                    showToast('Error uploading file: ' + uploadData.error, 'error');
-                    return;
-                }
-
-                // Then submit for QC
-                const qcResponse = await fetch(`/writer/tasks/${currentExecutionTaskId}/submit-qc`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileId: uploadData.fileId,
-                        notes: document.getElementById('progress-notes').value || null
-                    })
-                });
-
-                const qcData = await qcResponse.json();
-                
-                if (qcData.success) {
-                    showToast('Draft submitted for QC review! Admin will review and provide feedback.', 'success');
-                    closeTaskExecutionModal();
-                    loadActiveTasks();
-                } else {
-                    showToast('Error: ' + qcData.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showToast('Failed to submit draft', 'error');
-            }
-        }
-
-        function filterByStatus(status) {
-            loadActiveTasks(status);
-        }
-
-        // Initialize
+        // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             loadActiveTasks();
-        });
-
-        // Refresh every 30 seconds
-        setInterval(() => {
-            loadActiveTasks();
-        }, 30000);
-
-        // Close modal when clicking outside
-        document.getElementById('task-execution-modal')?.addEventListener('click', function(e) {
-            if (e.target === this) closeTaskExecutionModal();
         });
     </script>
 </div>

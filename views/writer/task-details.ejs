@@ -1,0 +1,358 @@
+<div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest"><%= task.work_code || task.order_id %></span>
+                <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest"><%= task.assignment_status %></span>
+            </div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight"><%= task.paper_topic %></h1>
+            <p class="text-slate-500 font-medium mt-1">
+                Deadline: <span class="text-slate-800 font-bold"><%= new Date(task.deadline_at).toLocaleString() %></span>
+            </p>
+        </div>
+        <a href="/writer/active-tasks" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all">
+            <i class="fi fi-rr-arrow-left mr-2"></i> Back
+        </a>
+    </div>
+
+    <% 
+      let isRevision = false;
+      let feedback = [];
+      if (task.submission && task.submission.status === 'revision_required') {
+          isRevision = true;
+          try { feedback = JSON.parse(task.submission.feedback || '[]'); } catch(e) { feedback = [task.submission.feedback]; }
+      }
+    %>
+
+    <% if (isRevision) { %>
+    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm mb-6">
+        <div class="flex items-start gap-4">
+            <div class="p-3 bg-red-100 rounded-full text-red-600">
+                <i class="fi fi-rr-exclamation text-xl"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-black text-red-800 mb-1">Revision Required</h3>
+                <p class="text-sm font-bold text-red-600 mb-4">The Admin has requested changes to your submission.</p>
+                
+                <div class="bg-white p-4 rounded-xl border border-red-100">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Feedback & Instructions</p>
+                    <div class="prose prose-sm text-slate-700">
+                        <% if (Array.isArray(feedback) && feedback.length > 0) { %>
+                            <ul class="list-disc pl-4 space-y-1">
+                                <% feedback.forEach(item => { %>
+                                    <li><%= item %></li>
+                                <% }) %>
+                            </ul>
+                        <% } else if (typeof feedback === 'string') { %>
+                            <p><%= feedback %></p>
+                        <% } else { %>
+                             <p class="italic text-slate-400">See comments/notes.</p>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content: Description & Files -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Description -->
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fi fi-rr-document text-indigo-600"></i> Task Description
+                </h3>
+                <div class="prose prose-slate max-w-none text-slate-600 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <%= task.description || 'No description provided.' %>
+                </div>
+                
+                <div class="mt-6 grid grid-cols-2 gap-4">
+                    <div class="bg-indigo-50 p-4 rounded-xl">
+                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Service Type</p>
+                        <p class="font-bold text-indigo-900"><%= task.service %></p>
+                    </div>
+                    <div class="bg-indigo-50 p-4 rounded-xl">
+                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Subject</p>
+                        <p class="font-bold text-indigo-900"><%= task.subject %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Manager -->
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                 <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fi fi-rr-folder text-indigo-600"></i> Project Files
+                </h3>
+                
+                <div class="space-y-4">
+                    <!-- Upload Box -->
+                    <div class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer group relative">
+                        <input type="file" id="file-upload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileUpload(this)">
+                        <div class="pointer-events-none">
+                            <i class="fi fi-rr-cloud-upload text-4xl text-slate-400 group-hover:text-indigo-500 transition-colors block mb-2"></i>
+                            <p class="text-sm font-bold text-slate-700">Click or Drag to Upload Draft/File</p>
+                            <p class="text-xs text-slate-500 mt-1">PDF, DOC, DOCX allowed</p>
+                        </div>
+                    </div>
+                    <div id="upload-preview" class="hidden  bg-white border border-slate-200 rounded-xl p-4 flex justify-between items-center shadow-lg"></div>
+
+                    <!-- File List -->
+                    <div class="space-y-2 mt-4">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Uploaded Files history</p>
+                        <% if (task.files && task.files.length > 0) { %>
+                            <% task.files.forEach(file => { %>
+                                <div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-indigo-600 font-bold">
+                                            v<%= file.version_number %>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-700"><%= file.file_name %></p>
+                                            <p class="text-[10px] text-slate-400 uppercase"><%= new Date(file.created_at).toLocaleString() %></p>
+                                        </div>
+                                    </div>
+                                    <a href="<%= file.file_url %>" target="_blank" class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all">
+                                        <i class="fi fi-rr-download"></i>
+                                    </a>
+                                </div>
+                            <% }) %>
+                        <% } else { %>
+                             <div class="text-center py-8">
+                                <p class="text-slate-400 text-sm italic">No files uploaded yet.</p>
+                             </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Actions -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Status Update Panel -->
+            <div class="bg-indigo-900 text-white p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <h3 class="font-black text-xl mb-6">Update Progress</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                             <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block mb-2">Current Status</label>
+                             <select id="status-select" class="w-full bg-indigo-800 border border-indigo-700 rounded-xl p-3 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-400">
+                                <option value="in_progress" <%= task.writer_status === 'in_progress' ? 'selected' : '' %>>▶️ In Progress</option>
+                                <option value="research_completed" <%= task.writer_status === 'research_completed' ? 'selected' : '' %>>📚 Research Done</option>
+                                <option value="writing_started" <%= task.writer_status === 'writing_started' ? 'selected' : '' %>>✏️ Writing Started</option>
+                                <option value="rework_in_progress" <%= task.writer_status === 'rework_in_progress' ? 'selected' : '' %>>🔄 Reworking</option>
+                             </select>
+                        </div>
+
+                         <div>
+                             <label class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block mb-2">Notes</label>
+                             <textarea id="status-notes" rows="3" class="w-full bg-indigo-800 border border-indigo-700 rounded-xl p-3 text-sm text-indigo-100 placeholder-indigo-400 outline-none focus:ring-2 focus:ring-indigo-400" placeholder="Brief update..."></textarea>
+                        </div>
+
+                        <button onclick="updateStatus()" class="w-full bg-white text-indigo-900 font-bold py-3 rounded-xl hover:bg-indigo-50 transition-colors shadow-lg">
+                            Push Update
+                        </button>
+                    </div>
+                </div>
+                <!-- Decor -->
+                <i class="fi fi-rr-refresh absolute -right-6 -bottom-6 text-9xl text-white/5 rotate-12"></i>
+            </div>
+
+            <!-- QC Submission -->
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                <% if (isRevision) { %>
+                    <h3 class="font-black text-slate-800 mb-4 text-amber-600">Submit Revision</h3>
+                    <p class="text-xs text-slate-500 mb-6">Upload fixed file and submit.</p>
+                     
+                    <div class="bg-amber-50 p-4 rounded-xl mb-6">
+                        <p class="text-xs text-amber-800 font-bold">Please ensure you have addressed the feedback above before submitting.</p>
+                    </div>
+
+                    <button onclick="submitRevision()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-amber-200 transition-all flex items-center justify-center gap-2">
+                        <i class="fi fi-rr-refresh"></i> Submit Revision
+                    </button>
+
+                <% } else { %>
+                    <h3 class="font-black text-slate-800 mb-4">Submit for QC</h3>
+                    <p class="text-xs text-slate-500 mb-6">Enter scores and submit final draft.</p>
+                    
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Grammarly Score</label>
+                            <input type="number" id="grammarly-score" min="0" max="100" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" placeholder="0-100">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">AI Detection Score</label>
+                            <input type="number" id="ai-score" min="0" max="100" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" placeholder="0-100">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Plagiarism Score</label>
+                            <input type="number" id="plagiarism-score" min="0" max="100" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500" placeholder="0-100">
+                        </div>
+                    </div>
+                    
+                    <button onclick="submitForQC()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2">
+                        <i class="fi fi-rr-check-circle"></i> Submit Draft
+                    </button>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const taskId = '<%= task.order_id %>';
+    
+    // Status Update
+    async function updateStatus() {
+        const status = document.getElementById('status-select').value;
+        const notes = document.getElementById('status-notes').value;
+        
+        try {
+            const res = await fetch(`/writer/tasks/${taskId}/status`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ newStatus: status, notes: notes })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast('Status updated!', 'success');
+            } else {
+                showToast(data.error || 'Failed', 'error');
+            }
+        } catch(e) { console.error(e); showToast('Error', 'error'); }
+    }
+
+    // File Upload Handling
+    let uploadedFileId = null; 
+
+    async function handleFileUpload(input) {
+         if(!input.files || !input.files[0]) return;
+         const file = input.files[0];
+         
+         // Show preview
+         const preview = document.getElementById('upload-preview');
+         preview.classList.remove('hidden');
+         preview.innerHTML = `
+            <div class="flex items-center gap-3 overflow-hidden">
+                <i class="fi fi-rr-file text-indigo-500"></i>
+                <span class="text-sm font-bold text-slate-700 truncate">${file.name}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                 <span class="text-xs font-bold text-indigo-600 animate-pulse" id="upload-status">Uploading...</span>
+            </div>
+         `;
+
+         const formData = new FormData();
+         formData.append('file', file);
+         
+         try {
+             const res = await fetch(`/writer/tasks/${taskId}/upload`, {
+                 method: 'POST',
+                 body: formData
+             });
+             const data = await res.json();
+             
+             if(data.success) {
+                 uploadedFileId = data.file.id; // Corrected: filename is returned as id in previous controller logic
+                 document.getElementById('upload-status').innerHTML = `<i class="fi fi-rr-check text-emerald-500"></i> Done`;
+                 document.getElementById('upload-status').classList.remove('animate-pulse');
+                 setTimeout(() => window.location.reload(), 1500); // Reload to show in history
+             } else {
+                 document.getElementById('upload-status').innerHTML = `<span class="text-red-500">Failed</span>`;
+                 showToast(data.error, 'error');
+             }
+         } catch(e) {
+             console.error(e);
+             document.getElementById('upload-status').innerHTML = `<span class="text-red-500">Error</span>`;
+         }
+    }
+
+    async function submitForQC() {
+        // Validation for scores
+        const grammarlyScore = document.getElementById('grammarly-score').value;
+        const aiScore = document.getElementById('ai-score').value;
+        const plagiarismScore = document.getElementById('plagiarism-score').value;
+
+        if(!grammarlyScore || !aiScore || !plagiarismScore) {
+            showToast('Compulsory: Please enter all scores (Grammarly, AI, Plagiarism)', 'warning');
+            return;
+        }
+
+        // Need to know which file. If just uploaded, use that.
+        // If not, maybe ask user to select from history? 
+        // For simplicity, let's assume the last uploaded file in database (controller logic might handle finding latest).
+        // But the controller `submitDraftForQC` requires `fileId`.
+        
+        let fileIdToSubmit = uploadedFileId;
+        
+        if (!fileIdToSubmit) {
+            // Find latest from history in DOM if possible, or fail
+            <% if (task.files && task.files.length > 0) { %>
+                fileIdToSubmit = '<%= task.files[0].id %>'; // Assuming controller sends `id` column
+            <% } %>
+        }
+
+        if(!fileIdToSubmit) {
+            showToast('Please upload a file first', 'warning');
+            return;
+        }
+
+        if(!confirm('Are you sure you want to submit this draft for QC?')) return;
+
+        try {
+             const res = await fetch(`/writer/tasks/${taskId}/submit-qc`, {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ 
+                    fileId: fileIdToSubmit,
+                    grammarly_score: grammarlyScore,
+                    ai_score: aiScore,
+                    plagiarism_score: plagiarismScore
+                 })
+             });
+             const data = await res.json();
+             if(data.success) {
+                 showToast('Submitted for QC!', 'success');
+                 setTimeout(() => window.location.href='/writer/active-tasks', 1500);
+             } else {
+                 showToast(data.error, 'error');
+             }
+        } catch(e) { console.error(e); showToast('Error', 'error'); }
+    }
+
+    async function submitRevision() {
+        let fileIdToSubmit = uploadedFileId;
+        
+        if (!fileIdToSubmit) {
+            <% if (task.files && task.files.length > 0) { %>
+                fileIdToSubmit = '<%= task.files[0].id %>'; 
+            <% } %>
+        }
+
+        if(!fileIdToSubmit) {
+            showToast('Please upload the revised file first', 'warning');
+            return;
+        }
+
+        if(!confirm('Are you sure you want to submit this revision?')) return;
+
+        try {
+             const res = await fetch(`/writer/tasks/${taskId}/revision`, {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ fileId: fileIdToSubmit })
+             });
+             const data = await res.json();
+             if(data.success) {
+                 showToast('Revision Submitted!', 'success');
+                 setTimeout(() => window.location.href='/writer/active-tasks', 1500);
+             } else {
+                 showToast(data.error, 'error');
+             }
+        } catch(e) { console.error(e); showToast('Error', 'error'); }
+    }
+</script>

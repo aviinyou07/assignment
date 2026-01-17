@@ -378,7 +378,7 @@ exports.listMyQueries = async (req, res) => {
     // GET TOTAL COUNT
     // =======================
     const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) as total FROM orders WHERE ${whereClause}`,
+      `SELECT COUNT(*) as total FROM orders o WHERE ${whereClause}`,
       params
     );
 

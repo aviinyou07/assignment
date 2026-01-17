@@ -352,7 +352,8 @@ exports.getActiveTasks = async (req, res) => {
         o.order_id, o.work_code, o.paper_topic as topic,
         o.service, o.subject, o.urgency, o.deadline_at,
         o.status as order_status,
-        COALESCE(s.status, 'not_submitted') as status,
+        te.writer_status,
+        COALESCE(s.status, 'not_submitted') as submission_status,
         TIMEDIFF(o.deadline_at, NOW()) as time_remaining,
         (SELECT COUNT(*) FROM submissions WHERE order_id = o.order_id) as submission_count
       FROM orders o
@@ -360,22 +361,42 @@ exports.getActiveTasks = async (req, res) => {
       LEFT JOIN submissions s ON o.order_id = s.order_id AND s.submission_id = (
         SELECT MAX(submission_id) FROM submissions WHERE order_id = o.order_id
       )
-      WHERE o.writer_id = ? AND te.writer_id = ? AND te.status = 'assigned'
+      WHERE o.writer_id = ? AND te.writer_id = ? AND te.status IN ('assigned', 'accepted')
       AND o.status IN (30, 31, 32, 33, 34)
     `;
 
     if (status) {
-      query += ` AND COALESCE(s.status, 'not_submitted') = ?`;
+      // Logic handled in post-processing for consistent status mapping
+      // query += ` AND COALESCE(s.status, 'not_submitted') = ?`; 
     }
 
     query += ` ORDER BY o.deadline_at ASC`;
 
     const params = [writerId, writerId];
-    if (status) params.push(status);
+    // if (status) params.push(status);
 
     const [tasks] = await db.query(query, params);
 
-    res.json({ success: true, tasks });
+    // Normalize status for frontend
+    const processedTasks = tasks.map(task => {
+        let displayStatus = 'in_progress';
+
+        // 1. Submission status takes precedence (if waiting QC or rework)
+        if (task.submission_status === 'pending_qc') displayStatus = 'draft_submitted'; // Changed to match frontend hierarchy
+        else if (task.submission_status === 'revision_required') displayStatus = 'rework_in_progress';
+        
+        // 2. Otherwise use writer's self-reported status
+        else if (task.writer_status && task.writer_status !== 'pending') {
+            displayStatus = task.writer_status;
+        }
+
+        return { ...task, status: displayStatus };
+    });
+
+    // Apply filtering if requested
+    const finalTasks = status ? processedTasks.filter(t => t.status === status) : processedTasks;
+
+    res.json({ success: true, tasks: finalTasks });
   } catch (error) {
     console.error('Error fetching active tasks:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -566,7 +587,16 @@ exports.submitDraftForQC = async (req, res) => {
 
     const { taskId } = req.params;
     const writerId = req.user.user_id;
-    const { fileId } = req.body;
+    const { fileId, grammarly_score, ai_score, plagiarism_score } = req.body;
+
+    // Validate Scores
+    if (!grammarly_score || !ai_score || !plagiarism_score) {
+      await connection.rollback();
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Mandatory scores missing: Grammarly, AI, and Plagiarism scores are required for QC submission.' 
+      });
+    }
 
     // Verify ownership
     const [[order]] = await connection.query(
@@ -597,10 +627,15 @@ exports.submitDraftForQC = async (req, res) => {
       [taskId, writerId, file.file_url]
     );
 
-    // Update order status to awaiting QC (33 - Pending QC)
+    // Update order status to awaiting QC (33 - Pending QC) and save scores
     await connection.query(
-      'UPDATE orders SET status = 33 WHERE order_id = ?',
-      [taskId]
+      `UPDATE orders SET 
+        status = 33, 
+        grammarly_score = ?, 
+        ai_score = ?, 
+        plagiarism_score = ? 
+       WHERE order_id = ?`,
+      [grammarly_score, ai_score, plagiarism_score, taskId]
     );
 
     // Audit log
@@ -822,6 +857,105 @@ exports.checkTaskPermission = async (req, res) => {
     console.error('Error checking permissions:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+};
+
+/**
+ * View Task Details Page
+ */
+exports.viewTaskDetails = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const writerId = req.user.user_id;
+
+        // Verify writer is assigned
+        const [[order]] = await db.query(
+          `SELECT o.*, te.writer_status, te.status as assignment_status 
+           FROM orders o
+           JOIN task_evaluations te ON o.order_id = te.order_id
+           WHERE o.order_id = ? AND te.writer_id = ?`,
+          [taskId, writerId]
+        );
+
+        if (!order) {
+            return res.redirect('/writer/active-tasks');
+        }
+
+        // Get files
+        const [files] = await db.query(
+            'SELECT * FROM file_versions WHERE order_id = ? ORDER BY version_number DESC',
+            [taskId]
+        );
+
+        // Get latest submission
+        const [[submission]] = await db.query(
+            'SELECT * FROM submissions WHERE order_id = ? ORDER BY created_at DESC LIMIT 1',
+            [taskId]
+        );
+
+        res.render('writer/task-details', {
+            title: `Task Details - ${order.work_code || order.order_id}`,
+            layout: 'layouts/writer',
+            task: {
+                ...order,
+                files: files,
+                submission: submission
+            }
+        });
+
+    } catch (error) {
+        console.error('Error rendering task details:', error);
+        res.status(500).render('errors/500', { layout: false });
+    }
+};
+
+/**
+ * Get Project Updates Page
+ */
+exports.getProjectUpdates = async (req, res) => {
+    try {
+        const writerId = req.user.user_id;
+
+        // Get updates from audit logs for orders assigned to this writer
+        const [updates] = await db.query(
+            `SELECT al.*, o.work_code, o.paper_topic
+             FROM audit_logs al
+             JOIN orders o ON al.resource_id = o.order_id
+             WHERE al.user_id = ? AND al.resource_type = 'order'
+             AND al.event_type IN ('STATUS_UPDATE', 'SUBMISSION_FOR_QC', 'REVISION_SUBMITTED', 'TASK_ACCEPTED')
+             ORDER BY al.created_at DESC
+             LIMIT 50`,
+            [writerId]
+        );
+
+         // Get stats
+         const [[{ totalUpdates }]] = await db.query(
+            `SELECT COUNT(*) as totalUpdates FROM audit_logs 
+             WHERE user_id = ? AND resource_type = 'order' 
+             AND event_type IN ('STATUS_UPDATE', 'SUBMISSION_FOR_QC')`,
+            [writerId]
+         );
+
+         // Get Active Orders for dropdown
+        const [activeOrders] = await db.query(
+            `SELECT o.order_id, o.work_code, o.paper_topic 
+             FROM orders o
+             JOIN task_evaluations te ON o.order_id = te.order_id
+             WHERE te.writer_id = ? AND te.status = 'assigned' AND o.status IN (30,31,32,33,34)`,
+             [writerId]
+        );
+
+        res.render('writer/updates', {
+            title: "Project Updates",
+            layout: "layouts/writer",
+            updates: updates,
+            totalUpdates: totalUpdates || 0,
+            activeOrders: activeOrders
+        });
+
+    } catch (error) {
+        console.error('Error rendering updates:', error);
+        res.status(500).render('errors/500', { layout: false });
+    }
 };
 
 module.exports = exports;

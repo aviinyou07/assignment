@@ -115,7 +115,7 @@ exports.assignWriters = async (req, res) => {
             type: 'info',
             title: 'New Task Assignment',
             message: `You have been assigned to: ${order.paper_topic}`,
-            link_url: '/writer', 
+            link_url: '/writer/active-tasks', 
             triggered_by: { user_id: req.user.user_id, role: req.user.role }
           });
         } catch (notifErr) {

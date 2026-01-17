@@ -110,6 +110,10 @@ exports.updatePassword = async (req, res) => {
 };
 
 exports.updateProfile = async (req, res) => {
+  console.log("🧠 BODY:", req.body);
+console.log("🧠 BODY KEYS:", Object.keys(req.body));
+console.log("🧠 CONTENT-TYPE:", req.headers["content-type"]);
+
   try {
     const userId = req.user.user_id;
     const role = req.user.role;

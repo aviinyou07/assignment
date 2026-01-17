@@ -64,9 +64,7 @@ router.get("/active-tasks", authGuard(["writer"]), fetchProfile, (req, res) => {
 });
 
 // Updates
-router.get("/updates", authGuard(["writer"]), fetchProfile, (req, res) => {
-  res.render("writer/updates", { title: "Project Updates", layout: "layouts/writer" });
-});
+router.get("/updates", authGuard(["writer"]), fetchProfile, writerTaskController.getProjectUpdates);
 
 // Delivery
 router.get("/delivery", authGuard(["writer"]), fetchProfile, (req, res) => {
@@ -130,6 +128,8 @@ router.post("/tasks/:taskId/reject", authGuard(["writer"]), writerTaskController
 // ============================================================================
 
 router.get("/tasks/active/list", authGuard(["writer"]), writerTaskController.getActiveTasks);
+router.get("/tasks/:taskId/view", authGuard(["writer"]), fetchProfile, writerTaskController.viewTaskDetails);
+router.get("/tasks/:taskId/revise", authGuard(["writer"]), fetchProfile, writerTaskController.viewTaskDetails);
 router.post("/tasks/:taskId/status", authGuard(["writer"]), writerTaskController.updateTaskStatus);
 
 // ============================================================================

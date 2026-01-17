@@ -53,17 +53,34 @@
                         'completed': 'bg-blue-100 text-blue-800',
                         'pending_qc': 'bg-yellow-100 text-yellow-800'
                       };
+                      let displayStatus = sub.status;
+                      let actionEnabled = true;
+
+                      // Check order status for payment
+                      // 48 = Awaiting Final Payment, 30 = Payment Verified (Ready)
+                      if(sub.order_status === 48) {
+                          displayStatus = 'Awaiting Payment';
+                          actionEnabled = false;
+                      } else if(sub.order_status === 30) {
+                          displayStatus = 'Ready to Deliver';
+                      }
                     %>
                     <span class="inline-block <%= statusColors[sub.status] || 'bg-gray-100 text-gray-800' %> text-xs px-2 py-1 rounded">
-                      <%= sub.status === 'approved' ? 'Approved' : sub.status === 'completed' ? 'Delivered' : sub.status %>
+                      <%= displayStatus %>
                     </span>
                   </td>
                   <td class="px-6 py-4"><%= new Date(sub.created_at).toLocaleDateString() %></td>
                   <td class="px-6 py-4">
                     <% if (sub.status === 'approved') { %>
-                      <button onclick="deliverFile(<%= sub.submission_id %>)" class="text-indigo-600 hover:text-indigo-900 text-sm mr-3">
-                        <i class="fi fi-rr-paper-plane"></i> Deliver
-                      </button>
+                        <% if (sub.order_status === 30 || sub.order_status === 34) { /* 30=Paid, 34=Approved(legacy/immediate) */ %>
+                            <button onclick="deliverFile(<%= sub.submission_id %>)" class="text-indigo-600 hover:text-indigo-900 text-sm mr-3 font-bold bg-indigo-50 px-3 py-1 rounded">
+                                <i class="fi fi-rr-paper-plane"></i> Deliver Now
+                            </button>
+                        <% } else { %>
+                             <span class="text-xs text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded" title="Client must complete payment">
+                                <i class="fi fi-rr-lock"></i> Unpaid
+                             </span>
+                        <% } %>
                     <% } %>
                     <button onclick="viewHistory(<%= sub.submission_id %>)" class="text-gray-600 hover:text-gray-900 text-sm">
                       History

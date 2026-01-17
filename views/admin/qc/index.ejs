@@ -414,6 +414,39 @@ async function viewQCDetail(submissionId) {
     
     if (data.success) {
       const s = data.submission;
+      
+      // History HTML Generation
+      const historyHtml = data.previousSubmissions && data.previousSubmissions.length > 0 ? `
+          <div class="border-t border-slate-100 pt-6">
+            <h4 class="text-xs font-bold text-slate-600 uppercase mb-4">Submission History</h4>
+            <div class="space-y-3 max-h-60 overflow-y-auto pr-2">
+              ${data.previousSubmissions.map(prev => `
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-indigo-600">v${prev.submission_id}</span>
+                        <span class="text-xs text-slate-400">•</span>
+                        <span class="text-xs text-slate-500">${new Date(prev.created_at).toLocaleString()}</span>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${prev.status === 'revision_required' ? 'bg-red-100 text-red-600' : 'bg-slate-200 text-slate-600'}">
+                        ${prev.status === 'revision_required' ? 'Rejected' : prev.status}
+                    </span>
+                  </div>
+                  ${prev.feedback ? `
+                    <div class="bg-white p-3 rounded-lg border border-red-100 mb-2">
+                        <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Feedback Given</p>
+                        <p class="text-xs text-slate-700 italic">"${prev.feedback.replace(/"/g, '&quot;')}"</p>
+                    </div>
+                  ` : ''}
+                  <a href="${prev.file_url}" target="_blank" class="inline-flex items-center gap-1 text-xs text-indigo-600 font-bold hover:underline">
+                    <i class="fi fi-rr-paper-clip"></i> View File
+                  </a>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+      ` : '';
+
       document.getElementById('qcModalContent').innerHTML = `
         <div class="space-y-6">
           <!-- Info Grid -->
@@ -466,11 +499,13 @@ async function viewQCDetail(submissionId) {
           
           ${s.file_url ? `
           <div class="border-t border-slate-100 pt-6">
-            <a href="/uploads/${s.file_url}" target="_blank" class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+            <a href="${s.file_url}" target="_blank" class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
               <i class="fi fi-rr-download"></i> Download Submission File
             </a>
           </div>
           ` : ''}
+
+          ${historyHtml}
           
           <div class="border-t border-slate-100 pt-6">
             <label class="text-xs font-bold text-slate-600 uppercase mb-2 block">Feedback / Notes</label>

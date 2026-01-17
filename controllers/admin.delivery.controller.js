@@ -15,7 +15,7 @@ exports.listReadyForDelivery = async (req, res) => {
       `SELECT 
         s.submission_id, s.order_id, s.writer_id, u.full_name as writer_name,
         o.query_code, o.paper_topic, c.full_name as client_name, c.email as client_email,
-        s.created_at, s.file_url, s.status
+        s.created_at, s.file_url, s.status, o.status as order_status
       FROM submissions s
       JOIN users u ON s.writer_id = u.user_id
       JOIN orders o ON s.order_id = o.order_id
