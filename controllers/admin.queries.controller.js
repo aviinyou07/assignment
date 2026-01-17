@@ -662,6 +662,15 @@ exports.adminAssignWriter = async (req, res) => {
       [writerId, orderId]
     );
 
+    // Create task_evaluations entry to ensure it appears in Active Tasks
+    // Since writer already showed interest/accepted invitation, we set status to 'assigned'
+    await db.query(
+      `INSERT INTO task_evaluations (order_id, writer_id, status, writer_status, created_at, updated_at)
+       VALUES (?, ?, 'assigned', 'pending', NOW(), NOW())
+       ON DUPLICATE KEY UPDATE status = 'assigned', updated_at = NOW()`,
+      [orderId, writerId]
+    );
+
     // Commit transaction
     await db.query('COMMIT');
 

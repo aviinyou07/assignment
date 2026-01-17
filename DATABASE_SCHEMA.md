@@ -1,6 +1,6 @@
 # Database Schema - db_assignment_366
 
-Generated: 1/16/2026, 1:48:03 PM
+Generated: 1/17/2026, 1:14:08 PM
 
 ================================================================================
 
@@ -132,14 +132,13 @@ Generated: 1/16/2026, 1:48:03 PM
 --------------------------------------------------------------------------------
   1. id (int) [PRIMARY KEY, NOT NULL, AUTO_INCREMENT]
   2. chat_id (int) [INDEX, NOT NULL]
-  3. user_id (int) [INDEX, NOT NULL]
+  3. user_id (int) [NOT NULL]
   4. role (varchar(20))
   5. joined_at (datetime) [DEFAULT_GENERATED, DEFAULT: CURRENT_TIMESTAMP]
   6. last_read_at (datetime)
 
   Foreign Keys:
     - chat_id → general_chats.chat_id
-    - user_id → users.user_id
 
 
 ## TABLE: general_chats
@@ -243,14 +242,16 @@ Generated: 1/16/2026, 1:48:03 PM
   20. ai_score (int)
   21. plagiarism_score (int)
   22. words_used (int) [DEFAULT: 0]
-  23. pages_used (int) [DEFAULT: 0]
-  24. conversation_id (int)
-  25. user_code (varchar(5))
-  26. acceptance (tinyint) [DEFAULT: 0]
-  27. work_code (varchar(20))
-  28. orderscol (varchar(45))
-  29. writer_id (int)
-  30. updated_at (timestamp) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
+  23. requested_pages (int)
+  24. requested_words (int)
+  25. pages_used (int) [DEFAULT: 0]
+  26. conversation_id (int)
+  27. user_code (varchar(5))
+  28. acceptance (tinyint) [DEFAULT: 0]
+  29. work_code (varchar(20))
+  30. orderscol (varchar(45))
+  31. writer_id (int)
+  32. updated_at (timestamp) [DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP, DEFAULT: CURRENT_TIMESTAMP]
 
 
 ## TABLE: orders_history

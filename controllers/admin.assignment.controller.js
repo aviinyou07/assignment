@@ -85,13 +85,16 @@ exports.assignWriters = async (req, res) => {
       userAgent: req.get('User-Agent')
     });
 
-    // Get writer details for emails
+    // Get writer details for emails and notifications
     const [writers] = await db.query(
       `SELECT user_id, full_name, email FROM users WHERE user_id IN (?)`,
       [writerIds]
     );
 
-    writers.forEach(writer => {
+    const { createNotificationWithRealtime } = require('./notifications.controller');
+
+    for (const writer of writers) {
+      // Send Email
       sendMail({
         to: writer.email,
         subject: `New Task Assignment: ${order.paper_topic}`,
@@ -103,7 +106,23 @@ exports.assignWriters = async (req, res) => {
           <p>Thank you!</p>
         `
       }).catch(err => console.error('Email error:', err));
-    });
+
+      // Send Realtime Notification
+      if (req.io) {
+        try {
+          await createNotificationWithRealtime(req.io, {
+            user_id: writer.user_id,
+            type: 'info',
+            title: 'New Task Assignment',
+            message: `You have been assigned to: ${order.paper_topic}`,
+            link_url: '/writer', 
+            triggered_by: { user_id: req.user.user_id, role: req.user.role }
+          });
+        } catch (notifErr) {
+          console.error("Notification failed for writer " + writer.user_id, notifErr);
+        }
+      }
+    }
 
     res.json({
       success: true,

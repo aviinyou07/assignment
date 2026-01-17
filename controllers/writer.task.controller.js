@@ -166,11 +166,18 @@ exports.acceptTaskAssignment = async (req, res) => {
       return res.status(403).json({ success: false, error: 'You are not assigned to this task or already responded' });
     }
 
-    // Update task evaluation to accepted
+    // Update task evaluation to assigned (active)
     await connection.query(
-      `UPDATE task_evaluations SET status = 'accepted', comment = CONCAT(IFNULL(comment, ''), '\nWriter accepted: ', ?), updated_at = NOW()
+      `UPDATE task_evaluations SET status = 'assigned', comment = CONCAT(IFNULL(comment, ''), '\nWriter accepted: ', ?), updated_at = NOW()
        WHERE order_id = ? AND writer_id = ?`,
       [comment, taskId, writerId]
+    );
+
+    // Update Order to set writer_id and ensure status allows writer tracking
+    // Status 31 = Writer Assigned/In Progress
+    await connection.query(
+        `UPDATE orders SET writer_id = ? WHERE order_id = ?`,
+        [writerId, taskId]
     );
 
     // Create audit log
@@ -406,14 +413,39 @@ exports.updateTaskStatus = async (req, res) => {
       return res.status(403).json({ success: false, error: 'Unauthorized or order not in progress' });
     }
 
+    // Update writer status in task_evaluations
+    await connection.query(
+      `UPDATE task_evaluations SET writer_status = ?, updated_at = NOW()
+       WHERE order_id = ? AND writer_id = ?`,
+      [newStatus, taskId, writerId]
+    );
+
     // Create audit log
     await connection.query(
-      `INSERT INTO audit_logs (user_id, event_type, resource_type, resource_id, details, created_at)
-       VALUES (?, 'STATUS_UPDATE', 'order', ?, ?, NOW())`,
+      `INSERT INTO audit_logs (user_id, event_type, action, resource_type, resource_id, details, created_at)
+       VALUES (?, 'STATUS_UPDATE', 'update_status', 'order', ?, ?, NOW())`,
       [writerId, taskId, `Status changed to ${newStatus}: ${notes}`]
     );
 
     await connection.commit();
+
+    // Notify Admin (Realtime)
+    try {
+      const { createNotificationWithRealtime } = require('./notifications.controller');
+      const [adminUsers] = await db.query("SELECT user_id FROM users WHERE role = 'admin' LIMIT 1");
+      
+      if (adminUsers.length > 0 && req.io) {
+         await createNotificationWithRealtime(req.io, {
+            user_id: adminUsers[0].user_id,
+            type: 'info',
+            title: 'Writer Update',
+            message: `Writer updated status to ${newStatus} for Order ${order.work_code || taskId}`,
+            link_url: `/admin/queries/${taskId}/view`
+         });
+      }
+    } catch(err) {
+      console.error("Notification Error:", err);
+    }
 
     res.json({ success: true, message: 'Status updated successfully' });
   } catch (error) {
