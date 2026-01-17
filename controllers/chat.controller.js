@@ -14,7 +14,7 @@ const ChatModel = require('../models/chat.model');
 const { getIO } = require('../utils/socket');
 
 /**
- * GET /api/chat
+ * GET /chat
  * Get all chats for the current user
  * Admin sees all, others see only their chats
  */
@@ -48,7 +48,7 @@ exports.getChats = async (req, res) => {
 };
 
 /**
- * GET /api/chat/:chatId/messages
+ * GET /chat/:chatId/messages
  * Get messages for a specific chat
  */
 exports.getMessages = async (req, res) => {
@@ -116,7 +116,7 @@ exports.getMessages = async (req, res) => {
 };
 
 /**
- * POST /api/chat/:chatId/messages
+ * POST /chat/:chatId/messages
  * Send a message in a chat
  */
 exports.sendMessage = async (req, res) => {
@@ -206,7 +206,7 @@ exports.sendMessage = async (req, res) => {
 };
 
 /**
- * POST /api/chat
+ * POST /chat
  * Create a new chat (admin only)
  */
 exports.createChat = async (req, res) => {
@@ -264,7 +264,7 @@ exports.createChat = async (req, res) => {
 };
 
 /**
- * POST /api/chat/request
+ * POST /chat/request
  * Request a chat with admin (for non-admin users)
  */
 exports.requestChat = async (req, res) => {
@@ -306,7 +306,7 @@ exports.requestChat = async (req, res) => {
 };
 
 /**
- * GET /api/chat/requests
+ * GET /chat/requests
  * Get pending chat requests (admin only)
  */
 exports.getRequests = async (req, res) => {
@@ -322,7 +322,7 @@ exports.getRequests = async (req, res) => {
 };
 
 /**
- * POST /api/chat/requests/:requestId/approve
+ * POST /chat/requests/:requestId/approve
  * Approve a chat request (admin only)
  */
 exports.approveRequest = async (req, res) => {
@@ -355,7 +355,7 @@ exports.approveRequest = async (req, res) => {
 };
 
 /**
- * POST /api/chat/requests/:requestId/reject
+ * POST /chat/requests/:requestId/reject
  * Reject a chat request (admin only)
  */
 exports.rejectRequest = async (req, res) => {
@@ -394,7 +394,7 @@ exports.rejectRequest = async (req, res) => {
 };
 
 /**
- * POST /api/chat/:chatId/close
+ * POST /chat/:chatId/close
  * Close a chat (admin only)
  */
 exports.closeChat = async (req, res) => {
@@ -428,7 +428,7 @@ exports.closeChat = async (req, res) => {
 };
 
 /**
- * POST /api/chat/:chatId/delete
+ * POST /chat/:chatId/delete
  * Delete a chat (soft delete) (admin only)
  */
 exports.deleteChat = async (req, res) => {
@@ -462,7 +462,7 @@ exports.deleteChat = async (req, res) => {
 };
 
 /**
- * POST /api/chat/:chatId/restrict
+ * POST /chat/:chatId/restrict
  * Restrict a chat (admin only)
  */
 exports.restrictChat = async (req, res) => {
@@ -496,7 +496,7 @@ exports.restrictChat = async (req, res) => {
 };
 
 /**
- * POST /api/chat/:chatId/important
+ * POST /chat/:chatId/important
  * Toggle important flag (admin only)
  */
 exports.toggleImportant = async (req, res) => {
@@ -521,7 +521,7 @@ exports.toggleImportant = async (req, res) => {
 };
 
 /**
- * GET /api/users/search
+ * GET /users/search
  * Search users for creating new chats (admin only)
  */
 exports.searchUsers = async (req, res) => {

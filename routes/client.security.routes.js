@@ -8,6 +8,9 @@ const { authGuard } = require('../middleware/auth.middleware');
 router.post('/email/request-otp', authGuard('client'), securityController.requestEmailOtp);
 router.post('/email/verify-otp', authGuard('client'), securityController.verifyEmailOtp);
 
+router.post('/delete-account', authGuard('client'), securityController.deleteUserAccount);
+
+
 // MOBILE
 router.post('/mobile/request-otp', authGuard('client'), securityController.requestMobileOtp);
 router.post('/mobile/verify-otp', authGuard('client'), securityController.verifyMobileOtp);

@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
-const {sendMail} = require('../utils/mailer');
+const { sendMail } = require('../utils/mailer');
 const twilioClient = require('../utils/twilio');
 const { generateOtp, getExpiryTime } = require('../utils/otp');
 
@@ -392,3 +392,111 @@ exports.verifyPasswordOtp = async (req, res) => {
     connection.release();
   }
 };
+
+
+exports.deleteUserAccount = async (req, res) => {
+  const userId = req.user.user_id;
+
+  let connection;
+
+  try {
+    connection = await db.getConnection();
+
+    // =======================
+    // FETCH USER DETAILS FIRST
+    // =======================
+    const [[user]] = await connection.query(
+      'SELECT email, full_name FROM users WHERE user_id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // =======================
+    // TRANSACTION
+    // =======================
+    await connection.beginTransaction();
+
+    await connection.query(
+      'DELETE FROM wallets WHERE user_id = ?',
+      [userId]
+    );
+
+    const [deleteResult] = await connection.query(
+      'DELETE FROM users WHERE user_id = ?',
+      [userId]
+    );
+
+    if (deleteResult.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    await connection.commit();
+
+    // =======================
+    // SEND CONFIRMATION EMAIL
+    // =======================
+    await sendMail({
+      to: user.email,
+      subject: 'A366 — Account Deleted Successfully',
+      html: `
+        <h2>Account Deletion Confirmation</h2>
+
+        <p>Hello ${user.full_name || 'User'},</p>
+
+        <p>
+          This email confirms that your <strong>A366</strong> account has been
+          permanently deleted as per your request.
+        </p>
+
+        <p>
+          All personal data associated with your account has been removed from
+          our systems in accordance with our data retention and privacy policies.
+        </p>
+
+        <p>
+          <strong>If you did not initiate this action</strong>, please contact
+          our support team immediately.
+        </p>
+
+        <p>
+          Thank you for being a part of A366. We’re sorry to see you go — and
+          you’re always welcome back.
+        </p>
+
+        <p style="margin-top:24px;">
+          Regards,<br/>
+          <strong>A366 Security Team</strong>
+        </p>
+      `
+    });
+
+    return res.json({
+      success: true,
+      message: 'Account permanently deleted'
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+
+    console.error('deleteUserAccount error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Account deletion failed'
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+

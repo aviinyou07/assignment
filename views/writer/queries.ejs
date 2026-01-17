@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load invited queries
 async function loadInvitedQueries() {
     try {
-        const response = await fetch('/writer/api/queries/invited');
+        const response = await fetch('/writer/queries/invited');
         const data = await response.json();
         if (data.success) {
             const queriesList = document.getElementById('invited-queries-list');
@@ -142,7 +142,7 @@ async function loadInvitedQueries() {
 async function showInterest(orderId) {
     try {
         // Fetch query details for the modal
-        const response = await fetch(`/writer/api/queries/${orderId}`);
+        const response = await fetch(`/writer/queries/${orderId}`);
         const result = await response.json();
         
         if (!result.success) {
@@ -254,7 +254,7 @@ async function submitInterest(orderId) {
     try {
         const comments = document.getElementById('interest-comments')?.value || '';
         
-        const response = await fetch(`/writer/api/queries/${orderId}/show-interest`, {
+        const response = await fetch(`/writer/queries/${orderId}/show-interest`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ comments })
@@ -286,7 +286,7 @@ async function submitDeclineFromModal(orderId) {
             return;
         }
         
-        const response = await fetch(`/writer/api/queries/${orderId}/decline-invitation`, {
+        const response = await fetch(`/writer/queries/${orderId}/decline-invitation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason })
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', loadInvitedQueries);
         // Load pending tasks
         async function loadPendingTasks() {
             try {
-                const response = await fetch('/writer/api/tasks/pending?sortBy=deadline_at&order=ASC');
+                const response = await fetch('/writer/tasks/pending?sortBy=deadline_at&order=ASC');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -517,7 +517,7 @@ document.addEventListener('DOMContentLoaded', loadInvitedQueries);
         // Open task details modal
         async function openTaskDetailsModal(taskId) {
             try {
-                const response = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const response = await fetch(`/writer/tasks/${taskId}/details`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -584,7 +584,7 @@ document.addEventListener('DOMContentLoaded', loadInvitedQueries);
             }
             
             try {
-                const response = await fetch(`/writer/api/tasks/${currentModalTaskId}/accept`, {
+                const response = await fetch(`/writer/tasks/${currentModalTaskId}/accept`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ comment })
@@ -620,7 +620,7 @@ document.addEventListener('DOMContentLoaded', loadInvitedQueries);
 
         async function submitDecline(taskId, reason) {
             try {
-                const response = await fetch(`/writer/api/tasks/${taskId}/reject`, {
+                const response = await fetch(`/writer/tasks/${taskId}/reject`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })

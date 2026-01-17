@@ -77,7 +77,7 @@ app.use(cookieParser());
 app.use("/master/countries", require("./routes/masterCountries"));
 
 // Client API (new enterprise routes)
-app.use("/api/client", require("./routes/client.api.routes"));
+app.use("/client", require("./routes/client.api.routes"));
 
 // Legacy client routes (for backward compatibility)
 app.use("/auth/client", require("./routes/auth.client.routes"));

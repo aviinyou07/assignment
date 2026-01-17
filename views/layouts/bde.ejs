@@ -519,7 +519,7 @@
   <script>
     async function updateBDESidebarCounts() {
       try {
-        const response = await fetch('/bde/api/sidebar-counts');
+        const response = await fetch('/bde/sidebar-counts');
         if (response.ok) {
           const data = await response.json();
           if (data.success) {

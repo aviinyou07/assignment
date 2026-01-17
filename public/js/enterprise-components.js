@@ -303,7 +303,7 @@ function updateKPIValue(elementId, newValue, animate = true) {
 function startDashboardRefresh(intervalMs = 30000) {
   setInterval(async () => {
     try {
-      const response = await fetch('/api/dashboard/kpis');
+      const response = await fetch('/dashboard/kpis');
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.kpis) {

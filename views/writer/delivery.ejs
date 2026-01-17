@@ -116,7 +116,7 @@
         // Load all submissions
         async function loadSubmissions() {
             try {
-                const response = await fetch('/writer/api/tasks/active/list');
+                const response = await fetch('/writer/tasks/active/list');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -194,7 +194,7 @@
         // Open feedback modal
         async function openFeedbackModal(taskId) {
             try {
-                const detailsResponse = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const detailsResponse = await fetch(`/writer/tasks/${taskId}/details`);
                 const detailsData = await detailsResponse.json();
                 
                 if (detailsData.success) {
@@ -205,7 +205,7 @@
                     document.getElementById('feedback-topic').textContent = task.topic || 'No topic';
                     
                     // Load feedback
-                    const feedbackResponse = await fetch(`/writer/api/tasks/${taskId}/feedback`);
+                    const feedbackResponse = await fetch(`/writer/tasks/${taskId}/feedback`);
                     const feedbackData = await feedbackResponse.json();
                     
                     if (feedbackData.success) {
@@ -239,7 +239,7 @@
                     }
                     
                     // Load files
-                    const filesResponse = await fetch(`/writer/api/tasks/${taskId}/files`);
+                    const filesResponse = await fetch(`/writer/tasks/${taskId}/files`);
                     const filesData = await filesResponse.json();
                     
                     if (filesData.success && filesData.files.length > 0) {
@@ -356,7 +356,7 @@
 
             try {
                 // Upload file
-                const uploadResponse = await fetch(`/writer/api/tasks/${currentFeedbackTaskId}/upload`, {
+                const uploadResponse = await fetch(`/writer/tasks/${currentFeedbackTaskId}/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -369,7 +369,7 @@
                 }
 
                 // Submit revision
-                const revisionResponse = await fetch(`/writer/api/tasks/${currentFeedbackTaskId}/revision`, {
+                const revisionResponse = await fetch(`/writer/tasks/${currentFeedbackTaskId}/revision`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

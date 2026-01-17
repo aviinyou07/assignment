@@ -88,7 +88,7 @@ function extractToken(req) {
  */
 function isApiRequest(req) {
   return req.xhr || 
-         req.path.includes('/api/') || 
+         req.path.includes('/') || 
          req.headers.accept?.includes('application/json') ||
          req.headers['content-type']?.includes('application/json');
 }
@@ -157,6 +157,9 @@ async function logUnauthorizedAccess(req, userId, reason, details = null) {
  * @param {boolean} options.redirectOnFail - Redirect to login on failure (for web pages)
  */
 const authGuard = (allowedRoles = [], options = {}) => {
+  if (!Array.isArray(allowedRoles)) {
+    allowedRoles = [allowedRoles];
+  }
   const { requireVerified = false, skipRateLimit = false, redirectOnFail = null } = options;
 
   return async (req, res, next) => {

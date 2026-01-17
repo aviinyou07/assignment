@@ -65,7 +65,7 @@
     // Fetch sidebar counts on page load
     async function updateSidebarCounts() {
       try {
-        const response = await fetch('/admin/api/sidebar-counts');
+        const response = await fetch('/admin/sidebar-counts');
         if (response.ok) {
           const data = await response.json();
           if (data.success) {

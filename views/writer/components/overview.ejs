@@ -125,7 +125,7 @@
         // Load KPI metrics on page load
         async function loadDashboardKPIs() {
             try {
-                const response = await fetch('/writer/api/dashboard/kpis');
+                const response = await fetch('/writer/dashboard/kpis');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -143,7 +143,7 @@
         // Load pending tasks for overview table
         async function loadPendingTasks() {
             try {
-                const response = await fetch('/writer/api/tasks/pending?sortBy=deadline_at&order=ASC');
+                const response = await fetch('/writer/tasks/pending?sortBy=deadline_at&order=ASC');
                 const data = await response.json();
                 
                 if (data.success && data.tasks.length > 0) {
@@ -186,7 +186,7 @@
         // Load upcoming deadlines
         async function loadUpcomingDeadlines() {
             try {
-                const response = await fetch('/writer/api/deadlines/upcoming?hoursAhead=48');
+                const response = await fetch('/writer/deadlines/upcoming?hoursAhead=48');
                 const data = await response.json();
                 
                 if (data.success && data.upcomingDeadlines.length > 0) {
@@ -239,7 +239,7 @@
             }
 
             try {
-                const url = `/writer/api/tasks/${taskId}/${endpoint}`;
+                const url = `/writer/tasks/${taskId}/${endpoint}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

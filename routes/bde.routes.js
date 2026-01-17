@@ -211,14 +211,14 @@ const bdeSimpleController = require("../controllers/bde.api.controller");
 
 // Get dashboard KPIs for real-time updates
 router.get(
-  "/api/dashboard/kpis",
+  "/dashboard/kpis",
   authGuard(["bde"]),
   bdeSimpleController.getDashboardKPIs
 );
 
 // Get sidebar counts for badge updates
 router.get(
-  "/api/sidebar-counts",
+  "/sidebar-counts",
   authGuard(["bde"]),
   bdeSimpleController.getSidebarCounts
 );

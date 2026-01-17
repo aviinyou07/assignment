@@ -1,4 +1,113 @@
 const db = require('../config/db');
+const { sendMail } = require('../utils/mailer');
+const bcrypt = require('bcrypt');
+
+exports.updatePassword = async (req, res) => {
+  try {
+    // =======================
+    // INPUT
+    // =======================
+    const userId = req.user.user_id;
+    const userEmail = req.user.email;
+    const userName = req.user.full_name;
+    const { old_password, new_password } = req.body;
+
+    if (!old_password || !new_password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Old password and new password are required'
+      });
+    }
+
+    // =======================
+    // FETCH CURRENT PASSWORD
+    // =======================
+    const [rows] = await db.query(
+      `SELECT password_hash FROM users WHERE user_id = ? LIMIT 1`,
+      [userId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const currentHash = rows[0].password_hash;
+
+    // =======================
+    // VERIFY OLD PASSWORD
+    // =======================
+    const isValid = await bcrypt.compare(old_password, currentHash);
+
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid current password'
+      });
+    }
+
+    // =======================
+    // HASH & UPDATE PASSWORD
+    // =======================
+    const newHash = await bcrypt.hash(new_password, 10);
+
+    await db.query(
+      `UPDATE users SET password_hash = ? WHERE user_id = ?`,
+      [newHash, userId]
+    );
+
+    // =======================
+    // SEND SECURITY EMAIL
+    // =======================
+    const changeTime = new Date().toLocaleString();
+
+    const emailHtml = `
+      <p>Dear ${userName},</p>
+
+      <p>This is to confirm that your account password was successfully changed on <strong>${changeTime}</strong>.</p>
+
+      <p>If you made this change, no further action is required.</p>
+
+      <p><strong>If you did NOT initiate this change</strong>, please contact the administration or support team immediately so we can secure your account.</p>
+
+      <p>For your safety, we recommend:</p>
+      <ul>
+        <li>Contacting support immediately</li>
+        <li>Avoiding login from unknown devices</li>
+        <li>Resetting your password again once reviewed</li>
+      </ul>
+
+      <p>Regards,<br>
+      <strong>A366 Security Team</strong></p>
+    `;
+
+    // Fire-and-forget (don’t block response)
+    sendMail({
+      to: userEmail,
+      subject: 'Your Account Password Has Been Updated',
+      html: emailHtml
+    }).catch(err => {
+      console.error('Password change email failed:', err);
+    });
+
+    // =======================
+    // RESPONSE
+    // =======================
+    return res.json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+
+  } catch (err) {
+    console.error('updatePassword error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update password'
+    });
+  }
+};
 
 exports.updateProfile = async (req, res) => {
   try {

@@ -134,7 +134,7 @@
     // Update sidebar counts
     async function updateWriterSidebarCounts() {
         try {
-            const response = await fetch('/writer/api/dashboard/kpis');
+            const response = await fetch('/writer/dashboard/kpis');
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.kpis) {

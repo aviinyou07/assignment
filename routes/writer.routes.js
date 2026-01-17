@@ -103,56 +103,56 @@ router.post("/verify-password-otp", authGuard(["writer"]), writerEditController.
 // QUERY/INVITATION API ROUTES
 // ============================================================================
 
-router.get('/api/queries/invited', authGuard(['writer']), writerQueriesController.listInvitedQueries);
-router.get('/api/queries/:queryId', authGuard(['writer']), queriesController.getQueryDetails);
-router.post('/api/queries/:orderId/show-interest', authGuard(['writer']), queriesController.writerShowInterest);
-router.post('/api/queries/:orderId/decline-invitation', authGuard(['writer']), queriesController.writerDeclineInvitation);
-router.post('/api/invitations/:orderId/accept', authGuard(['writer']), queriesController.writerAcceptInvitation);
-router.post('/api/invitations/:orderId/reject', authGuard(['writer']), queriesController.writerRejectInvitation);
+router.get('/queries/invited', authGuard(['writer']), writerQueriesController.listInvitedQueries);
+router.get('/queries/:queryId', authGuard(['writer']), queriesController.getQueryDetails);
+router.post('/queries/:orderId/show-interest', authGuard(['writer']), queriesController.writerShowInterest);
+router.post('/queries/:orderId/decline-invitation', authGuard(['writer']), queriesController.writerDeclineInvitation);
+router.post('/invitations/:orderId/accept', authGuard(['writer']), queriesController.writerAcceptInvitation);
+router.post('/invitations/:orderId/reject', authGuard(['writer']), queriesController.writerRejectInvitation);
 
 // ============================================================================
 // DASHBOARD API
 // ============================================================================
 
-router.get("/api/dashboard/kpis", authGuard(["writer"]), writerTaskController.getDashboardKPIs);
+router.get("/dashboard/kpis", authGuard(["writer"]), writerTaskController.getDashboardKPIs);
 
 // ============================================================================
 // TASK ASSIGNMENT & ACCEPTANCE
 // ============================================================================
 
-router.get("/api/tasks/pending", authGuard(["writer"]), writerTaskController.getPendingTaskAssignments);
-router.get("/api/tasks/:taskId/details", authGuard(["writer"]), writerTaskController.getTaskAssignmentDetail);
-router.post("/api/tasks/:taskId/accept", authGuard(["writer"]), writerTaskController.acceptTaskAssignment);
-router.post("/api/tasks/:taskId/reject", authGuard(["writer"]), writerTaskController.rejectTaskAssignment);
+router.get("/tasks/pending", authGuard(["writer"]), writerTaskController.getPendingTaskAssignments);
+router.get("/tasks/:taskId/details", authGuard(["writer"]), writerTaskController.getTaskAssignmentDetail);
+router.post("/tasks/:taskId/accept", authGuard(["writer"]), writerTaskController.acceptTaskAssignment);
+router.post("/tasks/:taskId/reject", authGuard(["writer"]), writerTaskController.rejectTaskAssignment);
 
 // ============================================================================
 // TASK EXECUTION & STATUS
 // ============================================================================
 
-router.get("/api/tasks/active/list", authGuard(["writer"]), writerTaskController.getActiveTasks);
-router.post("/api/tasks/:taskId/status", authGuard(["writer"]), writerTaskController.updateTaskStatus);
+router.get("/tasks/active/list", authGuard(["writer"]), writerTaskController.getActiveTasks);
+router.post("/tasks/:taskId/status", authGuard(["writer"]), writerTaskController.updateTaskStatus);
 
 // ============================================================================
 // FILE UPLOAD & HISTORY
 // ============================================================================
 
-router.post("/api/tasks/:taskId/upload", authGuard(["writer"]), uploadMiddleware.single('file'), writerTaskController.uploadFile);
-router.get("/api/tasks/:taskId/files", authGuard(["writer"]), writerTaskController.getFileHistory);
+router.post("/tasks/:taskId/upload", authGuard(["writer"]), uploadMiddleware.single('file'), writerTaskController.uploadFile);
+router.get("/tasks/:taskId/files", authGuard(["writer"]), writerTaskController.getFileHistory);
 
 // ============================================================================
 // QC SUBMISSION & FEEDBACK
 // ============================================================================
 
-router.post("/api/tasks/:taskId/submit-qc", authGuard(["writer"]), writerTaskController.submitDraftForQC);
-router.get("/api/tasks/:taskId/feedback", authGuard(["writer"]), writerTaskController.getQCFeedback);
-router.post("/api/tasks/:taskId/revision", authGuard(["writer"]), writerTaskController.submitRevision);
+router.post("/tasks/:taskId/submit-qc", authGuard(["writer"]), writerTaskController.submitDraftForQC);
+router.get("/tasks/:taskId/feedback", authGuard(["writer"]), writerTaskController.getQCFeedback);
+router.post("/tasks/:taskId/revision", authGuard(["writer"]), writerTaskController.submitRevision);
 
 // ============================================================================
 // DEADLINES & PERMISSIONS
 // ============================================================================
 
-router.get("/api/deadlines/upcoming", authGuard(["writer"]), writerTaskController.checkUpcomingDeadlines);
-router.post("/api/chat/validate/:recipientId", authGuard(["writer"]), writerTaskController.validateChatAccess);
-router.get("/api/tasks/:taskId/permissions", authGuard(["writer"]), writerTaskController.checkTaskPermission);
+router.get("/deadlines/upcoming", authGuard(["writer"]), writerTaskController.checkUpcomingDeadlines);
+router.post("/chat/validate/:recipientId", authGuard(["writer"]), writerTaskController.validateChatAccess);
+router.get("/tasks/:taskId/permissions", authGuard(["writer"]), writerTaskController.checkTaskPermission);
 
 module.exports = router;

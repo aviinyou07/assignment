@@ -157,8 +157,8 @@
         async function loadActiveTasks(filterStatus = 'all') {
             try {
                 const url = filterStatus === 'all' 
-                    ? '/writer/api/tasks/active/list'
-                    : `/writer/api/tasks/active/list?status=${filterStatus}`;
+                    ? '/writer/tasks/active/list'
+                    : `/writer/tasks/active/list?status=${filterStatus}`;
                 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -233,7 +233,7 @@
         // Open task execution modal
         async function openTaskExecutionModal(taskId) {
             try {
-                const response = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const response = await fetch(`/writer/tasks/${taskId}/details`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -307,7 +307,7 @@
 
         async function loadFileHistory(taskId) {
             try {
-                const response = await fetch(`/writer/api/tasks/${taskId}/files`);
+                const response = await fetch(`/writer/tasks/${taskId}/files`);
                 const data = await response.json();
                 
                 if (data.success && data.files.length > 0) {
@@ -340,7 +340,7 @@
             const notes = document.getElementById('progress-notes').value;
             
             try {
-                const response = await fetch(`/writer/api/tasks/${currentExecutionTaskId}/status`, {
+                const response = await fetch(`/writer/tasks/${currentExecutionTaskId}/status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -377,7 +377,7 @@
 
             try {
                 // Upload file first
-                const uploadResponse = await fetch(`/writer/api/tasks/${currentExecutionTaskId}/upload`, {
+                const uploadResponse = await fetch(`/writer/tasks/${currentExecutionTaskId}/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -390,7 +390,7 @@
                 }
 
                 // Then submit for QC
-                const qcResponse = await fetch(`/writer/api/tasks/${currentExecutionTaskId}/submit-qc`, {
+                const qcResponse = await fetch(`/writer/tasks/${currentExecutionTaskId}/submit-qc`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

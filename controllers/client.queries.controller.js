@@ -4,7 +4,6 @@ const {
   createNotification,
   generateUniqueCode,
   generateQueryCode,
-  generateWhatsAppUrl,
   getUserIfVerified,
   createOrderHistory
 } = require('../utils/audit');
@@ -50,7 +49,9 @@ exports.createQuery = async (req, res) => {
       subject,
       urgency,
       description,
-      deadline_at
+      deadline_at,
+      requested_pages,
+      requested_words
     } = req.body;
 
     // =======================
@@ -78,7 +79,7 @@ exports.createQuery = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Deadline must be in the future'
-        
+
       });
     }
 
@@ -100,10 +101,36 @@ exports.createQuery = async (req, res) => {
     // =======================
     const [queryResult] = await connection.query(
       `INSERT INTO orders 
-       (query_code, user_id, paper_topic, service, subject, urgency, description, 
-        deadline_at, status, acceptance, work_code, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NOW())`,
-      [query_code, userId, paper_topic, service, subject, urgency, description || null, deadline_at, statusId]
+(
+  query_code,
+  user_id,
+  paper_topic,
+  service,
+  subject,
+  urgency,
+  description,
+  requested_pages,
+  requested_words,
+  deadline_at,
+  status,
+  acceptance,
+  work_code,
+  created_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NOW())`,
+      [
+        query_code,
+        userId,
+        paper_topic,
+        service,
+        subject,
+        urgency,
+        description || null,
+        requested_pages || null,
+        requested_words || null,
+        deadline_at,
+        statusId
+      ]
     );
 
     const orderId = queryResult.insertId;
@@ -120,7 +147,7 @@ exports.createQuery = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req.files.length; i++) {
         const file = req.files[i];
-        
+
         await connection.query(
           `INSERT INTO file_versions 
            (order_id, file_url, file_name, uploaded_by, file_size, version_number, created_at)
@@ -171,7 +198,7 @@ exports.createQuery = async (req, res) => {
           link_url: `/client/queries/${orderId}`
         });
       }
-      } catch (err) {
+    } catch (err) {
       logger.error(`Failed to send client realtime notification: ${err && err.message ? err.message : err}`);
       await createNotification({
         user_id: userId,
@@ -188,7 +215,7 @@ exports.createQuery = async (req, res) => {
     const [admins] = await connection.query(
       `SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1 LIMIT 1`
     );
-    
+
     if (admins.length > 0) {
       const adminId = admins[0].user_id;
       try {
@@ -280,13 +307,6 @@ exports.createQuery = async (req, res) => {
       logger.error(`Failed to notify BDEs about new query: ${err && err.message ? err.message : err}`);
     }
 
-    // =======================
-    // GENERATE WHATSAPP REDIRECT URL
-    // User will be redirected to WhatsApp with prefilled message
-    // =======================
-    const supportWhatsApp = process.env.SUPPORT_WHATSAPP || '919876543210';
-    const whatsappUrl = generateWhatsAppUrl(supportWhatsApp, query_code, paper_topic);
-
     return res.status(201).json({
       success: true,
       message: 'Query created successfully',
@@ -294,7 +314,6 @@ exports.createQuery = async (req, res) => {
         order_id: orderId,
         query_code: query_code,
         status: 'pending',
-        whatsapp_redirect: whatsappUrl,
         created_at: new Date()
       }
     });

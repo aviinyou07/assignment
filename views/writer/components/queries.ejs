@@ -124,7 +124,7 @@
         // Load pending tasks
         async function loadPendingTasks() {
             try {
-                const response = await fetch('/writer/api/tasks/pending?sortBy=deadline_at&order=ASC');
+                const response = await fetch('/writer/tasks/pending?sortBy=deadline_at&order=ASC');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -190,7 +190,7 @@
         // Open task details modal
         async function openTaskDetailsModal(taskId) {
             try {
-                const response = await fetch(`/writer/api/tasks/${taskId}/details`);
+                const response = await fetch(`/writer/tasks/${taskId}/details`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -242,7 +242,7 @@
             if (!currentModalTaskId) return;
             
             try {
-                const response = await fetch(`/writer/api/tasks/${currentModalTaskId}/accept`, {
+                const response = await fetch(`/writer/tasks/${currentModalTaskId}/accept`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -277,7 +277,7 @@
 
         async function submitDecline(taskId, reason) {
             try {
-                const response = await fetch(`/writer/api/tasks/${taskId}/reject`, {
+                const response = await fetch(`/writer/tasks/${taskId}/reject`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })

@@ -431,18 +431,18 @@ router.get(
 
 // ===== REAL-TIME DASHBOARD API =====
 router.get(
-  "/api/sidebar-counts",
+  "/sidebar-counts",
   authGuard(["admin"]),
   dashboardController.getSidebarCounts
 );
 
 router.get(
-  "/api/dashboard/kpis",
+  "/dashboard/kpis",
   authGuard(["admin"]),
   dashboardController.getDashboardKPIs
 );
 
 // Search users for new chats
-// router.get("/api/users/search", authGuard(["admin"]), chatController.searchUsers);
+// router.get("/users/search", authGuard(["admin"]), chatController.searchUsers);
 
 module.exports = router;

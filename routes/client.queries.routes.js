@@ -9,7 +9,7 @@ const feedbackController = require('../controllers/client.feedback.controller');
 
 /**
  * CLIENT ROUTES
- * Base path: /api/client
+ * Base path: /client
  * All routes require client authentication
  */
 
@@ -18,11 +18,15 @@ const feedbackController = require('../controllers/client.feedback.controller');
 // =======================
 
 // Create new query
+const upload = require('../middleware/multer');
+
 router.post(
   '/queries',
   authGuard(['client']),
+  upload.any(), 
   queriesController.createQuery
 );
+
 
 // List client's queries (paginated)
 router.get(
